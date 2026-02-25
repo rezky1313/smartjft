@@ -1,0 +1,43 @@
+#map {
+
+    height: 500px;
+
+}
+
+.popup-image {
+
+    max-width: 100px;
+    max-height: 100px;
+
+}
+
+
+#leafletMap-registration {
+
+    width: 400px;
+    height: 400px;
+    border: 1px solid grey;
+    /* gap: 10px; */
+    /* display: flex; */
+    /* flex-wrap: wrap; */
+
+}
+
+
+#leafletMap-dashboard {
+
+    height: 600px;
+
+}
+
+.custom-popup {
+    max-width: 200px; /* Atur lebar maksimum popup */
+  }
+
+  .custom-popup .leaflet-popup-content-wrapper {
+    max-width: 200px; /* Atur lebar maksimum popup */
+  }
+
+.zoomin{
+        zoom: 75%;
+}

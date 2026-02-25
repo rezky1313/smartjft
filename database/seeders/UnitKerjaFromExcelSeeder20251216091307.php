@@ -1,0 +1,483 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\Rumahsakit;
+
+class UnitKerjaFromExcelSeeder20251216091307 extends Seeder
+{
+    public function run(): void
+    {
+        $rows = array (
+  0 => 
+  array (
+    'nama_rumahsakit' => 'Direktorat Sarana dan Keselamatan Transportasi Jalan',
+    'alamat' => 'Jl. Medan Merdeka Barat No.8, Jakarta Pusat',
+    'no_telp' => '(021) 3811308',
+    'regency_id' => 156,
+    'latitude' => -6.175392,
+    'longitude' => 106.824964,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  1 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengujian Laik Jalan dan Sertifikasi Kendaraan Bermotor',
+    'alamat' => 'Jl. Raya Setu No.89, Bekasi',
+    'no_telp' => '(021) 82614567',
+    'regency_id' => 181,
+    'latitude' => -6.319432,
+    'longitude' => 107.033821,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  2 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Aceh',
+    'alamat' => 'Jl. Tgk. Daud Beureueh, Banda Aceh',
+    'no_telp' => NULL,
+    'regency_id' => 19,
+    'latitude' => 5.54829,
+    'longitude' => 95.323753,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  3 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Sumatera Utara',
+    'alamat' => 'Jl. Sisingamangaraja No.85, Medan',
+    'no_telp' => NULL,
+    'regency_id' => 51,
+    'latitude' => 3.548765,
+    'longitude' => 98.687592,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  4 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Sumatera Barat',
+    'alamat' => 'Jl. Khatib Sulaiman, Padang',
+    'no_telp' => NULL,
+    'regency_id' => 70,
+    'latitude' => -0.949234,
+    'longitude' => 100.354276,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  5 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Riau',
+    'alamat' => 'Jl. SM Amin No.88, Pekanbaru',
+    'no_telp' => NULL,
+    'regency_id' => 87,
+    'latitude' => 0.507068,
+    'longitude' => 101.447779,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  6 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Kepulauan Riau',
+    'alamat' => 'Jl. Adi Sucipto Km 12, Tanjungpinang',
+    'no_telp' => NULL,
+    'regency_id' => 154,
+    'latitude' => 0.922683,
+    'longitude' => 104.528361,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  7 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Jambi',
+    'alamat' => 'Jl. Lingkar Barat, Kota Jambi',
+    'no_telp' => NULL,
+    'regency_id' => 97,
+    'latitude' => -1.610122,
+    'longitude' => 103.613215,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  8 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Lampung',
+    'alamat' => 'Jl. Soekarno Hatta, Bandar Lampung',
+    'no_telp' => NULL,
+    'regency_id' => 139,
+    'latitude' => -5.397139,
+    'longitude' => 105.266789,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  9 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Sumatera Selatan',
+    'alamat' => 'Jl. Kol. H. Burlian, Palembang',
+    'no_telp' => NULL,
+    'regency_id' => 114,
+    'latitude' => -2.957341,
+    'longitude' => 104.723845,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  10 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Banten',
+    'alamat' => 'Jl. Raya Jakarta Km 4, Serang',
+    'no_telp' => NULL,
+    'regency_id' => 271,
+    'latitude' => -6.121435,
+    'longitude' => 106.153982,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  11 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas I Jawa Barat',
+    'alamat' => 'Jl. Soekarno Hatta No.528, Bandung',
+    'no_telp' => NULL,
+    'regency_id' => 179,
+    'latitude' => -6.946934,
+    'longitude' => 107.633512,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  12 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas I Jawa Tengah',
+    'alamat' => 'Jl. Siliwangi No.355, Semarang',
+    'no_telp' => NULL,
+    'regency_id' => 220,
+    'latitude' => -6.984512,
+    'longitude' => 110.389772,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  13 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Jawa Timur',
+    'alamat' => 'Jl. Ahmad Yani No.268, Surabaya',
+    'no_telp' => NULL,
+    'regency_id' => 265,
+    'latitude' => -7.345671,
+    'longitude' => 112.728914,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  14 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II D.I. Yogyakarta',
+    'alamat' => 'Jl. Ring Road Utara, Sleman',
+    'no_telp' => NULL,
+    'regency_id' => 226,
+    'latitude' => -7.759217,
+    'longitude' => 110.408935,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  15 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Bali',
+    'alamat' => 'Jl. Raya Sesetan, Denpasar',
+    'no_telp' => NULL,
+    'regency_id' => 419,
+    'latitude' => -8.684342,
+    'longitude' => 115.210716,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  16 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Nusa Tenggara Barat',
+    'alamat' => 'Jl. Lingkar Selatan, Mataram',
+    'no_telp' => NULL,
+    'regency_id' => 429,
+    'latitude' => -8.582983,
+    'longitude' => 116.116975,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  17 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Nusa Tenggara Timur',
+    'alamat' => 'Jl. Timor Raya, Kupang',
+    'no_telp' => NULL,
+    'regency_id' => 451,
+    'latitude' => -10.177199,
+    'longitude' => 123.607032,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  18 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Kalimantan Barat',
+    'alamat' => 'Jl. Trans Kalimantan, Pontianak',
+    'no_telp' => NULL,
+    'regency_id' => 286,
+    'latitude' => -0.035642,
+    'longitude' => 109.334217,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  19 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Kalimantan Selatan',
+    'alamat' => 'Jl. A. Yani Km 22, Banjarbaru',
+    'no_telp' => NULL,
+    'regency_id' => 313,
+    'latitude' => -3.441987,
+    'longitude' => 114.829456,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  20 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Kalimantan Tengah',
+    'alamat' => 'Jl. Tjilik Riwut Km 5',
+    'no_telp' => NULL,
+    'regency_id' => 301,
+    'latitude' => -2.209652,
+    'longitude' => 113.913781,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  21 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Kalimantan Timur',
+    'alamat' => 'Jl. H.A.M Rifaddin, Samarinda',
+    'no_telp' => NULL,
+    'regency_id' => 324,
+    'latitude' => -0.502345,
+    'longitude' => 117.153894,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  22 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas III Kalimantan Utara',
+    'alamat' => 'Jl. Mulawarman, Tarakan',
+    'no_telp' => NULL,
+    'regency_id' => 329,
+    'latitude' => 3.303548,
+    'longitude' => 117.633219,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  23 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Sulawesi Selatan',
+    'alamat' => 'Jl. Perintis Kemerdekaan Km 15',
+    'no_telp' => NULL,
+    'regency_id' => 391,
+    'latitude' => -5.131827,
+    'longitude' => 119.483621,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  24 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Sulawesi Tengah',
+    'alamat' => 'Jl. Trans Sulawesi',
+    'no_telp' => NULL,
+    'regency_id' => 363,
+    'latitude' => -0.891432,
+    'longitude' => 119.870221,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  25 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Sulawesi Utara',
+    'alamat' => 'Jl. Ring Road II, Manado',
+    'no_telp' => NULL,
+    'regency_id' => 343,
+    'latitude' => 1.489012,
+    'longitude' => 124.845992,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  26 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Gorontalo',
+    'alamat' => 'Jl. Trans Sulawesi',
+    'no_telp' => NULL,
+    'regency_id' => 350,
+    'latitude' => 0.543812,
+    'longitude' => 123.058994,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  27 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas III Sulawesi Barat',
+    'alamat' => 'Jl. Poros Mamuju',
+    'no_telp' => NULL,
+    'regency_id' => 366,
+    'latitude' => -2.676189,
+    'longitude' => 118.886271,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  28 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Maluku',
+    'alamat' => 'Jl. Dr. Malaiholo, Ambon',
+    'no_telp' => NULL,
+    'regency_id' => 461,
+    'latitude' => -3.695134,
+    'longitude' => 128.181472,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  29 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Maluku Utara',
+    'alamat' => 'Jl. Raya Kalumata',
+    'no_telp' => NULL,
+    'regency_id' => 471,
+    'latitude' => 0.789215,
+    'longitude' => 127.374912,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  30 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Papua',
+    'alamat' => 'Jl. Raya Abepura',
+    'no_telp' => NULL,
+    'regency_id' => 514,
+    'latitude' => -2.579432,
+    'longitude' => 140.706218,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  31 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas II Papua Barat',
+    'alamat' => 'Jl. Trikora',
+    'no_telp' => NULL,
+    'regency_id' => 475,
+    'latitude' => -0.866214,
+    'longitude' => 134.077413,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  32 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas III Bengkulu',
+    'alamat' => 'Jl. Depati Payung Negara',
+    'no_telp' => NULL,
+    'regency_id' => 125,
+    'latitude' => -3.802197,
+    'longitude' => 102.265423,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  33 => 
+  array (
+    'nama_rumahsakit' => 'Balai Pengelola Transportasi Darat Kelas III Bangka Belitung',
+    'alamat' => 'Jl. Raya Koba',
+    'no_telp' => NULL,
+    'regency_id' => 147,
+    'latitude' => -2.132187,
+    'longitude' => 106.116543,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+  34 => 
+  array (
+    'nama_rumahsakit' => 'Terminal Tipe A Tirtonadi',
+    'alamat' => 'Jl. Ahmad Yani, Surakarta',
+    'no_telp' => NULL,
+    'regency_id' => 221,
+    'latitude' => -7.552901,
+    'longitude' => 110.821341,
+    'matra' => 'Darat',
+    'instansi' => 'Pusat',
+    'created_at' => '2025-12-16 09:13:07',
+    'updated_at' => '2025-12-16 09:13:07',
+  ),
+);
+
+        // Upsert idempotent berdasarkan kombinasi (nama_rumahsakit, regency_id)
+        foreach (array_chunk($rows, 500) as $chunk) {
+            foreach ($chunk as $row) {
+                Rumahsakit::updateOrCreate(
+                    [
+                        'nama_rumahsakit' => $row['nama_rumahsakit'],
+                        'regency_id'      => $row['regency_id'],
+                    ],
+                    $row
+                );
+            }
+        }
+    }
+}
