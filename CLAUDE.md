@@ -51,7 +51,7 @@ Halaman utama yang menampilkan ringkasan data JFT secara nasional.
 - **Peta Persebaran** — peta interaktif Leaflet, setiap titik = satu unit kerja, marker berwarna per matra (Darat/Laut/Udara/Kereta)
 
 ### 2. Unit Kerja
-Data seluruh unit kerja yang memiliki JFT.
+Data seluruh unit kerja yang memiliki JFT. pada kode, unit kerja dinamakan rumahsakit, dikarenakan saya menggunakan project awal ini dengan mengedit dari project rumah sakit, makanya hal2 yang dinamakan rumahsakit di sini maksudnya adalah unitkerja
 
 **Kolom data:** No, Nama Unit Kerja, Provinsi, Kabupaten/Kota, Matra, Instansi, Latitude, Longitude, Actions (Edit/Delete)
 
