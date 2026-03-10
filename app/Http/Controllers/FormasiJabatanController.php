@@ -98,14 +98,26 @@ class FormasiJabatanController extends Controller
     $rows = $q->orderBy('unit_kerja_id')->orderBy('nama_formasi')->get();
 
     // ========= BANGUN PIVOT =========
-    $table = []; // [unitName => [ key => [jabatan, kuota[], terisi[], sisa[]] ]]
+    $table = []; // [unitName => [ '_meta' => [...], key => [jabatan, kuota[], terisi[], sisa[]] ]]
     foreach ($rows as $f) {
         $unitName = optional($f->unitkerja)->nama_rumahsakit ?? ('Unit #'.$f->unit_kerja_id);
         $jabatan  = $f->nama_formasi ?? '-';
         $lvlName  = $this->normLevel(optional($f->jenjang)->nama_jenjang);
         if (!$lvlName) continue;
 
-        $table[$unitName] ??= [];
+        // Simpan metadata unit kerja
+        if (!isset($table[$unitName]['_meta'])) {
+            $table[$unitName]['_meta'] = [
+                'unit_kerja_id' => $f->unit_kerja_id,
+                'tahuns' => [],
+            ];
+        }
+        // Kumpulkan tahun-tahun yang ada di unit kerja ini
+        $tahunFormasi = $f->tahun_formasi ?? null;
+        if ($tahunFormasi && !in_array($tahunFormasi, $table[$unitName]['_meta']['tahuns'])) {
+            $table[$unitName]['_meta']['tahuns'][] = $tahunFormasi;
+        }
+
         $key = md5($unitName.'|'.$jabatan);
 
         if (!isset($table[$unitName][$key])) {
@@ -122,10 +134,9 @@ class FormasiJabatanController extends Controller
 
         $table[$unitName][$key]['kuota'][$lvlName]  += $kuota;
         $table[$unitName][$key]['terisi'][$lvlName] += $terisi;
-        $table[$unitName][$key]['sisa'][$lvlName]    = max(
-            $table[$unitName][$key]['kuota'][$lvlName] - $table[$unitName][$key]['terisi'][$lvlName],
-            0
-        );
+        $table[$unitName][$key]['sisa'][$lvlName]    =
+            $table[$unitName][$key]['kuota'][$lvlName] - $table[$unitName][$key]['terisi'][$lvlName];
+        // Sisa bisa MINUS (over kuota diizinkan) - tanpa max(0, ...)
     }
 
     // ========= DATA DROPDOWN =========
@@ -415,6 +426,49 @@ public function updateGroup(Request $request)
     return redirect()
         ->route('user.formasi.index', ['unit_kerja_id'=>$unitId, 'tahun'=>$tahun])
         ->with('success','Formasi diperbarui & versi lama disimpan ke histori.');
+}
+
+/**
+ * Hapus semua formasi dalam unit kerja & tahun tertentu
+ */
+public function deleteGroup(Request $request)
+{
+    $unitId = $request->query('unit');
+    $tahun  = $request->query('tahun');
+
+    if (!$unitId) {
+        return redirect()
+            ->route('user.formasi.index')
+            ->with('error', 'Unit kerja tidak valid.');
+    }
+
+    // Query builder untuk hapus
+    $query = Formasijabatan::where('unit_kerja_id', $unitId);
+
+    if ($tahun) {
+        // Hapus hanya tahun tertentu
+        $query->where('tahun_formasi', $tahun);
+        $message = "Semua formasi untuk tahun {$tahun} berhasil dihapus.";
+    } else {
+        // Hapus semua tahun
+        $message = "Semua formasi (semua tahun) berhasil dihapus.";
+    }
+
+    // Hitung jumlah yang akan dihapus
+    $count = $query->count();
+
+    if ($count === 0) {
+        return redirect()
+            ->route('user.formasi.index')
+            ->with('error', 'Tidak ada data formasi yang ditemukan.');
+    }
+
+    // Lakukan penghapusan
+    $query->delete();
+
+    return redirect()
+        ->route('user.formasi.index')
+        ->with('success', "{$count} data formasi berhasil dihapus. {$message}");
 }
 
 

@@ -62,7 +62,23 @@ class Formasijabatan extends Model
     {
         $kuota = (int) ($this->kuota ?? 0);
         $terisi = (int) ($this->getTerisiAttribute() ?? 0);
-        return max($kuota - $terisi, 0);
+
+        // Sisa bisa MINUS (over kuota diizinkan)
+        return $kuota - $terisi;
+    }
+
+    // Helper untuk mendapatkan class CSS berdasarkan sisa
+    public function getSisaClassAttribute(): string
+    {
+        $sisa = $this->sisa;
+
+        if ($sisa < 0) {
+            return 'text-danger fw-bold'; // Merah bold untuk over kuota
+        } elseif ($sisa === 0) {
+            return 'text-warning fw-bold'; // Kuning bold untuk penuh
+        } else {
+            return ''; // Normal
+        }
     }
 
 }

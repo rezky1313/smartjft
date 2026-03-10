@@ -164,13 +164,14 @@
           @php
             $terisi = (int)($f->terisi ?? 0);
             $kuota  = (int)($f->kuota ?? 0);
-            $sisa   = max($kuota - $terisi, 0);
-            $disabled = $sisa <= 0 && $selectedFormasi != $f->id; // saat edit, tetap boleh pilih yg sudah terpakai
+            $sisa   = $kuota - $terisi; // Bisa minus (over kuota diizinkan)
+            $disabled = false; // Tidak disable, over kuota diizinkan
             $jenjang = $f->jenjang->nama_jenjang ?? '—';
           @endphp
           <option value="{{ $f->id }}"
                   @selected($selectedFormasi == $f->id)
-                  @if($disabled) disabled @endif>
+                  @if($sisa < 0) class="text-danger" @endif
+                  @if($sisa === 0) class="text-warning" @endif>
             {{ $jenjang }} — (Kuota: {{ $kuota }} / Terisi: {{ $terisi }} / Sisa: {{ $sisa }})
           </option>
         @endforeach

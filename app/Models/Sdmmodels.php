@@ -24,6 +24,7 @@ class Sdmmodels extends Model
           'unit_kerja_id',   // <— penting
         'tmt_pengangkatan',
         'aktif',
+        'status_formasi',   // status formasi: terpenuhi / di_luar_formasi
     ];
 
     protected $casts = [

@@ -149,6 +149,11 @@ Route::get('laporan/pemangku-simple',
         Route::post('formasi/update-group', [\App\Http\Controllers\FormasiJabatanController::class, 'updateGroup'])
         ->name('formasi.update-group');
 
+        // Hapus formasi per unit & tahun
+        Route::delete('formasi/delete-group', [\App\Http\Controllers\FormasiJabatanController::class, 'deleteGroup'])
+        ->middleware('permission:delete formasi')
+        ->name('formasi.delete-group');
+
 
     // AJAX untuk dropdown cari SDM + mini detail
     Route::get('uji/sdm-search', [UjiKompetensiController::class, 'sdmSearch'])

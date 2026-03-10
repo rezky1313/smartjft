@@ -37,10 +37,10 @@
     @endforeach
   </select>
 
-  <select name="unit_kerja_id" class="form-select">
+  <select name="unit_kerja_id" id="unitFilter" class="form-select">
     <option value="">Semua Unit Kerja</option>
     @foreach($units as $u)
-      <option value="{{ $u->no_rs }}" @selected(($filter['unit_kerja_id']??'')==$u->no_rs)>
+      <option value="{{ $u->no_rs }}" data-regency="{{ $u->regency_id ?? '' }}" @selected(($filter['unit_kerja_id']??'')==$u->no_rs)>
         {{ $u->nama_rumahsakit }}
       </option>
     @endforeach
@@ -58,34 +58,12 @@
 </form>
 
 
-  {{-- Tombol Edit Grup (aktif jika filter lengkap) --}}
-  {{-- @if(!empty($filter['unit_kerja_id']) && !empty($filter['tahun']))
-    <div class="mb-3">
-      <a class="btn btn-warning"
-         href="{{ route('user.formasi.edit', ['unit_kerja_id'=>$filter['unit_kerja_id'], 'tahun_formasi'=>$filter['tahun']]) }}">
-        Edit Grup: Unit & Tahun Terpilih
-      </a>
-    </div>
-  @endif --}}
-
-    {{-- <div class="mb-3">
+@can('edit formasi')
+<div class="mb-3">
   <button id="btn-edit-group" type="button" class="btn btn-warning">
     Edit Grup: Unit & Tahun Terpilih
   </button>
-</div> --}}
-
-@can('edit formasi')
-@if(!empty($filter['unit_kerja_id']) && !empty($filter['tahun']))
-  <div class="mb-3">
-    <a class="btn btn-warning"
-       href="{{ route('user.formasi.edit-group', [
-          'unit'  => $filter['unit_kerja_id'],
-          'tahun' => $filter['tahun']
-       ]) }}">
-      Edit Grup: Unit & Tahun Terpilih
-    </a>
-  </div>
-@endif
+</div>
 @endcan
 
 
@@ -99,7 +77,19 @@
   .pivot-table .border-end-thick   { border-right: 2px solid #000 !important; }
   .pivot-table .border-start-thick { border-left:  2px solid #000 !important; }
 
-   form .form-select { min-width: 220px; }
+  form .form-select { min-width: 220px; }
+
+  /* Tombol actions di sebelah kanan table */
+  .formasi-actions-col {
+    min-width: 60px;
+  }
+  .formasi-actions-col .btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 </style>
 @endpush
 
@@ -107,25 +97,72 @@
 <script>
   //Edit Button
   document.getElementById('btn-edit-group')?.addEventListener('click', function(){
-  const unit  = document.querySelector('select[name="unit_kerja_id"]').value;
-  const tahun = document.querySelector('select[name="tahun"]').value;
-  if (!unit || !tahun) {
-    alert('Pilih Unit Kerja dan Tahun terlebih dahulu.');
-    return;
+    const unit  = document.querySelector('select[name="unit_kerja_id"]').value;
+    const tahun = document.querySelector('select[name="tahun"]').value;
+    if (!unit || !tahun) {
+      alert('Pilih Unit Kerja dan Tahun terlebih dahulu untuk mengedit formasi.');
+      return;
+    }
+    const url = @json(route('user.formasi.edit-group')) + '?unit=' + encodeURIComponent(unit) + '&tahun=' + encodeURIComponent(tahun);
+    window.location.href = url;
+  });
+
+  //Delete Button per Unit Kerja
+  function confirmDeleteUnitFormasi(btn) {
+    const unitId = btn.dataset.unitId;
+    const unitName = btn.dataset.unitName;
+    const tahun = btn.dataset.tahun;
+
+    let message = tahun
+      ? `Apakah Anda yakin ingin menghapus SEMUA data formasi untuk:\n\nUnit Kerja: ${unitName}\nTahun: ${tahun}\n\nData yang dihapus tidak dapat dikembalikan!`
+      : `Apakah Anda yakin ingin menghapus SEMUA data formasi untuk:\n\nUnit Kerja: ${unitName}\nSemua Tahun\n\nData yang dihapus tidak dapat dikembalikan!`;
+
+    if (!confirm(message)) {
+      return;
+    }
+
+    // Kirim request delete
+    let url = @json(route('user.formasi.delete-group')) + '?unit=' + encodeURIComponent(unitId);
+    if (tahun) {
+      url += '&tahun=' + encodeURIComponent(tahun);
+    }
+
+    // Buat form untuk submit DELETE
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_token';
+    csrfInput.value = csrfToken;
+
+    const methodInput = document.createElement('input');
+    methodInput.type = 'hidden';
+    methodInput.name = '_method';
+    methodInput.value = 'DELETE';
+
+    form.appendChild(csrfInput);
+    form.appendChild(methodInput);
+    document.body.appendChild(form);
+    form.submit();
   }
-  const url = @json(route('user.formasi.edit-group', ['unit_kerja_id'=>'__UNIT__','tahun_formasi'=>'__TAHUN__']));
-  window.location.href = url.replace('__UNIT__', unit).replace('__TAHUN__', tahun);
-});
 //----------------------------------
 
   (function(){
     const baseUrl = @json(route('user.wilayah.regencies', ['province' => '__PID__']));
     const $prov = document.getElementById('provFilter');
     const $reg  = document.getElementById('regFilter');
+    const $unit = document.getElementById('unitFilter');
+
+    // Simpan semua option unit kerja untuk filtering
+    const allUnitOptions = Array.from($unit.querySelectorAll('option[data-regency]'));
 
     async function loadRegencies(pid, selected=''){
       if(!pid){
         $reg.innerHTML = `<option value="">Semua Kab/Kota</option>`;
+        filterUnitsByRegency('');
         return;
       }
       const url = baseUrl.replace('__PID__', pid);
@@ -139,13 +176,43 @@
       $reg.innerHTML = html;
     }
 
-    // on change
-    $prov?.addEventListener('change', e => loadRegencies(e.target.value, ''));
+    function filterUnitsByRegency(regencyId){
+      // Bersihkan option yang ada
+      $unit.innerHTML = '<option value="">Semua Unit Kerja</option>';
+
+      // Filter dan tambahkan option sesuai regency
+      const filtered = regencyId
+        ? allUnitOptions.filter(opt => opt.dataset.regency === String(regencyId))
+        : allUnitOptions;
+
+      filtered.forEach(opt => {
+        $unit.appendChild(opt.cloneNode(true));
+      });
+
+      // Restore selected value jika masih ada di filtered options
+      const currentValue = @json($filter['unit_kerja_id'] ?? '');
+      if(currentValue && $unit.querySelector(`option[value="${currentValue}"]`)){
+        $unit.value = currentValue;
+      }
+    }
+
+    // on change provinsi
+    $prov?.addEventListener('change', e => {
+      loadRegencies(e.target.value, '');
+      filterUnitsByRegency(''); // Reset unit filter saat provinsi berubah
+    });
+
+    // on change kab/kota
+    $reg?.addEventListener('change', e => {
+      filterUnitsByRegency(e.target.value);
+    });
 
     // init: kalau halaman dibuka dg province terpilih, muat regencynya
     const initialProv = @json($filter['province_id'] ?? '');
     const initialReg  = @json($filter['regency_id'] ?? '');
     if(initialProv){ loadRegencies(initialProv, initialReg); }
+    // Filter unit kerja berdasarkan regency yang terpilih saat load
+    if(initialReg){ filterUnitsByRegency(initialReg); }
   })();
 </script>
 @endpush
@@ -155,13 +222,22 @@
 
 
 @forelse($table as $unitName => $rows)
+  @php
+    $meta = $rows['_meta'] ?? [];
+    $unitId = $meta['unit_kerja_id'] ?? null;
+    // Gunakan tahun yang difilter, atau tahun pertama dari metadata, atau null
+    $editTahun = $filter['tahun'] ?? ($meta['tahuns'][0] ?? null);
+  @endphp
   <div class="card mb-4">
     <div class="card-header">
       <h5 class="card-title mb-0">{{ $unitName }}</h5>
     </div>
     <div class="card-body p-0">
-      <div class="table-responsive">
-      <table class="table table-bordered table-sm mb-0 align-middle text-center pivot-table">
+      <div class="row g-0">
+        {{-- Tabel --}}
+        <div class="col-md">
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0 align-middle text-center pivot-table">
   <thead>
     <tr>
       <th rowspan="3" style="width:50px">No</th>
@@ -197,7 +273,8 @@
   </thead>
   <tbody>
     @php $i=1; @endphp
-    @foreach($rows as $row)
+    @foreach($rows as $key => $row)
+      @if($key === '_meta') @continue @endif
       @php
         $k = $row['kuota'];  $t = $row['terisi'];  $s = $row['sisa'];
         $kTotal = array_sum($k); $tTotal = array_sum($t); $sTotal = array_sum($s);
@@ -220,16 +297,42 @@
 
         {{-- SISA --}}
         @foreach($cols as $c)
-          <td @class(['border-start-thick'=>$loop->first])>{{ $s[$c] }}</td>
+          <td @class(['border-start-thick'=>$loop->first, 'text-danger fw-bold'=>$s[$c] < 0, 'text-warning fw-bold'=>$s[$c] == 0])>{{ $s[$c] }}</td>
         @endforeach
-        <td><b>{{ $sTotal }}</b></td>
+        <td @class(['text-danger fw-bold'=>$sTotal < 0, 'text-warning fw-bold'=>$sTotal == 0])><b>{{ $sTotal }}</b></td>
       </tr>
     @endforeach
   </tbody>
 </table>
 
+          </div>
+        </div>
 
+        {{-- Tombol Actions di sebelah kanan --}}
+        <div class="col-auto formasi-actions-col d-flex flex-column justify-content-start gap-2 p-3 border-start bg-light">
+          @can('edit formasi')
+          @if($unitId && $editTahun)
+          <a href="{{ route('user.formasi.edit-group', ['unit' => $unitId, 'tahun' => $editTahun]) }}"
+             class="btn btn-warning btn-sm" title="Edit Formasi">
+             <i class="fas fa-edit"></i>
+          </a>
+          @endif
+          @endcan
 
+          @can('delete formasi')
+          @if($unitId)
+          <button type="button"
+                  class="btn btn-danger btn-sm"
+                  data-unit-id="{{ $unitId }}"
+                  data-unit-name="{{ $unitName }}"
+                  data-tahun="{{ $editTahun }}"
+                  onclick="confirmDeleteUnitFormasi(this)"
+                  title="Hapus Formasi">
+            <i class="fas fa-trash"></i>
+          </button>
+          @endif
+          @endcan
+        </div>
       </div>
     </div>
   </div>

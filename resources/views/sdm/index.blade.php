@@ -8,10 +8,15 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>Data Pemangku JFT</h4>
-  <div>
+  <div class="d-flex gap-2">
+    <select id="filterStatusFormasi" class="form-select form-select-sm" style="width: 200px;">
+      <option value="">Semua Status Formasi</option>
+      <option value="terpenuhi" {{ $filterStatus === 'terpenuhi' ? 'selected' : '' }}>Terpenuhi</option>
+      <option value="di_luar_formasi" {{ $filterStatus === 'di_luar_formasi' ? 'selected' : '' }}>Di Luar Formasi</option>
+    </select>
     @can('create pegawai')
-    <a href="{{ route('user.sdm.create') }}" class="btn btn-primary">+ Tambah Pemangku JFT</a>
-    <a href="{{ route('user.sdm.import.form') }}" class="btn btn-success">+ Import Excel</a>
+    <a href="{{ route('user.sdm.create') }}" class="btn btn-primary btn-sm">+ Tambah Pemangku JFT</a>
+    <a href="{{ route('user.sdm.import.form') }}" class="btn btn-success btn-sm">+ Import Excel</a>
     @endcan
   </div>
 </div>
@@ -31,6 +36,7 @@
         <th>Provinsi</th>
         <th>TMT</th>
         <th>Masa Jabatan</th>
+        <th>Status Formasi</th>
         <th>Aktif</th>
         <th width="150">Aksi</th>
       </tr>
@@ -54,6 +60,17 @@
           <td>{{ $prov->name ?? '-' }}</td>
           <td>{{ $row->tmt_pengangkatan?->format('d-m-Y') ?? '-' }}</td>
           <td>{{ $row->masa_jabatan ?? '-' }}</td>
+          <td>
+            @if($row->formasi_jabatan_id)
+              @if($row->status_formasi === 'di_luar_formasi')
+                <span class="badge bg-danger">Di Luar Formasi</span>
+              @else
+                <span class="badge bg-success">Terpenuhi</span>
+              @endif
+            @else
+              <span class="text-muted">-</span>
+            @endif
+          </td>
           <td>
             @if($row->aktif)
               <span class="badge bg-success">Aktif</span>
@@ -88,6 +105,20 @@ $(function () {
     pageLength: 10,
     lengthMenu: [10,25,50,100],
     order: [[2,'asc']], // sort Nama
+  });
+
+  // Handle Filter Status Formasi
+  $('#filterStatusFormasi').on('change', function() {
+    const status = $(this).val();
+    const url = new URL(window.location);
+
+    if (status === '') {
+      url.searchParams.delete('filter_status');
+    } else {
+      url.searchParams.set('filter_status', status);
+    }
+
+    window.location.href = url.toString();
   });
 });
 </script>

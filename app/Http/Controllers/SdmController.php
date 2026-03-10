@@ -17,16 +17,27 @@ class SdmController extends Controller
 {
 
     public function index()
-{
+    {
+        $filterStatus = request()->get('filter_status', ''); // Filter status formasi
 
-    $sdm = Sdmmodels::with([
-    'formasi.jenjang',
-    'formasi.unitKerja.regency.province',
-    'unitKerja.regency.province', // <— penting untuk SDM tanpa formasi
-])->orderByDesc('created_at')->get();
+        $sdm = Sdmmodels::with([
+            'formasi.jenjang',
+            'formasi.unitKerja.regency.province',
+            'unitKerja.regency.province', // <— penting untuk SDM tanpa formasi
+        ])
+        ->when($filterStatus, function($q) use ($filterStatus) {
+            if ($filterStatus === 'terpenuhi') {
+                return $q->where('status_formasi', 'terpenuhi');
+            } elseif ($filterStatus === 'di_luar_formasi') {
+                return $q->where('status_formasi', 'di_luar_formasi');
+            }
+            // 'semua' atau kosong = tidak filter
+        })
+        ->orderByDesc('created_at')
+        ->get();
 
-    return view('sdm.index', compact('sdm'));
-}
+        return view('sdm.index', compact('sdm', 'filterStatus'));
+    }
 
 
     public function create()
@@ -42,48 +53,78 @@ class SdmController extends Controller
     }
 
     public function store(Request $r)
-{
-    $validated = $r->validate([
-        'nip'                 => 'nullable|string|max:50',
-        'nik'                 => 'nullable|string|max:50',
-        'nama_lengkap'        => 'required|string|max:150',
-        'jenis_kelamin'       => 'nullable|in:L,P',
-        'pendidikan_terakhir' => 'nullable|string|max:120',
-        'pangkat_golongan'    => 'nullable|string|max:50',
-        'status_kepegawaian'  => 'required|in:PNS,PPPK,CPNS,Non ASN',
-        'tmt_pengangkatan'    => 'nullable|date',
+    {
+        $validated = $r->validate([
+            'nip'                 => 'nullable|string|max:50',
+            'nik'                 => 'nullable|string|max:50',
+            'nama_lengkap'        => 'required|string|max:150',
+            'jenis_kelamin'       => 'nullable|in:L,P',
+            'pendidikan_terakhir' => 'nullable|string|max:120',
+            'pangkat_golongan'    => 'nullable|string|max:50',
+            'status_kepegawaian'  => 'required|in:PNS,PPPK,CPNS,Non ASN',
+            'tmt_pengangkatan'    => 'nullable|date',
 
-        // salah satu wajib terisi
-        'formasi_jabatan_id'  => 'nullable|exists:formasi_jabatan,id',
-        'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
+            // salah satu wajib terisi
+            'formasi_jabatan_id'  => 'nullable|exists:formasi_jabatan,id',
+            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
 
-        'aktif'               => 'nullable|boolean',
-    ]);
+            'aktif'               => 'nullable|boolean',
+        ]);
 
-    // Tentukan unit_kerja_id final
-    $unitKerjaId = $validated['unit_kerja_id'] ?? null;
+        // Tentukan unit_kerja_id final
+        $unitKerjaId = $validated['unit_kerja_id'] ?? null;
+        $formasiJabatanId = $validated['formasi_jabatan_id'] ?? null;
 
-    if (!empty($validated['formasi_jabatan_id'])) {
-        // Jika memilih formasi, ikut unit kerja dari formasi tsb
-        $unitKerjaId = Formasijabatan::whereKey($validated['formasi_jabatan_id'])->value('unit_kerja_id');
+        if (!empty($formasiJabatanId)) {
+            // Jika memilih formasi, ikut unit kerja dari formasi tsb
+            $unitKerjaId = Formasijabatan::whereKey($formasiJabatanId)->value('unit_kerja_id');
+        }
+
+        // Cek status formasi SEBELUM pegawai ditambahkan
+        $statusFormasi = 'terpenuhi'; // default
+        $warningMessage = null;
+
+        if (!empty($formasiJabatanId)) {
+            $formasi = Formasijabatan::find($formasiJabatanId);
+            if ($formasi) {
+                $terisi = $formasi->sdmAktif()->count();
+                $sisa = $formasi->kuota - $terisi;
+
+                if ($sisa <= 0) {
+                    $statusFormasi = 'di_luar_formasi';
+                    $warningMessage = "Peringatan: Formasi '{$formasi->nama_formasi}' sudah melebihi kuota (sisa: {$sisa}). Pegawai akan ditandai sebagai 'Di Luar Formasi'.";
+                }
+            }
+        }
+
+        Sdmmodels::create([
+            'nip'                 => $validated['nip'] ?? null,
+            'nik'                 => $validated['nik'] ?? null,
+            'nama_lengkap'        => $validated['nama_lengkap'],
+            'jenis_kelamin'       => $validated['jenis_kelamin'] ?? null,
+            'pendidikan_terakhir' => $validated['pendidikan_terakhir'] ?? null,
+            'pangkat_golongan'    => $validated['pangkat_golongan'] ?? null,
+            'status_kepegawaian'  => $validated['status_kepegawaian'],
+            'formasi_jabatan_id'  => $formasiJabatanId,
+            'unit_kerja_id'       => $unitKerjaId,
+            'tmt_pengangkatan'    => $validated['tmt_pengangkatan'] ?? null,
+            'aktif'               => (bool)($validated['aktif'] ?? true),
+            'status_formasi'      => $statusFormasi,
+        ]);
+
+        // Recalculate status untuk pegawai lain di formasi yang sama
+        if (!empty($formasiJabatanId)) {
+            $this->recalculateStatusFormasi($formasiJabatanId);
+        }
+
+        if ($warningMessage) {
+            return redirect()->route('user.sdm.index')
+                ->with('warning', $warningMessage)
+                ->with('success', 'SDM berhasil ditambahkan (di luar formasi).');
+        }
+
+        return redirect()->route('user.sdm.index')->with('success','SDM berhasil ditambahkan.');
     }
-
-    Sdmmodels::create([
-        'nip'                 => $validated['nip'] ?? null,
-        'nik'                 => $validated['nik'] ?? null,
-        'nama_lengkap'        => $validated['nama_lengkap'],
-        'jenis_kelamin'       => $validated['jenis_kelamin'] ?? null,
-        'pendidikan_terakhir' => $validated['pendidikan_terakhir'] ?? null,
-        'pangkat_golongan'    => $validated['pangkat_golongan'] ?? null,
-        'status_kepegawaian'  => $validated['status_kepegawaian'],
-        'formasi_jabatan_id'  => $validated['formasi_jabatan_id'] ?? null,
-        'unit_kerja_id'       => $unitKerjaId,                     // <-- pakai variabel yang sudah dihitung
-        'tmt_pengangkatan'    => $validated['tmt_pengangkatan'] ?? null,
-        'aktif'               => (bool)($validated['aktif'] ?? true),
-    ]);
-
-    return redirect()->route('user.sdm.index')->with('success','SDM berhasil ditambahkan.');
-}
 
     public function edit(Sdmmodels $sdm)
     {
@@ -100,68 +141,134 @@ class SdmController extends Controller
 
 
     public function update(Request $r, Sdmmodels $sdm)
-{
-    $validated = $r->validate([
-        'nama_lengkap'        => 'required|string|max:150',
-        'jenis_kelamin'       => 'nullable|in:L,P',
-        'pendidikan_terakhir' => 'nullable|string|max:120',
-        'pangkat_golongan'    => 'nullable|string|max:50',
-        'status_kepegawaian'  => 'required|in:PNS,PPPK,CPNS,Non ASN',
-        'tmt_pengangkatan'    => 'nullable|date',
-        'formasi_jabatan_id'  => 'nullable|exists:formasi_jabatan,id',
-        'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
-        'aktif'               => 'nullable|boolean',
-    ]);
+    {
+        $validated = $r->validate([
+            'nama_lengkap'        => 'required|string|max:150',
+            'jenis_kelamin'       => 'nullable|in:L,P',
+            'pendidikan_terakhir' => 'nullable|string|max:120',
+            'pangkat_golongan'    => 'nullable|string|max:50',
+            'status_kepegawaian'  => 'required|in:PNS,PPPK,CPNS,Non ASN',
+            'tmt_pengangkatan'    => 'nullable|date',
+            'formasi_jabatan_id'  => 'nullable|exists:formasi_jabatan,id',
+            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
+            'aktif'               => 'nullable|boolean',
+        ]);
 
-    $unitKerjaId = $validated['unit_kerja_id'] ?? null;
-    if (!empty($validated['formasi_jabatan_id'])) {
-        $unitKerjaId = Formasijabatan::whereKey($validated['formasi_jabatan_id'])->value('unit_kerja_id');
+        $unitKerjaId = $validated['unit_kerja_id'] ?? null;
+        $formasiJabatanId = $validated['formasi_jabatan_id'] ?? null;
+
+        if (!empty($formasiJabatanId)) {
+            $unitKerjaId = Formasijabatan::whereKey($formasiJabatanId)->value('unit_kerja_id');
+        }
+
+        // Simpan formasi lama untuk recalculate nanti
+        $oldFormasiId = $sdm->formasi_jabatan_id;
+
+        // Cek status formasi baru
+        $statusFormasi = 'terpenuhi'; // default
+        $warningMessage = null;
+
+        if (!empty($formasiJabatanId)) {
+            $formasi = Formasijabatan::find($formasiJabatanId);
+            if ($formasi) {
+                // Hitung terisi tanpa menghitung SDM yang sedang diedit
+                $terisi = $formasi->sdmAktif()->where('id', '!=', $sdm->id)->count();
+                $sisa = $formasi->kuota - $terisi;
+
+                if ($sisa <= 0) {
+                    $statusFormasi = 'di_luar_formasi';
+                    $warningMessage = "Peringatan: Formasi '{$formasi->nama_formasi}' sudah melebihi kuota (sisa: {$sisa}). Pegawai akan ditandai sebagai 'Di Luar Formasi'.";
+                }
+            }
+        } else {
+            // Jika formasi dihapus/null, status menjadi 'terpenuhi' (tidak ada formasi)
+            $statusFormasi = 'terpenuhi';
+        }
+
+        $sdm->update([
+            'nip'                 => $r->nip,
+            'nik'                 => $r->nik,
+            'nama_lengkap'        => $validated['nama_lengkap'],
+            'jenis_kelamin'       => $validated['jenis_kelamin']?? null,
+            'pendidikan_terakhir' => $validated['pendidikan_terakhir'] ?? null,
+            'pangkat_golongan'    => $validated['pangkat_golongan'] ?? null,
+            'status_kepegawaian'  => $validated['status_kepegawaian'],
+            'formasi_jabatan_id'  => $formasiJabatanId,
+            'unit_kerja_id'       => $unitKerjaId,
+            'tmt_pengangkatan'    => $validated['tmt_pengangkatan'] ?? null,
+            'aktif'               => (bool)($validated['aktif'] ?? $sdm->aktif),
+            'status_formasi'      => $statusFormasi,
+        ]);
+
+        // Recalculate status untuk formasi lama (jika berubah)
+        if ($oldFormasiId && $oldFormasiId != $formasiJabatanId) {
+            $this->recalculateStatusFormasi($oldFormasiId);
+        }
+
+        // Recalculate status untuk formasi baru
+        if (!empty($formasiJabatanId)) {
+            $this->recalculateStatusFormasi($formasiJabatanId);
+        }
+
+        if ($warningMessage) {
+            return redirect()->route('user.sdm.index')
+                ->with('warning', $warningMessage)
+                ->with('success', 'SDM berhasil diperbarui (di luar formasi).');
+        }
+
+        return redirect()->route('user.sdm.index')->with('success','SDM berhasil diperbarui.');
     }
-
-    $sdm->update([
-        'nip'                 => $r->nip,
-        'nik'                 => $r->nik,
-        'nama_lengkap'        => $validated['nama_lengkap'],
-        'jenis_kelamin'       => $validated['jenis_kelamin']?? null,
-        'pendidikan_terakhir' => $validated['pendidikan_terakhir'] ?? null,
-        'pangkat_golongan'    => $validated['pangkat_golongan'] ?? null,
-        'status_kepegawaian'  => $validated['status_kepegawaian'],
-        'formasi_jabatan_id'  => $validated['formasi_jabatan_id'] ?? null,
-        'unit_kerja_id'       => $unitKerjaId,
-        'tmt_pengangkatan'    => $validated['tmt_pengangkatan'] ?? null,
-        'aktif'               => (bool)($validated['aktif'] ?? $sdm->aktif),
-    ]);
-
-    return redirect()->route('user.sdm.index')->with('success','SDM berhasil diperbarui.');
-}
 
     public function destroy(Sdmmodels $sdm)
     {
+        // Simpan formasi_id untuk recalculate setelah hapus
+        $formasiId = $sdm->formasi_jabatan_id;
+
         $sdm->delete();
+
+        // Recalculate status untuk pegawai lain di formasi yang sama
+        if ($formasiId) {
+            $this->recalculateStatusFormasi($formasiId);
+        }
+
         return redirect()->route('user.sdm.index')->with('success','SDM berhasil dihapus.');
     }
 
     public function trash()
-{
-    $sdm = Sdmmodels::onlyTrashed()
-        ->with(['formasi.jenjang','formasi.unitKerja.regency.province','unitKerja.regency.province'])
-        ->orderBy('nama_lengkap')
-        ->get();
+    {
+        $sdm = Sdmmodels::onlyTrashed()
+            ->with(['formasi.jenjang','formasi.unitKerja.regency.province','unitKerja.regency.province'])
+            ->orderBy('nama_lengkap')
+            ->get();
 
-    return view('sdm.trash', compact('sdm')); // buat view sederhana
-}
+        return view('sdm.trash', compact('sdm')); // buat view sederhana
+    }
 
 public function restore($id)
 {
     $sdm = Sdmmodels::withTrashed()->findOrFail($id);
     $sdm->restore(); // kembalikan dari soft delete
+
+    // Recalculate status setelah restore
+    if ($sdm->formasi_jabatan_id) {
+        $this->recalculateStatusFormasi($sdm->formasi_jabatan_id);
+    }
+
     return back()->with('success','SDM berhasil direstore.');
 }
 
 public function forceDelete($id)
 {
     $sdm = Sdmmodels::withTrashed()->findOrFail($id);
+    $formasiId = $sdm->formasi_jabatan_id;
+
     $sdm->forceDelete(); // hapus permanen
+
+    // Recalculate status setelah force delete
+    if ($formasiId) {
+        $this->recalculateStatusFormasi($formasiId);
+    }
+
     return back()->with('success','SDM dihapus permanen.');
 }
 
@@ -446,6 +553,48 @@ $jk    = $this->normalizeJK($jkRaw); // hasilnya 'L', 'P', atau null
     return redirect()->route('user.sdm.index')->with('success', $msg);
 }
 
+
+/**
+ * Recalculate status_formasi untuk semua SDM dalam formasi tertentu
+ *
+ * Logic:
+ * - SDM diurutkan berdasarkan created_at (yang pertama masuk = prioritas)
+ * - Hitung kuota formasi
+ * - SDM sejumlah kuota = status 'terpenuhi'
+ * - Sisa SDM = status 'di_luar_formasi'
+ *
+ * @param int $formasiJabatanId
+ * @return void
+ */
+private function recalculateStatusFormasi($formasiJabatanId): void
+{
+    $formasi = Formasijabatan::find($formasiJabatanId);
+    if (!$formasi) {
+        return;
+    }
+
+    // Ambil semua SDM aktif dalam formasi ini, urut berdasarkan created_at ASC
+    $allSdm = Sdmmodels::where('formasi_jabatan_id', $formasiJabatanId)
+        ->where('aktif', true)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    $kuota = (int) $formasi->kuota;
+    $count = 0;
+
+    foreach ($allSdm as $sdm) {
+        $count++;
+
+        // SDM sejumlah kuota pertama = terpenuhi
+        // Sisa SDM = di_luar_formasi
+        $newStatus = ($count <= $kuota) ? 'terpenuhi' : 'di_luar_formasi';
+
+        // Hanya update jika status berubah (untuk efisiensi)
+        if ($sdm->status_formasi !== $newStatus) {
+            $sdm->update(['status_formasi' => $newStatus]);
+        }
+    }
+}
 
 
 }
