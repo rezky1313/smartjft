@@ -38,11 +38,17 @@ class CentralController extends Controller
             ];
 
             if(Auth::attempt($infologin)){
-                if(Auth::user()->role =='admin'){
-                    return redirect('admin');
-                } elseif (Auth::user()->role == 'user'){
-                    return redirect('user/dashboard/peta');
+                // Reload user untuk mendapatkan data terbaru termasuk roles dari Spatie
+                $user = Auth::user()->fresh();
+
+                // Cek apakah user punya role Spatie
+                if ($user->roles->isEmpty()) {
+                    // Jika user belum punya role, assign default role 'viewer'
+                    $user->assignRole('viewer');
                 }
+
+                // Redirect semua user ke dashboard
+                return redirect()->route('user.peta');
             }else{
                 return redirect('')->withErrors('Username Atau Password Yang Dimasukkan Tidak Sesuai')->withInput();
             }
@@ -54,13 +60,17 @@ class CentralController extends Controller
     }
 
     public function registerAksi(Request $request){
-        $user = new user();
+        $user = new User();
 
         $user->name = $request->name;
         $user->email = $request->email;
         $user->password = Hash::make($request->password);
+        $user->status = 'active';
 
         $user->save();
+
+        // Assign default role 'viewer' untuk user yang baru register
+        $user->assignRole('viewer');
 
         return back()->with('success','Register Successful');
     }

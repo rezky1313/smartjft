@@ -8,10 +8,14 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>Data Unit Kerja</h4>
-  <a href="{{ route('user.unitkerja.create') }}" class="btn btn-primary">+ Tambah Unit Kerja</a>
-  <a href="{{ route('user.unitkerja.trash') }}" class="btn btn-outline-secondary">
-    Sampah @if(!empty($trashed) && $trashed) <span class="badge bg-secondary">{{ $trashed }}</span>@endif
-  </a>
+  <div>
+    @can('create unit kerja')
+    <a href="{{ route('user.unitkerja.create') }}" class="btn btn-primary">+ Tambah Unit Kerja</a>
+    @endcan
+    <a href="{{ route('user.unitkerja.trash') }}" class="btn btn-outline-secondary">
+      Sampah @if(!empty($trashed) && $trashed) <span class="badge bg-secondary">{{ $trashed }}</span>@endif
+    </a>
+  </div>
 </div>
 
 
@@ -53,11 +57,15 @@
           <td>{{ $rumahsakit->longitude }}</td>
           <td>
             {{-- <a class="btn btn-primary btn-sm" href="{{ route('user.rumahsakit.show', $rumahsakit) }}" onclick="pindah(event)">Show</a> --}}
+            @can('edit unit kerja')
             <a class="btn btn-warning btn-sm" href="{{ route('user.unitkerja.edit', $rumahsakit) }}" onclick="pindah(event)">Edit</a>
+            @endcan
+            @can('delete unit kerja')
             <form action="{{ route('user.unitkerja.destroy', $rumahsakit) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Hapus data ini?')">
               @csrf @method('DELETE')
               <button type="submit" class="btn btn-danger btn-sm">Delete</button>
             </form>
+            @endcan
           </td>
         </tr>
       @endforeach

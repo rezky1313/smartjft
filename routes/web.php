@@ -10,6 +10,7 @@ use App\Http\Controllers\wilayahController;
 use App\Http\Controllers\UjiKompetensiController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\UserController;
 
 
 /*
@@ -129,6 +130,17 @@ Route::get('laporan/pemangku-simple',
         Route::resource('unitkerja', \App\Http\Controllers\RumahsakitController::class);
         Route::resource('sdm', \App\Http\Controllers\SdmController::class);
 
+        // Manajemen User - Hanya untuk super_admin
+        Route::middleware(['role:super_admin'])->prefix('manajemen-user')->as('manajemen-user.')->group(function() {
+            Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::get('/create', [UserController::class, 'create'])->name('create');
+            Route::post('/', [UserController::class, 'store'])->name('store');
+            Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+            Route::put('/{user}', [UserController::class, 'update'])->name('update');
+            Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+            Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset-password');
+        });
+
         // Edit Formasi per Unit & Tahun (form multi-baris)
         Route::get('formasi/edit-group', [\App\Http\Controllers\FormasiJabatanController::class, 'editGroup'])
         ->name('formasi.edit-group');
@@ -152,8 +164,8 @@ Route::get('laporan/pemangku-simple',
   Route::prefix('/dashboard')->controller(PetaDashboardController::class)->group(function () {
         route::get('/peta','index')->name('peta');
              // export endpoints (tetap GET, return file)
-        Route::get('/peta/export-excel', 'exportMatrixExcel')->name('dashboard.peta.export-excel');
-    Route::get('/peta/export-pdf',   'exportMatrixPdf')->name('dashboard.peta.export-pdf');
+        Route::get('/peta/export-excel', 'exportMatrixExcel')->name('dashboard.peta.export-excel')->middleware('permission:export data');
+    Route::get('/peta/export-pdf',   'exportMatrixPdf')->name('dashboard.peta.export-pdf')->middleware('permission:export data');
     });
 
 });

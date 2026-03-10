@@ -8,8 +8,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h4>Data Pemangku JFT</h4>
-  <a href="{{ route('user.sdm.create') }}" class="btn btn-primary">+ Tambah Pemangku JFT</a>
-  <a href="{{ route('user.sdm.import.form') }}" class="btn btn-primary">+ Import Excel</a>
+  <div>
+    @can('create pegawai')
+    <a href="{{ route('user.sdm.create') }}" class="btn btn-primary">+ Tambah Pemangku JFT</a>
+    <a href="{{ route('user.sdm.import.form') }}" class="btn btn-success">+ Import Excel</a>
+    @endcan
+  </div>
 </div>
 
 <div class="table-responsive">
@@ -58,12 +62,16 @@
             @endif
           </td>
           <td>
+            @can('edit pegawai')
             <a href="{{ route('user.sdm.edit', $row->id) }}" class="btn btn-sm btn-warning">Edit</a>
+            @endcan
+            @can('delete pegawai')
             <form action="{{ route('user.sdm.destroy', $row->id) }}" method="POST" class="d-inline"
                   onsubmit="return confirm('Hapus SDM ini?')">
               @csrf @method('DELETE')
               <button class="btn btn-sm btn-danger">Hapus</button>
             </form>
+            @endcan
           </td>
         </tr>
       @endforeach

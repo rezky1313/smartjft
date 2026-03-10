@@ -55,6 +55,22 @@
       </li>
     </ul>
     <ul class="navbar-nav ml-auto">
+      {{-- User Info & Role Badge --}}
+      <li class="nav-item">
+        <span class="nav-link" style="cursor: default;">
+          <i class="fas fa-user-circle"></i>
+          <span class="ml-2">{{ Auth::user()->name }}</span>
+          @role('super_admin')
+            <span class="badge badge-danger ml-2">Super Admin</span>
+          @elserole('admin')
+            <span class="badge badge-primary ml-2">Admin</span>
+          @elserole('operator')
+            <span class="badge badge-warning text-dark ml-2">Operator</span>
+          @elserole('viewer')
+            <span class="badge badge-success ml-2">Viewer</span>
+          @endrole
+        </span>
+      </li>
       <li class="nav-item">
         <a class="nav-link" data-widget="fullscreen" href="#" role="button">
           <i class="fas fa-expand-arrows-alt"></i>
@@ -89,89 +105,52 @@
             </ul>
           </li>
 
-          @if (Auth::user()->role == 'admin')
-            <li class="nav-item">
-              <a href="{{ url('admin/dashboard/peta') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
-              </a>
-            </li>
+          {{-- Dashboard - Semua Role --}}
+          <li class="nav-item">
+            <a href="{{ route('user.peta') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
+            </a>
+          </li>
 
-            <li class="nav-header">FITUR</li>
-            <li class="nav-item">
-              <a href="{{ url('admin/') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon far fa-image"></i><p>Data Unit Kerja</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="{{ url('admin/create') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-columns"></i><p>Tambah Data</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="{{ url('admin/formasi') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-briefcase"></i><p>Formasi Jabatan</p>
-              </a>
-            </li>
-          @endif
+          <li class="nav-header">FITUR</li>
 
-          @if (Auth::user()->role == 'user')
-            <li class="nav-item">
-              <a href="{{ url('user/dashboard/peta') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
-              </a>
-            </li>
+          {{-- Unit Kerja --}}
+          @can('view unit kerja')
+          <li class="nav-item">
+            <a href="{{ route('user.unitkerja.index') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon far fa-image"></i><p>Unit Kerja</p>
+            </a>
+          </li>
+          @endcan
 
-            <li class="nav-header">FITUR</li>
-            <li class="nav-item">
-              <a href="{{ url('user/unitkerja') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon far fa-image"></i><p>Unit Kerja</p>
-              </a>
-            </li>
-            {{-- <li class="nav-item">
-              <a href="{{ url('user/rumahsakit/create') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-columns"></i><p>Tambah Data</p>
-              </a>
-            </li> --}}
-            <li class="nav-item">
-              <a href="{{ url('user/formasi') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-briefcase"></i><p>Formasi</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="{{ url('user/sdm') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-users"></i><p>Pegawai JFT</p>
-              </a>
-            </li>
-            {{-- <li class="nav-item">
-              <a href="{{ url('user/uji') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-certificate"></i><p>Kompetensi</p>
-              </a>
-            </li> --}}
-            {{-- <li class="nav-item">
-              <a class="nav-link" href="{{ route('reports.index') }}">Laporan
-                </a>
-              </li> --}}
-           {{-- <li class="nav-item">
-  <a href="{{ route('user.reports.pemangku.index') }}"
-     class="nav-link {{ request()->routeIs('user.reports.pemangku.*') ? 'active' : '' }}"
-     onclick="pindah(event)">
-    <i class="nav-icon fas fa-users"></i><p>Laporan • Jumlah Pemangku</p>
-  </a>
-</li> --}}
-{{-- <li class="nav-item">
-  <a href="{{ route('user.reports.pemangku.simple') }}"
-     class="nav-link {{ request()->routeIs('user.reports.pemangku.simple') ? 'active' : '' }}">
-     <i class="nav-icon fas fa-table"></i> <p>Laporan • Pemangku</p>
-  </a>
-</li> --}}
+          {{-- Formasi --}}
+          @can('view formasi')
+          <li class="nav-item">
+            <a href="{{ route('user.formasi.index') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon fas fa-briefcase"></i><p>Formasi</p>
+            </a>
+          </li>
+          @endcan
 
+          {{-- Pegawai JFT --}}
+          @can('view pegawai')
+          <li class="nav-item">
+            <a href="{{ route('user.sdm.index') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon fas fa-users"></i><p>Pegawai JFT</p>
+            </a>
+          </li>
+          @endcan
 
-             {{-- <li class="nav-item">
-              <a href="{{ url('user/promotions') }}" class="nav-link" onclick="pindah(event)">
-                <i class="nav-icon fas fa-certificate"></i><p>Kenaikan Jabatan</p>
-              </a>
-            </li> --}}
-          @endif
+          {{-- Manajemen User - Hanya Super Admin --}}
+          @role('super_admin')
+          <li class="nav-header">ADMINISTRASI</li>
+          <li class="nav-item">
+            <a href="{{ route('user.manajemen-user.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-users-cog"></i>
+              <p>Manajemen User</p>
+            </a>
+          </li>
+          @endrole
         </ul>
       </nav>
     </div>

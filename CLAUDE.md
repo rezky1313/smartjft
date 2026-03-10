@@ -7,7 +7,7 @@ adalah aplikasi web yang dikembangkan oleh **Pusat Pembinaan Jabatan Fungsional 
 Kementerian Perhubungan Republik Indonesia.
 
 Aplikasi ini berfungsi sebagai **alat bantu tata kelola data dan informasi Jabatan Fungsional Transportasi (JFT)**
-secara nasional — mulai dari unit kerja, formasi, hingga data individu pemangku JFT —
+secara nasional — mulai dari unit kerja, formasi, hingga data individu pemangku JFT  —
 yang hasilnya tercermin dalam dashboard nasional, grafik, dan peta persebaran.
 
 ### Latar Belakang
@@ -197,6 +197,23 @@ Data berikut bersifat relatif tetap dan tidak muncul di menu UI:
 - Form input menggunakan komponen yang konsisten dengan halaman lain
 
 ---
+
+## Halaman Belum Selesai — ABAIKAN Sementara
+
+Terdapat 2 halaman yang sudah punya file (Controller, View, Model, Routes) 
+di project tapi **belum selesai, tidak ditampilkan di menu, dan akan dirombak total** 
+di masa mendatang. 
+
+**Untuk saat ini: ABAIKAN sepenuhnya kedua halaman ini.**
+Jangan sentuh, jangan edit, jangan hapus file-filenya.
+
+| Halaman | Status | Instruksi |
+|---|---|---|
+| Promosi Jabatan | Belum selesai, tidak aktif | ⛔ Abaikan |
+| Kompetensi Pemangku JFT | Belum selesai, tidak aktif | ⛔ Abaikan |
+
+**Fokus pengembangan saat ini hanya pada:**
+Dashboard, Unit Kerja, Formasi, Pegawai JFT, dan Manajemen User.
 
 ## Aplikasi Terkait: SIJATI
 ## Catatan Integrasi

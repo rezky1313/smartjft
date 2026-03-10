@@ -11,8 +11,10 @@
 
   {{-- Toolbar --}}
   <div class="d-flex flex-wrap gap-2 mb-3">
+    @can('create formasi')
     <a href="{{ route('user.formasi.create') }}" class="btn btn-primary">+ Tambah Formasi</a>
     <a href="{{ route('user.formasi.import-pivot.form') }}" class="btn btn-primary">+ Import Excel</a>
+    @endcan
 
     {{-- <a href="{{ route('user.formasi.trash') }}" class="btn btn-outline-secondary">
       Sampah @if(!empty($trashed)) <span class="badge bg-secondary">{{ $trashed }}</span>@endif
@@ -72,6 +74,7 @@
   </button>
 </div> --}}
 
+@can('edit formasi')
 @if(!empty($filter['unit_kerja_id']) && !empty($filter['tahun']))
   <div class="mb-3">
     <a class="btn btn-warning"
@@ -83,6 +86,7 @@
     </a>
   </div>
 @endif
+@endcan
 
 
  {{-- Tabel Pivot per Unit Kerja --}}
