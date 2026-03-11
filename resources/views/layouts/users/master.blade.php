@@ -141,6 +141,15 @@
           </li>
           @endcan
 
+          {{-- Laporan - Hanya Admin & Super Admin --}}
+          @role('admin|super_admin')
+          <li class="nav-item">
+            <a href="{{ route('user.laporan.index') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon fas fa-file-alt"></i><p>Laporan</p>
+            </a>
+          </li>
+          @endrole
+
           {{-- Manajemen User - Hanya Super Admin --}}
           @role('super_admin')
           <li class="nav-header">ADMINISTRASI</li>

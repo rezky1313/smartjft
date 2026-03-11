@@ -11,6 +11,7 @@ use App\Http\Controllers\UjiKompetensiController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LaporanController;
 
 
 /*
@@ -171,6 +172,13 @@ Route::get('laporan/pemangku-simple',
              // export endpoints (tetap GET, return file)
         Route::get('/peta/export-excel', 'exportMatrixExcel')->name('dashboard.peta.export-excel')->middleware('permission:export data');
     Route::get('/peta/export-pdf',   'exportMatrixPdf')->name('dashboard.peta.export-pdf')->middleware('permission:export data');
+    });
+
+    // Laporan Terpadu (hanya admin & super_admin)
+    Route::middleware(['role:admin|super_admin'])->prefix('laporan')->as('laporan.')->group(function () {
+        Route::get('/', [LaporanController::class, 'index'])->name('index');
+        Route::get('export-pdf/{tab}', [LaporanController::class, 'exportPdf'])->name('export-pdf');
+        Route::get('export-excel/{tab}', [LaporanController::class, 'exportExcel'])->name('export-excel');
     });
 
 });
