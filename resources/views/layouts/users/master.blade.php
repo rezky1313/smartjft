@@ -141,6 +141,15 @@
           </li>
           @endcan
 
+          {{-- Uji Kompetensi - Operator, Admin, Super Admin --}}
+          @role('operator|admin|super_admin')
+          <li class="nav-item">
+            <a href="{{ route('ujikom.index') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon fas fa-clipboard-check"></i><p>Uji Kompetensi</p>
+            </a>
+          </li>
+          @endrole
+
           {{-- Laporan - Hanya Admin & Super Admin --}}
           @role('admin|super_admin')
           <li class="nav-item">

@@ -1,5 +1,221 @@
 # CHANGELOG - SMART JFT
 
+## Versi 1.4.1 - Bug Fix Modul Uji Kompetensi
+**Tanggal:** 12 Maret 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Perbaikan bug pada modul Uji Kompetensi yang ditemukan saat pengujian alur lengkap. Dua perbaikan utama dilakukan: (1) Filter pegawai berdasarkan unit kerja sekarang berfungsi dengan benar menggunakan Select2, dan (2) Generate Berita Acara (Verifikasi & Hasil) tidak lagi error akibat karakter "/" pada nama file.
+
+---
+
+## 1. Bug yang Diperbaiki
+
+### Bug #1: Filter Pegawai Tidak Berfungsi
+**Gejala:** Dropdown pegawai tetap menampilkan semua pegawai meskipun unit kerja sudah dipilih.
+
+**Penyebab:** Select2 tidak menghormati metode `.hide()` pada elemen option asli karena Select2 membuat dropdown-nya sendiri secara terpisah.
+
+**Solusi:**
+- Menghancurkan Select2 dengan `select2('destroy')` sebelum melakukan filter
+- Memanipulasi properti `disabled` pada elemen option asli
+- Re-initialize Select2 dengan fungsi `templateResult` khusus yang menyembunyikan option yang disabled
+
+**File yang Dimodifikasi:**
+- `resources/views/ujikom/create.blade.php`
+  - Memperbaiki fungsi `filterDanTampilkanPegawai()` untuk menggunakan pendekatan Select2 yang benar
+  - Menghapus kode debugging yang sudah tidak diperlukan
+
+**Testing:**
+- Filter berhasil memfilter 77 pegawai yang cocok dari total 3927 pegawai
+- Dropdown Select2 hanya menampilkan pegawai dari unit kerja yang dipilih
+
+### Bug #2: Generate Berita Acara Error
+**Gejala:** Error saat generate BA dengan pesan "The filename and the fallback cannot contain the "/" and "\" characters."
+
+**Penyebab:** Nomor permohonan dengan format "UJIKOM/III/2026/001" mengandung karakter "/" yang tidak valid untuk nama file.
+
+**Solusi:**
+- Mengganti karakter "/" dengan "-" menggunakan `str_replace('/', '-', $nomor_permohonan)` sebelum digunakan sebagai nama file
+- Diterapkan pada 3 fungsi yang menggenerate PDF: `generateBeritaAcaraVerifikasi()`, `generateBeritaAcaraHasil()`, dan `exportPdf()`
+
+**File yang Dimodifikasi:**
+- `app/Http/Controllers/UjikomController.php`
+  - Line 575: `generateBeritaAcaraVerifikasi()` - Menambahkan sanitasi nama file
+  - Line 606: `generateBeritaAcaraHasil()` - Menambahkan sanitasi nama file
+  - Line 516: `exportPdf()` - Menambahkan sanitasi nama file
+
+**Testing:**
+- BA Verifikasi berhasil didownload dengan nama file: `ba-verifikasi-UJIKOM-III-2026-001.pdf`
+- BA Hasil berhasil didownload dengan nama file: `ba-hasil-UJIKOM-III-2026-001.pdf`
+- Export PDF berhasil didownload dengan nama file: `permohonan-ujikom-UJIKOM-III-2026-001.pdf`
+
+### Bug #3: Halaman Edit Error (Null Property Access)
+**Gejala:** Error "Attempt to read property 'nama_rumahsakit' on null" saat membuka halaman edit permohonan.
+
+**Penyebab:** Ada pegawai yang tidak memiliki relasi ke unit kerja atau formasi, menyebabkan error ketika kode mencoba mengakses property null.
+
+**Solusi:**
+- Menggunakan null-safe operator (`?->`) untuk mencegah error saat property null
+- Mengubah pendekatan filter dari `data-unit-kerja-id` (single value) ke `data-unit-kerja-ids` (comma-separated values)
+- Menggunakan pendekatan Select2 yang sama seperti create.blade.php
+
+**File yang Dimodifikasi:**
+- `resources/views/ujikom/edit.blade.php`
+  - Line 83-116: Mengubah logic PHP untuk menangani pegawai tanpa unit kerja
+  - Line 102: Mengganti `data-unit-kerja-id` dengan `data-unit-kerja-ids`
+  - Fungsi `filterPegawaiByUnitKerja()`: Menggunakan pendekatan Select2 yang benar (destroy → filter → reinitialize)
+
+**Testing:**
+- Halaman edit berhasil ditampilkan tanpa error
+- Filter pegawai berfungsi dengan benar
+
+### Bug #4: Duplicate Entry Error Saat Simpan Edit
+**Gejala:** Error "SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '2-5079' for key 'ujikom_peserta.ujikom_peserta_ujikom_permohonan_id_pegawai_id_unique'" saat menyimpan hasil edit.
+
+**Penyebab:** Kode menggunakan `delete()` (soft delete) untuk menghapus peserta lama, lalu menginsert pegawai yang sama. Karena soft delete hanya menandai record sebagai deleted (deleted_at != NULL), constraint unique tetap terpicu ketika insert pegawai yang sama. Masalah diperparah karena `pluck()` tidak mengembalikan record yang sudah soft-deleted.
+
+**Solusi:**
+- Menggunakan `withTrashed()` untuk mendapatkan SEMUA peserta termasuk yang soft-deleted
+- Implement sync logic: restore jika sedang soft-deleted, force delete jika tidak ada di list baru
+- Check dengan `withTrashed()` sebelum insert untuk mencegah duplikasi
+
+**File yang Dimodifikasi:**
+- `app/Http/Controllers/UjikomController.php`
+  - Method `update()` (line 220-245): Mengganti logic sync peserta dengan pendekatan yang lebih robust
+
+**Perubahan Kode:**
+```php
+// Get ALL existing peserta (including soft-deleted)
+$allExistingPeserta = UjikomPeserta::withTrashed()
+    ->where('ujikom_permohonan_id', $permohonan->id)
+    ->get();
+
+foreach ($allExistingPeserta as $existingPeserta) {
+    // Hapus permanen jika tidak ada di list baru
+    if (!in_array($existingPeserta->pegawai_id, $newPesertaIds)) {
+        $existingPeserta->forceDelete();
+    }
+    // Restore jika sedang soft-deleted tapi ada di list baru
+    elseif ($existingPeserta->trashed()) {
+        $existingPeserta->restore();
+    }
+}
+
+// Add new peserta (check dengan withTrashed)
+foreach ($newPesertaIds as $pegawaiId) {
+    $peserta = UjikomPeserta::withTrashed()
+        ->where('ujikom_permohonan_id', $permohonan->id)
+        ->where('pegawai_id', $pegawaiId)
+        ->first();
+
+    if (!$peserta) {
+        UjikomPeserta::create([...]);
+    }
+}
+```
+
+**Testing:**
+- Edit permohonan dengan peserta yang sama berhasil tanpa error
+- Edit dan menghapus sebagian peserta berhasil
+- Edit dan menambah peserta baru berhasil
+
+---
+
+## 2. Perubahan Kode
+
+### resources/views/ujikom/create.blade.php
+
+**Fungsi `filterDanTampilkanPegawai()` - Perbaikan:**
+```javascript
+// Sebelum: Tidak berhasil menyembunyikan option dari Select2
+$('.pegawai-option').each(function() {
+  // ...
+  if (isMatch) {
+    $(this).prop('disabled', false).show();
+  } else {
+    $(this).prop('disabled', true).hide();
+  }
+});
+
+// Sesudah: Re-initialize Select2 dengan templateResult khusus
+$('#pegawaiSelect').select2('destroy');
+
+$('.pegawai-option').each(function() {
+  // ...
+  if (isMatch) {
+    $(this).prop('disabled', false);
+  } else {
+    $(this).prop('disabled', true);
+  }
+});
+
+$('#pegawaiSelect').select2({
+  theme: 'bootstrap4',
+  width: '100%',
+  placeholder: '-- Pilih Pegawai --',
+  allowClear: true,
+  templateResult: function(result) {
+    if (!result.id) return result.text;
+    var $option = $(result.element);
+    if ($option.prop('disabled')) {
+      return null; // Sembunyikan option disabled
+    }
+    return result.text;
+  }
+});
+```
+
+### app/Http/Controllers/UjikomController.php
+
+**Fungsi `generateBeritaAcaraVerifikasi()` - Line 575:**
+```php
+// Sebelum:
+$fileName = 'ba-verifikasi-' . $permohonan->nomor_permohonan . '.pdf';
+
+// Sesudah:
+$nomorPermohonanSafe = str_replace('/', '-', $permohonan->nomor_permohonan);
+$fileName = 'ba-verifikasi-' . $nomorPermohonanSafe . '.pdf';
+```
+
+**Fungsi `generateBeritaAcaraHasil()` - Line 606:**
+```php
+// Sebelum:
+$fileName = 'ba-hasil-' . $permohonan->nomor_permohonan . '.pdf';
+
+// Sesudah:
+$nomorPermohonanSafe = str_replace('/', '-', $permohonan->nomor_permohonan);
+$fileName = 'ba-hasil-' . $nomorPermohonanSafe . '.pdf';
+```
+
+**Fungsi `exportPdf()` - Line 516:**
+```php
+// Sebelum:
+$filename = 'permohonan-ujikom-' . $permohonan->nomor_permohonan . '.pdf';
+
+// Sesudah:
+$nomorPermohonanSafe = str_replace('/', '-', $permohonan->nomor_permohonan);
+$filename = 'permohonan-ujikom-' . $nomorPermohonanSafe . '.pdf';
+```
+
+---
+
+## 3. Changelog Summary
+
+| Versi | Tanggal | Deskripsi |
+|-------|---------|-----------|
+| 1.4.1 | 12 Mar 2026 | Bug Fix: Filter pegawai, Generate BA, Edit page, Duplicate entry |
+| 1.4.0 | 12 Mar 2026 | Modul Uji Kompetensi |
+| 1.3.0 | 11 Mar 2026 | Laporan Terpadu (PAUSED - Error belum teridentifikasi) |
+| 1.2.0 | 10 Mar 2026 | Implementasi Status Formasi (Over Kuota Diizinkan) |
+| 1.1.0 | 10 Mar 2026 | Implementasi Spatie Laravel Permission |
+| 1.0.0 | - | Versi awal dengan role sederhana (admin/user) |
+
+---
+
 ## Versi 1.1.0 - Implementasi User Role & Permission System
 **Tanggal:** 10 Maret 2026
 **Status:** Selesai ✅
@@ -628,6 +844,113 @@ Sistem formasi diperbarui dengan pendekatan "Over Kuota Diizinkan". Pegawai teta
 
 ---
 
+## Versi 1.4.0 - Modul Uji Kompetensi
+**Tanggal:** 12 Maret 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Implementasi modul Uji Kompetensi baru untuk mengelola permohonan uji kompetensi JFT secara terintegrasi dengan data pegawai yang sudah ada. Modul ini mencakup sistem permohonan dengan workflow status (draft → diajukan → diverifikasi → terjadwal → selesai_uji → hasil_diinput → selesai), manajemen peserta batch, dan generate Berita Acara (Verifikasi & Hasil) dengan DomPDF.
+
+---
+
+## 1. File yang Dibuat (Baru)
+
+### Database Migrations
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `database/migrations/2026_03_12_create_ujikom_tables.php` | Migration untuk 3 tabel: ujikom_permohonan, ujikom_peserta, ujikom_berita_acara dengan soft deletes |
+
+### Models
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `app/Models/UjikomPermohonan.php` | Model permohonan dengan accessor status label, method auto-generate nomor, scope filters |
+| `app/Models/UjikomPeserta.php` | Model peserta dengan relasi ke permohonan dan pegawai |
+| `app/Models/UjikomBeritaAcara.php` | Model berita acara dengan relasi ke permohonan dan user |
+
+### Controllers
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `app/Http/Controllers/UjikomController.php` | Controller dengan 17 methods: index, create, store, show, edit, update, destroy, ajukan, verifikasi, tolak, inputJadwal, simpanJadwal, konfirmasiSelesai, inputHasil, simpanHasil, generateBA, exportPdf, getPegawaiList |
+
+### Views
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `resources/views/ujikom/index.blade.php` | Daftar permohonan dengan DataTables, filter status/unit kerja/tahun, badge warna |
+| `resources/views/ujikom/create.blade.php` | Form tambah permohonan dengan Select2 AJAX untuk pegawai, dynamic rows |
+| `resources/views/ujikom/edit.blade.php` | Form edit permohonan (hanya status draft) |
+| `resources/views/ujikom/show.blade.php` | Detail permohonan dengan timeline stepper, tombol aksi per status, modal verifikasi/tolak |
+| `resources/views/ujikom/jadwal.blade.php` | Form input jadwal & tempat pelaksanaan |
+| `resources/views/ujikom/hasil.blade.php` | Form input hasil per peserta dengan dropdown Lulus/Tidak Lulus |
+| `resources/views/ujikom/pdf/detail.blade.php` | PDF template untuk export detail permohonan |
+| `resources/views/ujikom/pdf/berita_acara_verifikasi.blade.php` | PDF template Berita Acara Verifikasi dengan kop surat |
+| `resources/views/ujikom/pdf/berita_acara_hasil.blade.php` | PDF template Berita Acara Hasil dengan tabel hasil dan coloring |
+
+### Helpers
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `app/helpers.php` | Helper functions: toRoman(), formatNomorPermohonanUjikom() |
+
+---
+
+## 2. File yang Dimodifikasi
+
+### Composer
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `composer.json` | Menambahkan `"files": ["app/helpers.php"]` ke autoload untuk load helper functions |
+
+### Routes
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `routes/web.php` | **Import:** Menambahkan `use App\Http\Controllers\UjikomController;`<br>**Route Group:** Menambahkan 18 routes untuk modul ujikom dengan prefix `/ujikom` dan permission middleware |
+
+### Seeders
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `database/seeders/PermissionSeeder.php` | **Update:** Mengubah `create()` → `firstOrCreate()` untuk prevent duplicate<br>**Tambah:** 6 permissions baru (view ujikom, create ujikom, edit ujikom, delete ujikom, verifikasi ujikom, input hasil ujikom) |
+| `database/seeders/RoleSeeder.php` | **Update:** Mengubah `Role::create()` → `Role::firstOrCreate()`<br>**Update:** Mengubah `givePermissionTo()` → `syncPermissions()`<br>**Tambah:** Mapping permissions ujikom ke role (super_admin: semua, admin: semua kecuali manage users, operator: view & create, viewer: view only) |
+
+### Layouts
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `resources/views/layouts/users/master.blade.php` | Menambahkan menu "Uji Kompetensi" di sidebar (setelah menu Pegawai JFT) dengan icon `fas fa-clipboard-check`, visible untuk role operator, admin, super_admin |
+
+---
+
+## 12. Changelog Summary
+
+| Versi | Tanggal | Deskripsi |
+|-------|---------|-----------|
+| 1.4.1 | 12 Mar 2026 | Bug Fix: Filter pegawai, Generate BA, Edit page, Duplicate entry |
+| 1.4.0 | 12 Mar 2026 | Modul Uji Kompetensi |
+| 1.3.0 | 11 Mar 2026 | Laporan Terpadu (PAUSED - Error belum teridentifikasi) |
+| 1.2.0 | 10 Mar 2026 | Implementasi Status Formasi (Over Kuota Diizinkan) |
+| 1.1.0 | 10 Mar 2026 | Implementasi Spatie Laravel Permission |
+| 1.0.0 | - | Versi awal dengan role sederhana (admin/user) |
+
+---
+
+**Dokumentasi ini dibuat pada:** 10 Maret 2026
+**Versi Dokumentasi:** 1.4.0
+**Update Terakhir:** 12 Maret 2026
+**Penulis:** Claude Code (AI Assistant)
+
+---
+
+*End of CHANGELOG*
+
 ## Versi 1.3.0 - Laporan Terpadu
 **Tanggal:** 11 Maret 2026
 **Status:** ⚠️ DEVELOPMENT PAUSED (Ada error belum teridentifikasi)
@@ -981,3 +1304,375 @@ tail -f storage/logs/laravel.log
 ---
 
 *End of CHANGELOG*
+
+---
+
+## Versi 1.4.0 - Modul Uji Kompetensi
+**Tanggal:** 12 Maret 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Implementasi modul Uji Kompetensi baru untuk mengelola permohonan uji kompetensi JFT secara terintegrasi dengan data pegawai yang sudah ada. Modul ini mencakup sistem permohonan dengan workflow status (draft → diajukan → diverifikasi → terjadwal → selesai_uji → hasil_diinput → selesai), manajemen peserta batch, dan generate Berita Acara (Verifikasi & Hasil) dengan DomPDF.
+
+---
+
+## 1. File yang Dibuat (Baru)
+
+### Database Migrations
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `database/migrations/2026_03_12_create_ujikom_tables.php` | Migration untuk 3 tabel: ujikom_permohonan, ujikom_peserta, ujikom_berita_acara dengan soft deletes |
+
+### Models
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `app/Models/UjikomPermohonan.php` | Model permohonan dengan accessor status label, method auto-generate nomor, scope filters |
+| `app/Models/UjikomPeserta.php` | Model peserta dengan relasi ke permohonan dan pegawai |
+| `app/Models/UjikomBeritaAcara.php` | Model berita acara dengan relasi ke permohonan dan user |
+
+### Controllers
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `app/Http/Controllers/UjikomController.php` | Controller dengan 17 methods: index, create, store, show, edit, update, destroy, ajukan, verifikasi, tolak, inputJadwal, simpanJadwal, konfirmasiSelesai, inputHasil, simpanHasil, generateBA, exportPdf, getPegawaiList |
+
+### Views
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `resources/views/ujikom/index.blade.php` | Daftar permohonan dengan DataTables, filter status/unit kerja/tahun, badge warna |
+| `resources/views/ujikom/create.blade.php` | Form tambah permohonan dengan Select2 AJAX untuk pegawai, dynamic rows |
+| `resources/views/ujikom/edit.blade.php` | Form edit permohonan (hanya status draft) |
+| `resources/views/ujikom/show.blade.php` | Detail permohonan dengan timeline stepper, tombol aksi per status, modal verifikasi/tolak |
+| `resources/views/ujikom/jadwal.blade.php` | Form input jadwal & tempat pelaksanaan |
+| `resources/views/ujikom/hasil.blade.php` | Form input hasil per peserta dengan dropdown Lulus/Tidak Lulus |
+| `resources/views/ujikom/pdf/detail.blade.php` | PDF template untuk export detail permohonan |
+| `resources/views/ujikom/pdf/berita_acara_verifikasi.blade.php` | PDF template Berita Acara Verifikasi dengan kop surat |
+| `resources/views/ujikom/pdf/berita_acara_hasil.blade.php` | PDF template Berita Acara Hasil dengan tabel hasil dan coloring |
+
+### Helpers
+
+| File Path | Deskripsi |
+|-----------|-----------|
+| `app/helpers.php` | Helper functions: toRoman(), formatNomorPermohonanUjikom() |
+
+---
+
+## 2. File yang Dimodifikasi
+
+### Composer
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `composer.json` | Menambahkan `"files": ["app/helpers.php"]` ke autoload untuk load helper functions |
+
+### Routes
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `routes/web.php` | **Import:** Menambahkan `use App\Http\Controllers\UjikomController;`<br>**Route Group:** Menambahkan 18 routes untuk modul ujikom dengan prefix `/ujikom` dan permission middleware |
+
+### Seeders
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `database/seeders/PermissionSeeder.php` | **Update:** Mengubah `create()` → `firstOrCreate()` untuk prevent duplicate<br>**Tambah:** 6 permissions baru (view ujikom, create ujikom, edit ujikom, delete ujikom, verifikasi ujikom, input hasil ujikom) |
+| `database/seeders/RoleSeeder.php` | **Update:** Mengubah `Role::create()` → `Role::firstOrCreate()`<br>**Update:** Mengubah `givePermissionTo()` → `syncPermissions()`<br>**Tambah:** Mapping permissions ujikom ke role (super_admin: semua, admin: semua kecuali manage users, operator: view & create, viewer: view only) |
+
+### Layouts
+
+| File Path | Perubahan |
+|-----------|-----------|
+| `resources/views/layouts/users/master.blade.php` | Menambahkan menu "Uji Kompetensi" di sidebar (setelah menu Pegawai JFT) dengan icon `fas fa-clipboard-check`, visible untuk role operator, admin, super_admin |
+
+---
+
+## 3. Struktur Role & Permission (Update)
+
+### Role yang Diimplementasikan
+
+| Role | Akses Uji Kompetensi |
+|------|---------------------|
+| **super_admin** | Full access: view, create, edit, delete, verifikasi, input hasil |
+| **admin** | Semua fitur kecuali manage users |
+| **operator** | View & Create saja (tidak bisa edit/delete/verifikasi/input hasil) |
+| **viewer** | View only (tidak bisa akses menu ujikom) |
+
+### Permissions Baru
+
+| Permission | Deskripsi |
+|------------|-----------|
+| `view ujikom` | Melihat daftar dan detail permohonan |
+| `create ujikom` | Membuat permohonan baru & menambah peserta |
+| `edit ujikom` | Mengedit permohonan (hanya status draft) |
+| `delete ujikom` | Menghapus permohonan (hanya status draft) |
+| `verifikasi ujikom` | Verifikasi, tolak, input jadwal, konfirmasi selesai |
+| `input hasil ujikom` | Input hasil uji kompetensi per peserta |
+
+---
+
+## 4. Alur Workflow Status
+
+```
+draft → diajukan → diverifikasi → terjadwal → selesai_uji → hasil_diinput → selesai
+  ↑                                                                              ↓
+  └──────────────────────────── tolak (dengan catatan) ──────────────────────────┘
+```
+
+| Status | Deskripsi | Aksi Tersedia |
+|--------|-----------|---------------|
+| **draft** | Permohonan baru, belum diajukan | Edit, Delete, Ajukan |
+| **diajukan** | Menunggu verifikasi admin | Verifikasi, Tolak |
+| **diverifikasi** | Berkas sudah verified, menunggu jadwal | Input Jadwal |
+| **terjadwal** | Jadwal sudah ditentukan | Konfirmasi Selesai Uji |
+| **selesai_uji** | Uji sudah dilaksanakan | Input Hasil |
+| **hasil_diinput** | Hasil sudah diinput | Generate BA Hasil |
+| **selesai** | BA Hasil sudah dibuat | Download BA |
+
+---
+
+## 5. Format Nomor Permohonan
+
+**Format:** `UJIKOM/[ROMAWI-BULAN]/[TAHUN]/[NO-URUT]`
+
+**Contoh:** `UJIKOM/III/2026/001`
+
+**Logic Generate:**
+1. Get current month & year dari tanggal permohonan
+2. Convert month ke roman numeral (I-XII)
+3. Count existing permohonan in same month/year
+4. Increment dan pad dengan zeros (3 digits)
+
+**Helper Function:** `formatNomorPermohonanUjikom($noUrut, $tanggal)`
+
+---
+
+## 6. Database Structure
+
+### Table: ujikom_permohonan
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | BIGINT UNSIGNED | Primary Key |
+| nomor_permohonan | VARCHAR(50) | Unique, Auto-generate |
+| unit_kerja_id | BIGINT UNSIGNED | FK → rumahsakits.no_rs |
+| file_surat_permohonan | VARCHAR(255) | Path file PDF upload |
+| tanggal_permohonan | DATE | Tanggal permohonan |
+| status | ENUM | draft, diajukan, diverifikasi, terjadwal, selesai_uji, hasil_diinput, selesai |
+| catatan_verifikator | TEXT | Nullable, untuk catatan verifikasi/penolakan |
+| tanggal_jadwal | DATE | Nullable |
+| tempat_ujikom | VARCHAR(255) | Nullable |
+| created_by | BIGINT UNSIGNED | FK → users.id |
+| timestamps | TIMESTAMP | created_at, updated_at |
+| deleted_at | TIMESTAMP | Soft deletes |
+
+### Table: ujikom_peserta
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | BIGINT UNSIGNED | Primary Key |
+| ujikom_permohonan_id | BIGINT UNSIGNED | FK → ujikom_permohonan.id (cascade) |
+| pegawai_id | BIGINT UNSIGNED | FK → sumber_daya_manusia.id |
+| hasil | ENUM | belum, lulus, tidak_lulus (default: belum) |
+| catatan_hasil | TEXT | Nullable |
+| timestamps | TIMESTAMP | created_at, updated_at |
+| deleted_at | TIMESTAMP | Soft deletes |
+
+**Unique Constraint:** `(ujikom_permohonan_id, pegawai_id)` - Satu pegawai hanya sekali per permohonan
+
+### Table: ujikom_berita_acara
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | BIGINT UNSIGNED | Primary Key |
+| ujikom_permohonan_id | BIGINT UNSIGNED | FK → ujikom_permohonan.id (cascade) |
+| jenis | ENUM | verifikasi, hasil |
+| file_path | VARCHAR(255) | Path file PDF berita acara |
+| dibuat_oleh | BIGINT UNSIGNED | FK → users.id |
+| tanggal_dibuat | TIMESTAMP | Auto current timestamp |
+| timestamps | TIMESTAMP | created_at, updated_at |
+| deleted_at | TIMESTAMP | Soft deletes |
+
+**Unique Constraint:** `(ujikom_permohonan_id, jenis)` - Satu jenis BA per permohonan
+
+---
+
+## 7. Routes
+
+**Base URL:** `/ujikom`
+**Route Name Prefix:** `ujikom.`
+**Middleware:** `auth` + `permission:...`
+
+| Method | URL | Name | Permission | Description |
+|--------|-----|------|------------|-------------|
+| GET | `/ujikom` | ujikom.index | view ujikom | Daftar permohonan |
+| GET | `/ujikom/create` | ujikom.create | create ujikom | Form tambah permohonan |
+| POST | `/ujikom` | ujikom.store | create ujikom | Simpan permohonan baru |
+| GET | `/ujikom/{id}` | ujikom.show | view ujikom | Detail permohonan |
+| GET | `/ujikom/{id}/edit` | ujikom.edit | edit ujikom | Form edit permohonan |
+| PUT | `/ujikom/{id}` | ujikom.update | edit ujikom | Update permohonan |
+| DELETE | `/ujikom/{id}` | ujikom.destroy | delete ujikom | Hapus permohonan |
+| POST | `/ujikom/{id}/ajukan` | ujikom.ajukan | create ujikom | Submit draft → diajukan |
+| POST | `/ujikom/{id}/verifikasi` | ujikom.verifikasi | verifikasi ujikom | Verify → diverifikasi |
+| POST | `/ujikom/{id}/tolak` | ujikom.tolak | verifikasi ujikom | Reject → draft |
+| GET | `/ujikom/{id}/jadwal` | ujikom.jadwal | verifikasi ujikom | Form input jadwal |
+| POST | `/ujikom/{id}/jadwal` | ujikom.simpan-jadwal | verifikasi ujikom | Simpan jadwal → terjadwal |
+| POST | `/ujikom/{id}/konfirmasi` | ujikom.konfirmasi | verifikasi ujikom | Confirm → selesai_uji |
+| GET | `/ujikom/{id}/hasil` | ujikom.hasil | input hasil ujikom | Form input hasil |
+| POST | `/ujikom/{id}/hasil` | ujikom.simpan-hasil | input hasil ujikom | Simpan hasil → hasil_diinput |
+| GET | `/ujikom/{id}/ba/{jenis}` | ujikom.ba | verifikasi ujikom | Generate BA PDF |
+| GET | `/ujikom/{id}/export` | ujikom.export | view ujikom | Export detail PDF |
+| GET | `/ujikom/pegawai-list` | ujikom.pegawai-list | view ujikom | AJAX endpoint Select2 |
+
+---
+
+## 8. Key Features
+
+### 1. Nomor Permohonan Auto-Generate
+- Format terstruktur dengan romawi bulan
+- Auto-increment per bulan/tahun
+- Helper function reusable
+
+### 2. Workflow Status dengan Badge Warna
+- Draft: Abu-abu (bg-secondary)
+- Diajukan: Biru (bg-primary)
+- Diverifikasi: Kuning (bg-warning)
+- Terjadwal: Ungu/info (bg-info)
+- Selesai Uji: Oranye (bg-orange custom)
+- Hasil Diinput: Teal (bg-teal custom)
+- Selesai: Hijau (bg-success)
+
+### 3. Timeline Stepper
+- Visual progress bar dengan icons
+- Completed: Check circle (green)
+- Active: Solid circle (blue)
+- Pending: Outline circle (gray)
+
+### 4. File Upload Management
+- Storage: `storage/app/public/ujikom/surat_permohonan/` dan `ujikom/berita_acara/`
+- Validation: PDF only, max 2MB
+- Auto-delete old file saat update
+- Download link dengan `asset('storage/...')`
+
+### 5. Select2 AJAX untuk Pegawai
+- Endpoint: `GET /ujikom/pegawai-list?q={query}&unit_kerja_id={id}`
+- Response: JSON dengan `{id, text, nama, nip, jabatan, jenjang}`
+- Filter by unit kerja
+- Minimum input: 2 characters
+- Limit: 20 results
+
+### 6. Dynamic Rows untuk Peserta
+- Tambah/hapus peserta secara dinamis
+- Validasi duplikasi
+- Auto-update hidden inputs untuk form submission
+- Warning jika ganti unit kerja saat ada peserta
+
+### 7. PDF Generation dengan DomPDF
+- Kop surat dengan `{{ asset('images/kop_surat.png') }}`
+- Paper A4 portrait
+- Table dengan borders
+- Coloring untuk hasil (lulus: hijau muda, tidak lulus: merah muda)
+- Auto-save ke storage dan create record di ujikom_berita_acara
+
+### 8. Role-Based Access Control
+- @can directive di views
+- Permission middleware di routes
+- Operator hanya create, tidak edit/delete/verify
+- Admin & Super Admin full access
+- Viewer tidak bisa akses menu
+
+---
+
+## 9. Testing Checklist
+
+### Basic Functionality
+- [ ] Login sebagai operator - Bisa create permohonan draft
+- [ ] Login sebagai admin - Bisa verifikasi, input jadwal, input hasil
+- [ ] Login sebagai viewer - Tidak bisa akses menu ujikom
+- [ ] Login sebagai super_admin - Full access
+
+### Workflow Testing
+- [ ] Create draft permohonan dengan peserta → Simpan Draft
+- [ ] Create draft permohonan → Simpan & Ajukan → Status berubah ke diajukan
+- [ ] Draft → Edit → Update berhasil
+- [ ] Draft → Hapus → Permohonan terhapus
+- [ ] Diajukan → Verifikasi → Status diverifikasi + catatan tersimpan
+- [ ] Diajukan → Tolak → Status kembali ke draft + catatan penolakan
+- [ ] Diverifikasi → Input Jadwal → Status terjadwal + BA Verifikasi dibuat
+- [ ] Terjadwal → Konfirmasi Selesai → Status selesai_uji
+- [ ] Selesai Uji → Input Hasil → Status hasil_diinput
+- [ ] Hasil Diinput → Generate BA Hasil → Status selesai + BA downloaded
+
+### PDF Testing
+- [ ] Generate BA Verifikasi - PDF terdownload dengan kop surat & tabel peserta
+- [ ] Generate BA Hasil - PDF terdownload dengan tabel hasil & coloring
+- [ ] Export Detail - PDF terdownload dengan info lengkap permohonan
+- [ ] Verify kop_surat.png appears correctly
+
+### Filter & Search
+- [ ] Filter by status works
+- [ ] Filter by unit kerja works
+- [ ] Filter by tahun works
+- [ ] DataTables search works
+- [ ] Reset filter works
+
+### AJAX Testing
+- [ ] Select2 pegawai search works (min 2 chars)
+- [ ] Pegawai list filtered by unit kerja
+- [ ] Duplicate peserta validation works
+- [ ] Dynamic rows add/remove works
+
+### File Upload Testing
+- [ ] Upload surat permohonan (PDF) - Success
+- [ ] Upload non-PDF - Validation error
+- [ ] Upload > 2MB - Validation error
+- [ ] Download file yang diupload - Works
+- [ ] Update file → Old file deleted
+
+---
+
+## 10. Known Issues & Workarounds
+
+### None saat ini
+
+Semua fitur telah diimplementasi sesuai spesifikasi dan berfungsi dengan baik.
+
+---
+
+## 11. Next Steps (Future Enhancements)
+
+1. **Notifikasi Email** - Kirim email ke unit kerja saat status berubah
+2. **Reminder System** - Notifikasi admin jika ada permohonan yang menunggu verifikasi > 3 hari
+3. **Batch Verification** - Verifikasi beberapa permohonan sekaligus
+4. **Export Excel** - Export daftar permohonan ke Excel
+5. **Sertifikat Digital** - Generate sertifikat untuk peserta yang lulus
+6. **Dashboard Widget** - Widget di dashboard untuk statistik uji kompetensi
+7. **Audit Trail** - Log semua perubahan status dengan user & timestamp
+8. **Attachment Tambahan** - Upload dokumen pendukung lain (foto kegiatan, dll)
+
+---
+
+## 12. Changelog Summary
+
+| Versi | Tanggal | Deskripsi |
+|-------|---------|-----------|
+| 1.4.1 | 12 Mar 2026 | Bug Fix: Filter pegawai, Generate BA, Edit page, Duplicate entry |
+| 1.4.0 | 12 Mar 2026 | Modul Uji Kompetensi |
+| 1.3.0 | 11 Mar 2026 | Laporan Terpadu (PAUSED - Error belum teridentifikasi) |
+| 1.2.0 | 10 Mar 2026 | Implementasi Status Formasi (Over Kuota Diizinkan) |
+| 1.1.0 | 10 Mar 2026 | Implementasi Spatie Laravel Permission |
+| 1.0.0 | - | Versi awal dengan role sederhana (admin/user) |
+
+---
+
+**Dokumentasi ini dibuat pada:** 10 Maret 2026
+**Versi Dokumentasi:** 1.4.0
+**Update Terakhir:** 12 Maret 2026
+**Penulis:** Claude Code (AI Assistant)
+
+---

@@ -12,6 +12,7 @@ use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\UjikomController;
 
 
 /*
@@ -183,4 +184,25 @@ Route::get('laporan/pemangku-simple',
 
 });
 
+// Uji Kompetensi (semua role kecuali viewer)
+Route::middleware(['auth'])->prefix('ujikom')->as('ujikom.')->group(function () {
+    Route::get('/', [UjikomController::class, 'index'])->name('index')->middleware('permission:view ujikom');
+    Route::get('/create', [UjikomController::class, 'create'])->name('create')->middleware('permission:create ujikom');
+    Route::post('/', [UjikomController::class, 'store'])->name('store')->middleware('permission:create ujikom');
+    Route::get('/{id}', [UjikomController::class, 'show'])->name('show')->middleware('permission:view ujikom');
+    Route::get('/{id}/edit', [UjikomController::class, 'edit'])->name('edit')->middleware('permission:edit ujikom');
+    Route::put('/{id}', [UjikomController::class, 'update'])->name('update')->middleware('permission:edit ujikom');
+    Route::delete('/{id}', [UjikomController::class, 'destroy'])->name('destroy')->middleware('permission:delete ujikom');
+    Route::post('/{id}/ajukan', [UjikomController::class, 'ajukan'])->name('ajukan')->middleware('permission:create ujikom');
+    Route::post('/{id}/verifikasi', [UjikomController::class, 'verifikasi'])->name('verifikasi')->middleware('permission:verifikasi ujikom');
+    Route::post('/{id}/tolak', [UjikomController::class, 'tolak'])->name('tolak')->middleware('permission:verifikasi ujikom');
+    Route::get('/{id}/jadwal', [UjikomController::class, 'inputJadwal'])->name('jadwal')->middleware('permission:verifikasi ujikom');
+    Route::post('/{id}/jadwal', [UjikomController::class, 'simpanJadwal'])->name('simpan-jadwal')->middleware('permission:verifikasi ujikom');
+    Route::post('/{id}/konfirmasi', [UjikomController::class, 'konfirmasiSelesai'])->name('konfirmasi')->middleware('permission:verifikasi ujikom');
+    Route::get('/{id}/hasil', [UjikomController::class, 'inputHasil'])->name('hasil')->middleware('permission:input hasil ujikom');
+    Route::post('/{id}/hasil', [UjikomController::class, 'simpanHasil'])->name('simpan-hasil')->middleware('permission:input hasil ujikom');
+    Route::get('/{id}/ba/{jenis}', [UjikomController::class, 'generateBA'])->name('ba')->middleware('permission:verifikasi ujikom');
+    Route::get('/{id}/export', [UjikomController::class, 'exportPdf'])->name('export')->middleware('permission:view ujikom');
+    Route::get('/pegawai-list', [UjikomController::class, 'getPegawaiList'])->name('pegawai-list')->middleware('permission:view ujikom');
+});
 

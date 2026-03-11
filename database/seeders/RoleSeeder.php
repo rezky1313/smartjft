@@ -14,14 +14,14 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         // Buat Role Super Admin
-        $superAdmin = Role::create(['name' => 'super_admin']);
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
         // Super Admin mendapatkan semua permissions
-        $superAdmin->givePermissionTo(Permission::all());
+        $superAdmin->syncPermissions(Permission::all());
 
         // Buat Role Admin
-        $admin = Role::create(['name' => 'admin']);
+        $admin = Role::firstOrCreate(['name' => 'admin']);
         // Admin mendapatkan semua permissions kecuali manage users
-        $admin->givePermissionTo([
+        $admin->syncPermissions([
             'view dashboard',
             'export data',
             'view unit kerja',
@@ -36,12 +36,18 @@ class RoleSeeder extends Seeder
             'create pegawai',
             'edit pegawai',
             'delete pegawai',
+            'view ujikom',
+            'create ujikom',
+            'edit ujikom',
+            'delete ujikom',
+            'verifikasi ujikom',
+            'input hasil ujikom',
         ]);
 
         // Buat Role Operator
-        $operator = Role::create(['name' => 'operator']);
+        $operator = Role::firstOrCreate(['name' => 'operator']);
         // Operator hanya bisa view dan create
-        $operator->givePermissionTo([
+        $operator->syncPermissions([
             'view dashboard',
             'export data',
             'view unit kerja',
@@ -50,17 +56,20 @@ class RoleSeeder extends Seeder
             'create formasi',
             'view pegawai',
             'create pegawai',
+            'view ujikom',
+            'create ujikom',
         ]);
 
         // Buat Role Viewer
-        $viewer = Role::create(['name' => 'viewer']);
+        $viewer = Role::firstOrCreate(['name' => 'viewer']);
         // Viewer hanya bisa view dan export
-        $viewer->givePermissionTo([
+        $viewer->syncPermissions([
             'view dashboard',
             'export data',
             'view unit kerja',
             'view formasi',
             'view pegawai',
+            'view ujikom',
         ]);
     }
 }

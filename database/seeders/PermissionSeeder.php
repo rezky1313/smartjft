@@ -13,30 +13,38 @@ class PermissionSeeder extends Seeder
     public function run(): void
     {
         // Permissions untuk Dashboard
-        Permission::create(['name' => 'view dashboard']);
+        Permission::firstOrCreate(['name' => 'view dashboard']);
 
         // Permissions untuk Export
-        Permission::create(['name' => 'export data']);
+        Permission::firstOrCreate(['name' => 'export data']);
 
         // Permissions untuk Unit Kerja
-        Permission::create(['name' => 'view unit kerja']);
-        Permission::create(['name' => 'create unit kerja']);
-        Permission::create(['name' => 'edit unit kerja']);
-        Permission::create(['name' => 'delete unit kerja']);
+        Permission::firstOrCreate(['name' => 'view unit kerja']);
+        Permission::firstOrCreate(['name' => 'create unit kerja']);
+        Permission::firstOrCreate(['name' => 'edit unit kerja']);
+        Permission::firstOrCreate(['name' => 'delete unit kerja']);
 
         // Permissions untuk Formasi
-        Permission::create(['name' => 'view formasi']);
-        Permission::create(['name' => 'create formasi']);
-        Permission::create(['name' => 'edit formasi']);
-        Permission::create(['name' => 'delete formasi']);
+        Permission::firstOrCreate(['name' => 'view formasi']);
+        Permission::firstOrCreate(['name' => 'create formasi']);
+        Permission::firstOrCreate(['name' => 'edit formasi']);
+        Permission::firstOrCreate(['name' => 'delete formasi']);
 
         // Permissions untuk Pegawai JFT
-        Permission::create(['name' => 'view pegawai']);
-        Permission::create(['name' => 'create pegawai']);
-        Permission::create(['name' => 'edit pegawai']);
-        Permission::create(['name' => 'delete pegawai']);
+        Permission::firstOrCreate(['name' => 'view pegawai']);
+        Permission::firstOrCreate(['name' => 'create pegawai']);
+        Permission::firstOrCreate(['name' => 'edit pegawai']);
+        Permission::firstOrCreate(['name' => 'delete pegawai']);
+
+        // Permissions untuk Uji Kompetensi
+        Permission::firstOrCreate(['name' => 'view ujikom']);
+        Permission::firstOrCreate(['name' => 'create ujikom']);
+        Permission::firstOrCreate(['name' => 'edit ujikom']);
+        Permission::firstOrCreate(['name' => 'delete ujikom']);
+        Permission::firstOrCreate(['name' => 'verifikasi ujikom']);
+        Permission::firstOrCreate(['name' => 'input hasil ujikom']);
 
         // Permissions untuk Manajemen User
-        Permission::create(['name' => 'manage users']);
+        Permission::firstOrCreate(['name' => 'manage users']);
     }
 }
