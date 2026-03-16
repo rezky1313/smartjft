@@ -143,12 +143,23 @@ class UjikomPermohonan extends Model
         $month = $tanggal->format('m');
         $year = $tanggal->format('Y');
 
-        // Hitung jumlah permohonan di bulan dan tahun yang sama
-        $count = self::whereYear('tanggal_permohonan', $year)
+        // Cari nomor permohonan terakhir di bulan dan tahun yang sama (termasuk soft deleted)
+        $lastNomor = self::withTrashed()
+            ->whereYear('tanggal_permohonan', $year)
             ->whereMonth('tanggal_permohonan', $month)
-            ->count();
+            ->orderBy('id', 'desc')
+            ->value('nomor_permohonan');
 
-        $noUrut = $count + 1;
+        if ($lastNomor) {
+            // Extract nomor urut dari nomor permohonan terakhir
+            // Format: UJIKOM/III/2026/001
+            $parts = explode('/', $lastNomor);
+            $lastNoUrut = isset($parts[3]) ? (int)$parts[3] : 0;
+            $noUrut = $lastNoUrut + 1;
+        } else {
+            // Tidak ada nomor permohonan di bulan ini, mulai dari 1
+            $noUrut = 1;
+        }
 
         return formatNomorPermohonanUjikom($noUrut, $tanggal->format('Y-m-d'));
     }

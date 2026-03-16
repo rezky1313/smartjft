@@ -239,5 +239,5 @@ Abaikan semua hal terkait SIJATI sampai ada instruksi lebih lanjut.
 3. Jika ada ambiguitas dalam permintaan, **tanyakan dulu** sebelum mengeksekusi
 4. Prioritaskan **konsistensi UI** — ikuti pola halaman yang sudah ada
 5. Setiap perubahan besar, **jelaskan dulu rencana perubahannya** sebelum dieksekusi
-6. setiap ada perubahan atau penambahan fitur, dokumentasikan dengan detail, mengupdate file changelog.md pada folder root
+6. setiap ada perubahan atau penambahan fitur, dokumentasikan dengan detail, mengupdate file changelog.md pada folder root dan memory
 7. untuk setiap session chat baru di awal selalu baca file claude.md dan changelog.md pada root folder untuk mengetahui konteks dan perubahan

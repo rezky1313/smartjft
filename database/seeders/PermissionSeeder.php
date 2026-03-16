@@ -44,6 +44,13 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'verifikasi ujikom']);
         Permission::firstOrCreate(['name' => 'input hasil ujikom']);
 
+        // Permissions untuk Pertimbangan Pengangkatan
+        Permission::firstOrCreate(['name' => 'view pengangkatan']);
+        Permission::firstOrCreate(['name' => 'create pengangkatan']);
+        Permission::firstOrCreate(['name' => 'edit pengangkatan']);
+        Permission::firstOrCreate(['name' => 'delete pengangkatan']);
+        Permission::firstOrCreate(['name' => 'verifikasi pengangkatan']);
+
         // Permissions untuk Manajemen User
         Permission::firstOrCreate(['name' => 'manage users']);
     }

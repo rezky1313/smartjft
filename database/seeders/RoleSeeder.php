@@ -42,6 +42,11 @@ class RoleSeeder extends Seeder
             'delete ujikom',
             'verifikasi ujikom',
             'input hasil ujikom',
+            'view pengangkatan',
+            'create pengangkatan',
+            'edit pengangkatan',
+            'delete pengangkatan',
+            'verifikasi pengangkatan',
         ]);
 
         // Buat Role Operator
@@ -58,6 +63,10 @@ class RoleSeeder extends Seeder
             'create pegawai',
             'view ujikom',
             'create ujikom',
+            'view pengangkatan',
+            'create pengangkatan',
+            'edit pengangkatan',
+            'delete pengangkatan',
         ]);
 
         // Buat Role Viewer
@@ -70,6 +79,7 @@ class RoleSeeder extends Seeder
             'view formasi',
             'view pegawai',
             'view ujikom',
+            'view pengangkatan',
         ]);
     }
 }

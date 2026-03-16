@@ -150,6 +150,15 @@
           </li>
           @endrole
 
+          {{-- Pertimbangan Pengangkatan - Operator, Admin, Super Admin --}}
+          @role('operator|admin|super_admin')
+          <li class="nav-item">
+            <a href="{{ route('pengangkatan.index') }}" class="nav-link" onclick="pindah(event)">
+              <i class="nav-icon fas fa-file-signature"></i><p>Pertimbangan Pengangkatan</p>
+            </a>
+          </li>
+          @endrole
+
           {{-- Laporan - Hanya Admin & Super Admin --}}
           @role('admin|super_admin')
           <li class="nav-item">

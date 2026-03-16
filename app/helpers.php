@@ -55,3 +55,29 @@ if (!function_exists('formatNomorPermohonanUjikom')) {
         return "UJIKOM/{$romawi}/{$tahun}/{$noUrutFormatted}";
     }
 }
+
+if (!function_exists('formatNomorPermohonanPengangkatan')) {
+    /**
+     * Generate nomor permohonan Pertimbangan Pengangkatan
+     * Format: PANGKAT/[ROMAWI-BULAN]/[TAHUN]/[NO-URUT]
+     * Contoh: PANGKAT/III/2026/0001
+     *
+     * @param int $noUrut Nomor urut permohonan
+     * @param string|null $tanggal Tanggal permohonan (Y-m-d) atau null untuk tanggal sekarang
+     * @return string Nomor permohonan terformat
+     */
+    function formatNomorPermohonanPengangkatan($noUrut, $tanggal = null)
+    {
+        if ($tanggal === null) {
+            $tanggal = date('Y-m-d');
+        }
+
+        $date = \Carbon\Carbon::parse($tanggal);
+        $romawi = toRoman((int)$date->format('m'));
+        $tahun = $date->format('Y');
+        $noUrutFormatted = str_pad($noUrut, 4, '0', STR_PAD_LEFT);
+
+        return "PANGKAT/{$romawi}/{$tahun}/{$noUrutFormatted}";
+    }
+}
+

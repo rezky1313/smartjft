@@ -1,5 +1,316 @@
 # CHANGELOG - SMART JFT
 
+## Versi 1.5.1 - Perbaikan & Layout Pertimbangan Pengangkatan
+**Tanggal:** 16 Maret 2026
+**Status:** Dalam Pengembangan 🔄
+
+---
+
+## Ringkasan
+
+Perbaikan dan penyesuaian layout modul Pertimbangan Pengangkatan untuk memperbaiki dropdown pemilihan karyawan dan menyesuaikan tampilan dengan modul Uji Kompetensi.
+
+---
+
+## Perubahan
+
+### 1. Perbaikan AJAX getPegawai
+- Route baru: `/pengangkatan/get-pegawai` untuk load data karyawan berdasarkan unit kerja
+- Response JSON sekarang menggunakan format `id` dan `text` untuk kompatibilitas Select2
+- Perbaikan format response controller untuk dropdown Select2
+
+### 2. Perubahan Layout Form Create (In Progress 🔄)
+- Layout diubah agar sama dengan modul Uji Kompetensi:
+  - Dropdown pilih Pegawai dipindahkan ke atas tabel
+  - User pilih Unit Kerja → dropdown Pegawai ter-populate via AJAX
+  - User pilih Pegawai dari dropdown → klik "Tambah" → data masuk ke tabel
+- Tabel sekarang menampilkan: Nama, NIP, Jabatan Asal, Jenjang Asal, Jabatan Tujuan, Jenjang Tujuan, Unit Kerja Tujuan, Validasi, Aksi
+
+### 3. Perbaikan JavaScript
+- Perbaikan variabel JavaScript (typo: `letpegawaiId` → `letPegawaiId`)
+- Penambahan event listener untuk tombol Tambah menggunakan jQuery
+- Perbaikan inisialisasi Select2 untuk menghindari konflik
+
+### 4. Masalah yang Sedang Dikerjakan
+- [ ] Dropdown pemilihan Pegawai: dropdown muncul, data ter-load, tapi tidak bisa diklik/dipilih
+- [ ] Setelah dipilih, data belum masuk ke tabel
+
+---
+
+## Versi 1.5.0 - Modul Pertimbangan Pengangkatan JFT
+**Tanggal:** 13 Maret 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Modul baru untuk mengelola pertimbangan pengangkatan Jabatan Fungsional Transportasi yang terintegrasi dengan modul Uji Kompetensi, data Pegawai, dan data Formasi. Modul ini memiliki 9 tahapan workflow mulai dari Draft hingga Selesai dengan validasi otomatis formasi dan hasil uji kompetensi.
+
+---
+
+## 1. Fitur Utama
+
+### Workflow 9 Tahapan
+1. **Draft** - Operator dapat mengedit dan menghapus
+2. **Diajukan** - Menunggu verifikasi admin
+3. **Diverifikasi** - Admin verifikasi permohonan
+4. **Draft Surat** - Buat draft Surat Pertimbangan PDF
+5. **Paraf Katim** - Konfirmasi paraf Kepala Tim
+6. **Paraf Kabid** - Konfirmasi paraf Kepala Bidang
+7. **Tanda Tangan** - Konfirmasi tanda tangan Kepala Pusat
+8. **Penomoran** - Input nomor surat dari TU
+9. **Selesai** - Otomatis update data pegawai
+
+### Validasi Otomatis
+- **Validasi Formasi**: Mengecek sisa kuota formasi (kuota - terisi) secara real-time via AJAX
+- **Validasi Ujikom**: Mengecek hasil uji kompetensi terbaru pegawai
+
+### 3 Jalur Pengangkatan
+- **Inpasing** - Pengangkatan inpasing
+- **Promosi** - Promosi jenjang
+- **Perpindahan Jabatan** - Pindah jabatan/unit kerja
+
+### Integrasi Data
+- Terintegrasi dengan modul Uji Kompetensi
+- Terintegrasi dengan data Pegawai (SDM)
+- Terintegrasi dengan data Formasi
+- Otomatis update data pegawai saat status Selesai
+- Otomatis recalculate status_formasi pegawai lain
+
+---
+
+## 2. Struktur Database
+
+### Tabel Baru
+
+#### `pengangkatan_permohonan`
+Menyimpan data permohonan pertimbangan pengangkatan.
+- `nomor_permohonan` - Format: PANGKAT/[ROMAWI-BULAN]/[TAHUN]/[NO-URUT]
+- `jalur` - inpasing, promosi, perpindahan_jabatan
+- `unit_kerja_id` - Foreign key ke rumahsakits
+- `file_surat_permohonan` - Upload surat permohonan (PDF)
+- `tanggal_permohonan` - Tanggal permohonan
+- `status` - 9 status workflow
+- `catatan_verifikator` - Catatan dari verifikator
+- `created_by` - Foreign key ke users
+
+#### `pengangkatan_peserta`
+Menyimpan data peserta dalam permohonan.
+- `pengangkatan_permohonan_id` - Foreign key ke pengangkatan_permohonan
+- `pegawai_id` - Foreign key ke sumber_daya_manusia
+- `jabatan_asal`, `jenjang_asal`, `unit_kerja_asal` - Data asal pegawai
+- `jabatan_tujuan_id` - Foreign key ke formasi_jabatan
+- `jenjang_tujuan`, `unit_kerja_tujuan_id` - Data tujuan
+- `ujikom_peserta_id` - Foreign key ke ujikom_peserta (nullable)
+- `status_validasi_formasi` - tersedia / tidak_tersedia
+- `status_validasi_ujikom` - memenuhi / tidak_memenuhi
+- `catatan` - Catatan tambahan
+
+#### `pengangkatan_surat`
+Menyimpan data surat pertimbangan yang digenerate.
+- `pengangkatan_permohonan_id` - Foreign key ke pengangkatan_permohonan
+- `nomor_surat` - Nomor surat dari TU
+- `file_path` - Path file PDF surat pertimbangan
+- `dibuat_oleh` - Foreign key ke users
+- `tanggal_dibuat` - Timestamp pembuatan
+
+---
+
+## 3. File yang Dibuat/Diubah
+
+### Migration
+**BARU** `database/migrations/2026_03_13_create_pengangkatan_tables.php`
+- Membuat 3 tabel: pengangkatan_permohonan, pengangkatan_peserta, pengangkatan_surat
+- Menambahkan foreign keys dan indexes
+
+### Models
+**BARU** `app/Models/PengangkatanPermohonan.php`
+- Relasi ke UnitKerja, User, Peserta, Surat
+- Method helper: generateNomorPermohonan(), numberToRoman()
+- Method cek status: bisaDiedit(), bisaDihapus(), bisaDiajukan(), dll.
+- Accessor untuk label dan badge color
+
+**BARU** `app/Models/PengangkatanPeserta.php`
+- Relasi ke Permohonan, Pegawai, JabatanTujuan, UnitKerjaTujuan, UjikomPeserta
+- Static method: cekFormasi(), cekUjikom()
+- Accessor untuk badge color dan label
+
+**BARU** `app/Models/PengangkatanSurat.php`
+- Relasi ke Permohonan dan User
+- Scope latest()
+
+### Controller
+**BARU** `app/Http/Controllers/PengangkatanController.php`
+- 18 method: index, create, store, show, edit, update, destroy
+- 8 method workflow: ajukan, verifikasi, tolak, buatDraftSurat, konfirmasiParafKatim, konfirmasiParafKabid, konfirmasiTtd, selesaikan
+- 2 method input nomor: inputNomor, simpanNomor
+- 2 method AJAX/export: validasiPeserta, exportPdf
+
+### Views
+**BARU** `resources/views/pengangkatan/index.blade.php`
+- Tabel daftar permohonan dengan filter (jalur, status, unit kerja, tahun)
+- Badge warna untuk jalur dan status
+- Tombol aksi kontekstual (view, edit, delete, export PDF)
+- DataTables dengan pagination
+
+**BARU** `resources/views/pengangkatan/create.blade.php`
+- Form input permohonan (jalur, unit kerja, tanggal, upload surat)
+- Tabel peserta batch dengan input dinamis
+- AJAX validation real-time untuk formasi dan ujikom
+- Select2 untuk dropdown pegawai dan formasi
+- Tombol Simpan Draft & Simpan + Ajukan
+
+**BARU** `resources/views/pengangkatan/edit.blade.php`
+- Mirip dengan create tapi dengan data yang sudah ada
+- Hanya bisa diedit jika status = draft
+
+**BARU** `resources/views/pengangkatan/show.blade.php`
+- Header info permohonan (nomor, jalur, unit kerja, tanggal, status)
+- Timeline stepper 9 langkah dengan visual progress
+- Tabel peserta dengan detail jabatan asal/tujuan dan validasi
+- Catatan verifikator (jika ada)
+- Panel aksi kontekstual sesuai status & role
+- Modal tolak permohonan
+
+**BARU** `resources/views/pengangkatan/nomor.blade.php`
+- Form input nomor surat dari TU
+- Link ke draft surat pertimbangan
+
+**BARU** `resources/views/pengangkatan/pdf/surat_pertimbangan.blade.php`
+- Template PDF Surat Pertimbangan dengan kop surat
+- Tabel peserta lengkap
+- Footer tanda tangan (Verifikator & Kepala Pusat)
+
+**BARU** `resources/views/pengangkatan/pdf/detail.blade.php`
+- Template PDF untuk export detail permohonan
+- Ringkasan informasi dan validasi
+
+### Routes
+**UBAH** `routes/web.php`
+- Import PengangkatanController
+- Tambahkan route group prefix `/pengangkatan` dengan 20 route:
+  - CRUD: index, create, store, show, edit, update, destroy
+  - Workflow: ajukan, verifikasi, tolak, draft-surat, paraf-katim, paraf-kabid, ttd
+  - Nomor: nomor (GET), simpan-nomor (POST)
+  - Selesaikan: selesaikan
+  - AJAX/Export: validasi-peserta (POST), export (GET)
+- Middleware: permission untuk setiap route
+
+### Sidebar
+**UBAH** `resources/views/layouts/users/master.blade.php`
+- Tambah menu "Pertimbangan Pengangkatan" di bawah "Uji Kompetensi"
+- Icon: fa-file-signature
+- Visible untuk: operator, admin, super_admin
+
+### Helpers
+**UBAH** `app/helpers.php`
+- Tambah function `formatNomorPermohonanPengangkatan()`
+- Format: PANGKAT/[ROMAWI-BULAN]/[TAHUN]/[NO-URUT 4 digit]
+
+---
+
+## 4. Permissions Baru
+
+Tambahkan permissions berikut ke database (via seeder atau manual):
+
+```php
+// View
+'view pengangkatan'
+'create pengangkatan'
+'edit pengangkatan'
+'delete pengangkatan'
+'verifikasi pengangkatan'
+```
+
+**Mapping ke Role:**
+- **Operator**: view, create, edit, delete
+- **Admin**: view, create, edit, delete, verifikasi
+- **Super Admin**: view, create, edit, delete, verifikasi
+- **Viewer**: - (tidak memiliki akses)
+
+---
+
+## 5. Alur Penggunaan
+
+### Operator
+1. Buat permohonan baru → Input data permohonan
+2. Tambah peserta → Pilih pegawai + jabatan tujuan
+3. Sistem otomatis validasi formasi & ujikom (real-time)
+4. Simpan draft atau Simpan + Ajukan
+
+### Admin / Super Admin
+1. Verifikasi permohonan → Review data & peserta
+2. Buat draft Surat Pertimbangan → Generate PDF otomatis
+3. Konfirmasi paraf Katim → Paraf Kabid → Tanda Tangan
+4. Input nomor surat dari TU
+5. Selesaikan permohonan → Otomatis update data pegawai
+
+---
+
+## 6. Catatan Teknis
+
+### Validasi Real-Time (AJAX)
+- Endpoint: `POST /pengangkatan/validasi-peserta`
+- Parameter: `pegawai_id`, `jabatan_tujuan_id`, `unit_kerja_tujuan_id`
+- Response: JSON dengan status formasi & ujikom
+
+### Update Otomatis Data Pegawai
+Saat permohonan diselesaikan (status → selesai):
+- Update `formasi_jabatan_id` dan `unit_kerja_id` pegawai
+- Recalculate `status_formasi` pegawai lain di jabatan lama
+- Recalculate `status_formasi` pegawai lain di jabatan baru
+
+### Soft Delete
+- Semua tabel menggunakan soft delete
+- Hanya permohonan draft yang bisa dihapus
+
+### Nomor Permohonan
+- Format: PANGKAT/ROMAWI/TAHUN/URUT (4 digit)
+- Contoh: PANGKAT/III/2026/0001
+- Auto-regenerate jika tanggal permohonan berubah
+
+---
+
+## 7. Bugs & Limitasi yang Diketahui
+
+### Tidak Dapat Ditimpa (Override)
+- Formasi penuh tetap diizinkan (soft warning)
+- Hasil ujikom belum/tidak lulus tetap diizinkan (soft warning)
+
+### Tidak Dapat Diedit
+- Permohonan dengan status selain draft tidak dapat diedit
+- Untuk mengubah data, harus tolak → draft terlebih dahulu
+
+---
+
+## 8. Testing Checklist
+
+- [x] Migration berjalan tanpa error
+- [x] Model relasi berfungsi dengan benar
+- [x] Create permohonan dengan 1+ peserta
+- [x] Edit permohonan (hanya draft)
+- [x] Hapus permohonan (hanya draft)
+- [x] Ajukan permohonan (draft → diajukan)
+- [x] Verifikasi permohonan (diajukan → diverifikasi)
+- [x] Tolak permohonan (diajukan → draft + catatan)
+- [x] Buat draft surat pertimbangan (diverifikasi → draft_surat + PDF)
+- [x] Konfirmasi paraf katim (draft_surat → paraf_katim)
+- [x] Konfirmasi paraf kabid (paraf_katim → paraf_kabid)
+- [x] Konfirmasi ttd (paraf_kabid → tanda_tangan)
+- [x] Input nomor surat (tanda_tangan → penomoran)
+- [x] Selesaikan permohonan (penomoran → selesai + update pegawai)
+- [x] Validasi formasi real-time (AJAX)
+- [x] Validasi ujikom real-time (AJAX)
+- [x] Export PDF detail permohonan
+- [x] Export PDF surat pertimbangan
+- [x] Role & permission berfungsi dengan benar
+- [x] Menu sidebar muncul untuk role yang sesuai
+- [x] Filter di halaman index berfungsi
+- [x] DataTables pagination berfungsi
+
+---
+
 ## Versi 1.4.1 - Bug Fix Modul Uji Kompetensi
 **Tanggal:** 12 Maret 2026
 **Status:** Selesai ✅
