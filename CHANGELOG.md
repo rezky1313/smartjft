@@ -1,5 +1,637 @@
 # CHANGELOG - SMART JFT
 
+## Versi 1.8.1 - Kolom Jabatan Tujuan di Pendaftaran Ujikom
+**Tanggal:** 23 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Perbaikan tabel peserta pendaftaran ujikom agar menampilkan jabatan dan jenjang tujuan. Sebelumnya kolom tersebut tidak tersimpan ke database dan tidak ditampilkan di halaman detail.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_06_23_000002_add_jabatan_tujuan_to_ujikom_pendaftaran_peserta.php`
+  - Tambah kolom `jabatan_tujuan_id` (unsignedBigInteger, FK → `formasi_jabatan`, nullable)
+  - Tambah kolom `jenjang_tujuan` (string, nullable) — snapshot nama jenjang tujuan
+  - Tambah kolom `jabatan_tujuan_nama` (string, nullable) — snapshot "NamaFormasi Jenjang" sebagai backup
+
+### Model
+- **UBAH** `app/Models/UjikomPendaftaranPeserta.php`
+  - Tambah 3 kolom baru ke `$fillable`
+  - Tambah relasi `jabatanTujuan()` → `belongsTo(Formasijabatan::class, 'jabatan_tujuan_id')`
+
+### Controller
+- **UBAH** `app/Http/Controllers/UjikomPendaftaranController.php`
+  - `store()`: ambil `Formasijabatan` dari `formasi_tujuan_id` (input form), simpan ke 3 kolom baru
+  - `update()`: sama seperti `store()`
+
+### View
+- **UBAH** `resources/views/ujikom/pendaftaran/show.blade.php`
+  - Header tabel peserta: 6 → 8 kolom (tambah "Jabatan Tujuan" & "Jenjang Tujuan")
+  - Rename: "Jabatan" → "Jabatan Saat Ini", "Jenjang" → "Jenjang Saat Ini"
+  - Body tabel: tampilkan `jabatan_tujuan_nama` dan `jenjang_tujuan` (fallback ke relasi)
+  - Empty row colspan: 6 → 8
+
+---
+
+## Versi 1.8.0 - Role Pemangku & Login NIP
+**Tanggal:** 22 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Penambahan role `pemangku` khusus untuk JFT yang bisa login menggunakan NIP. Kolom `username` dan `sdm_id` ditambah ke tabel `users`. Form manajemen user diperbarui untuk mendukung pembuatan akun pemangku dengan pemilihan data SDM.
+
+---
+
+## 1. Fitur Utama
+
+### Login via NIP
+- Halaman login sekarang mendukung input Email **atau** NIP di satu field
+- Deteksi otomatis: jika input lolos validasi email → auth by email, jika tidak → auth by username (NIP)
+
+### Role Pemangku
+- Role baru `pemangku` dengan permission terbatas: `view dashboard`, `view ujikom jadwal`, `view ujikom permohonan`, `create ujikom permohonan`
+- Akun pemangku dibuat dengan memilih data pegawai SDM; username = NIP, password default = NIP
+
+### Manajemen User — Form
+- Ketika role `pemangku` dipilih, form berubah: muncul dropdown unit kerja + dropdown pegawai SDM (AJAX)
+- Field nama & email standar disembunyikan dan diganti dengan data dari SDM
+- Info box menampilkan nama & NIP pegawai terpilih beserta informasi bahwa NIP = username/password
+
+### Manajemen User — Index
+- Kolom baru "Username / NIP" di tabel
+- Badge warna `badge-info` untuk role pemangku
+
+---
+
+## 2. Perubahan Database
+
+### Migration Baru
+- `database/migrations/2026_06_23_000001_add_username_sdm_id_to_users_table.php`
+  - `username` string nullable unique (NIP sebagai username login)
+  - `sdm_id` unsignedBigInteger nullable FK → `sumber_daya_manusia(id)` onDelete set null
+
+---
+
+## 3. File yang Dibuat / Diubah
+
+- **UBAH** `app/Models/User.php` — tambah `username`, `sdm_id`, `status` ke `$fillable`; tambah relasi `sdm()`
+- **UBAH** `app/Http/Controllers/CentralController.php` — `LoginAksi()` deteksi email vs NIP, input field `login`
+- **UBAH** `resources/views/main/login.blade.php` — label & input field `login`, placeholder "Email atau NIP"
+- **UBAH** `app/Http/Controllers/UserController.php` — `create/edit` pass `$unitKerjas`; `store/update` logika bifurkasi pemangku vs non-pemangku
+- **UBAH** `database/seeders/PermissionSeeder.php` — tambah permission `view/create ujikom jadwal/permohonan`, buat role `pemangku` + syncPermissions
+- **UBAH** `resources/views/users/manajemen-user/form.blade.php` — section pemangku (unit kerja + SDM dropdown AJAX, info box NIP), show/hide berdasarkan role
+- **UBAH** `resources/views/users/manajemen-user/index.blade.php` — tambah kolom "Username / NIP", badge pemangku
+- **UBAH** `resources/views/ujikom/pendaftaran/show.blade.php` — fix `nama` → `nama_lengkap`, `nama_jabatan` → `nama_formasi`, `jenjang` → `formasi.jenjang`
+- **UBAH** `app/Http/Controllers/UjikomPendaftaranController.php` — `show()` eager load `peserta.pegawai.formasi.jenjang`
+
+---
+
+## Versi 1.7.0 - Modul Pendaftaran Uji Kompetensi
+**Tanggal:** 22 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Modul lengkap untuk pendaftaran/permohonan mengikuti Uji Kompetensi JFT. Operator/Admin dapat mendaftarkan peserta (single atau batch per unit kerja) ke jadwal ujikom yang sudah dipublikasikan. Dilengkapi workflow 8 status, pengecekan kuota formasi real-time, upload berkas persyaratan per peserta, dan timeline progress.
+
+---
+
+## 1. Fitur Utama
+
+### Pendaftaran (Operator)
+- Pilih jadwal ujikom, unit kerja, jenis pendaftaran (mandiri/batch)
+- AJAX card jadwal info (tanggal, tempat, kuota, sisa)
+- Select2 AJAX untuk pilih pegawai (difilter per unit kerja)
+- Pengecekan formasi otomatis per pegawai (sisa kuota & status)
+- Upload berkas persyaratan per peserta (grid: peserta × persyaratan)
+- Simpan sebagai Draft atau langsung Ajukan
+
+### Workflow 8 Status
+```
+draft → diajukan_admin_unit → diverifikasi_admin_unit → diajukan_pusbin → diverifikasi_pusbin → selesai
+                           ↘ ditolak_admin_unit        ↘ ditolak_pusbin
+```
+
+### Verifikasi (Admin/Super Admin)
+- Verifikasi Admin Unit: approve/tolak dari admin unit
+- Ajukan ke Pusbin: diteruskan ke Pusbin JFT
+- Verifikasi Pusbin: approve/tolak dari Pusbin
+- Verifikasi berkas: set status per berkas (diterima/ditolak) + catatan
+- Modal form untuk input catatan penolakan
+
+### Halaman Detail (show)
+- Timeline stepper 6-tahap (progress visual)
+- Alert merah jika ditolak + catatan penolakan
+- Tabel peserta + badge status formasi
+- Berkas per peserta dikelompokkan per persyaratan
+- Tombol aksi kontekstual per status & role
+
+---
+
+## 2. Struktur Database
+
+### Tabel Baru
+
+#### `ujikom_pendaftaran`
+| Kolom | Tipe | Keterangan |
+|-------|------|-----------|
+| id | bigint PK | Auto increment |
+| kode_pendaftaran | string unique | Format: DAFTAR-UJIKOM/VI/2026/0001 |
+| ujikom_jadwal_id | FK → ujikom_jadwal | restrict |
+| unit_kerja_id | unsignedBigInteger | FK → rumahsakits(no_rs) |
+| jenis_pendaftaran | enum | mandiri / batch |
+| status | enum | 8 nilai (lihat workflow) |
+| catatan_admin_unit | text nullable | Catatan tolak admin unit |
+| catatan_pusbin | text nullable | Catatan tolak pusbin |
+| dibuat_oleh | FK → users | User pembuat |
+| timestamps | - | created_at, updated_at |
+
+#### `ujikom_pendaftaran_peserta`
+| Kolom | Tipe | Keterangan |
+|-------|------|-----------|
+| id | bigint PK | Auto increment |
+| ujikom_pendaftaran_id | FK cascade | |
+| pegawai_id | FK → sumber_daya_manusia | |
+| sisa_formasi | integer nullable | Snapshot saat daftar |
+| status_formasi | enum | tersedia / tidak_tersedia |
+
+#### `ujikom_pendaftaran_berkas`
+| Kolom | Tipe | Keterangan |
+|-------|------|-----------|
+| id | bigint PK | Auto increment |
+| ujikom_pendaftaran_id | FK cascade | |
+| pegawai_id | FK → sumber_daya_manusia | |
+| ujikom_persyaratan_id | FK → ujikom_persyaratan | |
+| nama_berkas | string | Nama file asli |
+| file_path | string | Path di storage/public |
+| status_verifikasi | enum | belum / diterima / ditolak |
+| catatan | text nullable | Catatan verifikator |
+
+---
+
+## 3. File yang Dibuat / Diubah
+
+### Migration
+- **BARU** `database/migrations/2026_06_22_000002_create_ujikom_pendaftaran_tables.php`
+  - Catatan penting: `unit_kerja_id` menggunakan `unsignedBigInteger` (bukan `foreignId`) karena `rumahsakits.no_rs` bertipe `bigint unsigned`
+
+### Models
+- **BARU** `app/Models/UjikomPendaftaran.php`
+  - Relations: jadwal, unitKerja (via no_rs), pembuat, peserta, berkas
+  - Accessors: `getLabelStatusAttribute()`, `getBadgeStatusAttribute()`
+  - Static: `generateKode()` — format `DAFTAR-UJIKOM/[ROMAWI]/[TAHUN]/[0000]`
+  - Helpers: `bisaDiedit()`, `bisaDihapus()`, `bisaDiajukan()`
+
+- **BARU** `app/Models/UjikomPendaftaranPeserta.php`
+- **BARU** `app/Models/UjikomPendaftaranBerkas.php`
+
+### Controller
+- **BARU** `app/Http/Controllers/UjikomPendaftaranController.php` (17 method)
+  - AJAX: `getJadwalInfo()`, `getPegawaiList()`, `cekFormasi()`
+  - CRUD: index, create, store, show, edit, update, destroy
+  - Workflow: ajukan, verifikasiAdminUnit, tolakAdminUnit, ajukanPusbin, verifikasiPusbin, tolakPusbin, verifikasiBerkas
+
+### Views
+- **BARU** `resources/views/ujikom/pendaftaran/index.blade.php` — tabel + filter status/jadwal
+- **BARU** `resources/views/ujikom/pendaftaran/create.blade.php` — form 3 section + AJAX
+- **BARU** `resources/views/ujikom/pendaftaran/edit.blade.php` — sama seperti create, pre-filled
+- **BARU** `resources/views/ujikom/pendaftaran/show.blade.php` — detail + timeline + berkas + aksi
+
+### Routes
+- **UBAH** `routes/web.php`
+  - Tambah `use App\Http\Controllers\UjikomPendaftaranController`
+  - Tambah group `ujikom/pendaftaran` (prefix, name `ujikom.permohonan.`) — ditempatkan **SEBELUM** group `ujikom/{id}`
+  - Hapus placeholder route `ujikom.permohonan.index` (coming soon)
+
+### Perubahan lainnya
+- **UBAH** `app/Http/Controllers/UjikomJadwalController.php`
+  - `show()` sekarang query `UjikomPendaftaran` yang sudah diverifikasi pusbin/selesai
+  - Pass `$pendaftaranList` dan `$totalPeserta` ke view
+- **UBAH** `resources/views/ujikom/jadwal/show.blade.php`
+  - Section "Peserta Terdaftar" sekarang menampilkan data nyata dari pendaftaran
+  - Badge jumlah peserta dinamis
+  - Tombol "Daftar Ujikom" untuk operator/admin
+  - List peserta dikelompokkan per pendaftaran/unit kerja
+
+```
+Daftar route ujikom.permohonan.*:
+GET    /ujikom/pendaftaran                          index
+GET    /ujikom/pendaftaran/create                   create
+POST   /ujikom/pendaftaran                          store
+GET    /ujikom/pendaftaran/jadwal-info/{jadwalId}   jadwal-info    [AJAX]
+GET    /ujikom/pendaftaran/pegawai-list             pegawai-list   [AJAX]
+GET    /ujikom/pendaftaran/cek-formasi/{pegawaiId}  cek-formasi    [AJAX]
+GET    /ujikom/pendaftaran/{id}                     show
+GET    /ujikom/pendaftaran/{id}/edit                edit
+PUT    /ujikom/pendaftaran/{id}                     update
+DELETE /ujikom/pendaftaran/{id}                     destroy
+POST   /ujikom/pendaftaran/{id}/ajukan              ajukan
+POST   /ujikom/pendaftaran/{id}/verifikasi-admin    verifikasi.admin
+POST   /ujikom/pendaftaran/{id}/tolak-admin         tolak.admin
+POST   /ujikom/pendaftaran/{id}/ajukan-pusbin       ajukan.pusbin
+POST   /ujikom/pendaftaran/{id}/verifikasi-pusbin   verifikasi.pusbin
+POST   /ujikom/pendaftaran/{id}/tolak-pusbin        tolak.pusbin
+POST   /ujikom/pendaftaran/{id}/verifikasi-berkas   verifikasi.berkas
+```
+
+---
+
+## 4. Catatan Teknis
+
+### Foreign Key unit_kerja_id
+`rumahsakits.no_rs` bertipe `bigint unsigned`, bukan `id` auto-increment. Harus menggunakan `unsignedBigInteger('unit_kerja_id')` + manual `$table->foreign('unit_kerja_id')->references('no_rs')->on('rumahsakits')`. Tidak bisa menggunakan `foreignId()->constrained()`.
+
+### AJAX Form Create/Edit
+Form menggunakan JavaScript state (`pesertaList`, `persyaratanList`) untuk membangun tabel peserta dan grid upload berkas secara dinamis tanpa reload halaman.
+
+### Berkas Upload
+- Path: `storage/app/public/ujikom/berkas/`
+- Diakses via `asset('storage/ujikom/berkas/...')`
+- Nama input: `berkas[{pesertaIdx}][{persyaratanId}]`
+
+---
+
+## 5. Testing Checklist
+
+- [x] Migration berjalan tanpa error
+- [x] Semua 17 route ujikom.permohonan.* terdaftar
+- [x] Route `ujikom/pendaftaran` tidak konflik dengan `ujikom/{id}`
+- [ ] Operator bisa buat pendaftaran baru
+- [ ] AJAX jadwal info berfungsi
+- [ ] AJAX select2 pegawai berfungsi (filter per unit kerja)
+- [ ] AJAX cek formasi berfungsi
+- [ ] Grid berkas muncul otomatis setelah pilih jadwal + tambah peserta
+- [ ] Simpan draft berfungsi
+- [ ] Simpan & ajukan berfungsi
+- [ ] Workflow verifikasi admin unit berfungsi
+- [ ] Workflow verifikasi pusbin berfungsi
+- [ ] Halaman detail jadwal menampilkan peserta yang sudah diverifikasi
+
+---
+
+## Versi 1.6.0 - Modul Pengumuman Jadwal Uji Kompetensi
+**Tanggal:** 22 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Modul baru untuk mengelola dan mengumumkan jadwal Uji Kompetensi JFT kepada peserta. Admin/Super Admin dapat membuat, mengedit, dan mempublikasikan jadwal. Operator dan Viewer melihat jadwal yang sudah dipublikasikan dalam tampilan card. Dilengkapi manajemen persyaratan peserta dengan upload file contoh.
+
+---
+
+## 1. Fitur Utama
+
+### Manajemen Jadwal (Admin/Super Admin)
+- Buat jadwal dengan judul, deskripsi, tanggal mulai/selesai, tempat, kuota
+- Status jadwal: **Draft → Dipublikasikan → Selesai**
+- Tombol "Publikasikan" dan "Tandai Selesai" langsung dari halaman detail
+- Edit jadwal (hanya status draft)
+- Hapus jadwal (hanya status draft)
+- Tabel daftar semua jadwal + filter berdasarkan status
+
+### Tampilan Publik (Operator/Viewer)
+- Hanya menampilkan jadwal berstatus `published`
+- Tampilan card grid (3 kolom): judul, tanggal, tempat, kuota, tombol "Lihat Detail"
+- Pesan kosong jika tidak ada jadwal aktif
+
+### Persyaratan Peserta
+- Input dinamis (tambah/hapus baris) saat create/edit jadwal
+- Kolom: Nama Syarat, Keterangan, Urutan, Upload File Contoh (PDF/DOC/XLS/IMG, max 5MB)
+- File disimpan di `storage/public/ujikom/persyaratan/`
+- Link download file contoh di halaman detail
+
+### Placeholder "Coming Soon"
+- 6 route placeholder dengan halaman `coming_soon.blade.php`
+- Digunakan oleh menu sidebar yang belum diimplementasikan
+
+---
+
+## 2. Struktur Database
+
+### Tabel Baru
+
+#### `ujikom_jadwal`
+| Kolom | Tipe | Keterangan |
+|-------|------|-----------|
+| id | bigint PK | Auto increment |
+| judul | string | Judul jadwal |
+| deskripsi | text nullable | Keterangan tambahan |
+| tanggal_mulai | date | Tanggal mulai ujian |
+| tanggal_selesai | date | Tanggal selesai ujian |
+| tempat | string | Lokasi pelaksanaan |
+| kuota | integer | Jumlah peserta yang diterima |
+| status | enum | draft / published / selesai |
+| dibuat_oleh | FK → users | User pembuat |
+| timestamps | - | created_at, updated_at |
+
+#### `ujikom_persyaratan`
+| Kolom | Tipe | Keterangan |
+|-------|------|-----------|
+| id | bigint PK | Auto increment |
+| ujikom_jadwal_id | FK → ujikom_jadwal | Cascade delete |
+| nama_syarat | string | Nama persyaratan |
+| keterangan | text nullable | Keterangan detail |
+| file_contoh | string nullable | Path file di storage |
+| urutan | integer | Urutan tampil (default: 1) |
+| timestamps | - | created_at, updated_at |
+
+---
+
+## 3. File yang Dibuat
+
+### Migration
+- **BARU** `database/migrations/2026_06_22_000001_create_ujikom_jadwal_tables.php`
+  - Membuat tabel `ujikom_jadwal` dan `ujikom_persyaratan`
+  - Foreign key `dibuat_oleh` → users (restrict)
+  - Foreign key `ujikom_jadwal_id` → ujikom_jadwal (cascade)
+
+### Models
+- **BARU** `app/Models/UjikomJadwal.php`
+  - fillable: judul, deskripsi, tanggal_mulai, tanggal_selesai, tempat, kuota, status, dibuat_oleh
+  - casts: tanggal_mulai & tanggal_selesai sebagai date
+  - hasMany: `persyaratan()` → UjikomPersyaratan (orderBy urutan)
+  - belongsTo: `pembuat()` → User
+  - Accessor `getStatusLabelAttribute()` → 'Draft' | 'Dipublikasikan' | 'Selesai'
+  - Accessor `getBadgeStatusAttribute()` → 'secondary' | 'success' | 'dark'
+
+- **BARU** `app/Models/UjikomPersyaratan.php`
+  - fillable: ujikom_jadwal_id, nama_syarat, keterangan, file_contoh, urutan
+  - belongsTo: `jadwal()` → UjikomJadwal
+
+### Controller
+- **BARU** `app/Http/Controllers/UjikomJadwalController.php`
+  - `index()` — admin: semua jadwal + filter status; publik: hanya published (card grid)
+  - `create()` — form tambah jadwal
+  - `store()` — simpan jadwal + persyaratan, pilih simpan draft atau langsung publish
+  - `show($id)` — detail jadwal; non-admin diblokir jika bukan published
+  - `edit($id)` — form edit, hanya status draft
+  - `update($id)` — update jadwal + hapus/buat ulang persyaratan
+  - `destroy($id)` — hapus jadwal + file persyaratan (hanya draft)
+  - `publish($id)` — ubah status draft → published
+  - `selesaikan($id)` — ubah status published → selesai
+  - Private helper: `simpanPersyaratan()`
+
+### Views
+- **BARU** `resources/views/coming_soon.blade.php`
+  - Template halaman "Segera Hadir" untuk route placeholder
+  - Menerima variabel `$judul`
+  - Tombol kembali ke Dashboard
+
+- **BARU** `resources/views/ujikom/jadwal/index.blade.php`
+  - Tampilan berbeda: admin = tabel + filter, publik = card grid
+  - Tombol aksi: Lihat, Edit, Publikasikan, Hapus, Selesaikan (kontekstual per status)
+
+- **BARU** `resources/views/ujikom/jadwal/create.blade.php`
+  - Form info jadwal + section persyaratan dinamis (tambah/hapus baris)
+  - Dua tombol submit: "Simpan sebagai Draft" dan "Simpan & Publikasikan"
+
+- **BARU** `resources/views/ujikom/jadwal/edit.blade.php`
+  - Sama seperti create, pre-filled dengan data existing
+  - Alert warning: persyaratan lama akan dihapus dan dibuat ulang
+
+- **BARU** `resources/views/ujikom/jadwal/show.blade.php`
+  - Header: info lengkap jadwal + badge status
+  - Panel persyaratan: tabel + link download file contoh
+  - Panel peserta: placeholder kosong (modul pendaftaran belum dibuat)
+  - Tombol aksi admin: Edit, Publikasikan, Hapus, Selesaikan (per status)
+
+### Routes
+- **UBAH** `routes/web.php`
+  - Tambah `use App\Http\Controllers\UjikomJadwalController`
+  - Tambah group `ujikom/jadwal` (prefix, name `ujikom.jadwal.`) — ditempatkan **SEBELUM** group `ujikom/{id}` untuk mencegah konflik wildcard
+  - Tambah 6 route placeholder coming soon
+
+```
+GET    /ujikom/jadwal               ujikom.jadwal.index
+GET    /ujikom/jadwal/create        ujikom.jadwal.create  [admin|super_admin]
+POST   /ujikom/jadwal               ujikom.jadwal.store   [admin|super_admin]
+GET    /ujikom/jadwal/{id}          ujikom.jadwal.show
+GET    /ujikom/jadwal/{id}/edit     ujikom.jadwal.edit    [admin|super_admin]
+PUT    /ujikom/jadwal/{id}          ujikom.jadwal.update  [admin|super_admin]
+DELETE /ujikom/jadwal/{id}          ujikom.jadwal.destroy [admin|super_admin]
+POST   /ujikom/jadwal/{id}/publish      ujikom.jadwal.publish    [admin|super_admin]
+POST   /ujikom/jadwal/{id}/selesaikan   ujikom.jadwal.selesaikan [admin|super_admin]
+
+GET    /ujikom/permohonan           ujikom.permohonan.index  [Coming Soon]
+GET    /ujikom/online               ujikom.online.index      [Coming Soon]
+GET    /ujikom/hasil                ujikom.hasil.index       [Coming Soon]
+GET    /karir                       karir.index              [Coming Soon]
+GET    /karir/diklat                karir.diklat.index       [Coming Soon]
+GET    /karir/analitik              karir.analitik.index     [Coming Soon]
+```
+
+---
+
+## 4. Catatan Teknis
+
+### Penempatan Route (Kritis!)
+Route `ujikom/jadwal` **wajib** ditempatkan sebelum group `Route::prefix('ujikom')` yang mengandung `/{id}`. Jika tidak, URL `/ujikom/jadwal` akan tertangkap sebagai `ujikom/{id}` dengan id = "jadwal".
+
+### Upload File Persyaratan
+- Disimpan di `storage/app/public/ujikom/persyaratan/`
+- Diakses via `asset('storage/ujikom/persyaratan/...')`
+- Format yang diterima: pdf, doc, docx, xlsx, xls, jpg, jpeg, png
+- Maksimum: 5MB per file
+- Saat update jadwal: file lama dihapus dari disk sebelum buat baru
+
+### Tidak Ada Soft Delete
+Tabel `ujikom_jadwal` dan `ujikom_persyaratan` tidak menggunakan soft delete (sesuai kebutuhan — hapus permanen).
+
+---
+
+## 5. Testing Checklist
+
+- [x] Migration berjalan tanpa error
+- [x] Semua 9 route ujikom.jadwal.* terdaftar
+- [x] Semua 6 route placeholder terdaftar
+- [x] Route `ujikom/jadwal` tidak konflik dengan `ujikom/{id}`
+- [ ] Admin bisa buat jadwal (draft)
+- [ ] Admin bisa publikasikan jadwal
+- [ ] Admin bisa tandai selesai
+- [ ] Operator/viewer hanya melihat jadwal published (card grid)
+- [ ] Persyaratan tersimpan dengan benar
+- [ ] Upload file persyaratan berfungsi
+- [ ] Link download file contoh berfungsi
+- [ ] Halaman coming_soon muncul untuk 6 menu placeholder
+
+---
+
+## Versi 1.5.3 - Restrukturisasi Menu Sidebar
+**Tanggal:** 22 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Menu sidebar direstrukturisasi menjadi dua dropdown baru: **Kompetensi JFT** (menggantikan Uji Kompetensi) dan **Pengembangan Karir JFT** (menggantikan Pertimbangan Pengangkatan). Menu lama dicomment, bukan dihapus. Header "ADMINISTRASI" sekarang muncul untuk `admin|super_admin`.
+
+---
+
+## Perubahan
+
+### 1. Menu "Uji Kompetensi" → "Kompetensi JFT" (Dropdown)
+**File:** `resources/views/layouts/users/master.blade.php`
+
+Menu lama dicomment. Digantikan dropdown dengan 4 submenu:
+| Submenu | Route | Status |
+|---------|-------|--------|
+| Pengumuman Jadwal Ujikom | `ujikom.jadwal.index` | ✅ Aktif |
+| Pendaftaran Ujikom | `ujikom.permohonan.index` | 🔜 Segera |
+| Uji Kompetensi | `ujikom.online.index` | 🔜 Segera |
+| Hasil Uji Kompetensi | `ujikom.hasil.index` | 🔜 Segera |
+
+### 2. Menu "Pertimbangan Pengangkatan" → "Pengembangan Karir JFT" (Dropdown)
+Menu lama dicomment. Digantikan dropdown dengan 4 submenu:
+| Submenu | Route | Status |
+|---------|-------|--------|
+| Tabel Pengembangan Karir | `karir.index` | 🔜 Segera |
+| Riwayat Diklat | `karir.diklat.index` | 🔜 Segera |
+| Pertimbangan Pengangkatan | `pengangkatan.index` | ✅ Aktif |
+| Analitik Pengembangan | `karir.analitik.index` | 🔜 Segera |
+
+### 3. Header ADMINISTRASI
+Dipindahkan ke dalam `@role('admin|super_admin')` sehingga admin juga melihat header sebelum menu Laporan (sebelumnya hanya muncul untuk super_admin).
+
+### 4. Tampilan Badge "Segera"
+Submenu yang belum aktif menggunakan:
+- `style="pointer-events:none; opacity:0.55;"` untuk disable
+- Badge kuning kecil `<span class="badge badge-warning">Segera</span>`
+
+---
+
+## Versi 1.5.2 - Import Data Unit Kerja dari Excel
+**Tanggal:** 6 April 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Import data Unit Kerja dari file Excel menggunakan Artisan Command yang menghasilkan seeder PHP secara otomatis.
+
+---
+
+## Detail Import
+
+### Perintah yang Digunakan
+```bash
+# 1. Copy file Excel ke folder import
+# file: storage/app/import/unitkerja.xlsx
+
+# 2. Generate seeder dari Excel
+php artisan unitkerja:make-seeder-from-excel --file=storage/app/import/unitkerja.xlsx
+
+# 3. Jalankan seeder untuk import ke database
+php artisan db:seed --class=UnitKerjaFromExcelSeeder20260406003736
+```
+
+### Hasil Import
+| Metric | Value |
+|--------|-------|
+| Total Data Terimport | 523 unit kerja |
+| File Seeder | `database/seeders/UnitKerjaFromExcelSeeder20260406003736.php` |
+
+---
+
+## Data yang Tidak Masuk (16 baris)
+
+### Tidak Ditemukan di Database (2 baris)
+| Baris | Kab/Kota | Keterangan |
+|-------|---------|------------|
+| 16 | Kota Tanjung Pinang | Tidak ada di tabel regencies |
+| 31 | Kota Pangkal Pinang | Tidak ada di tabel regencies |
+
+**Aksi:** Perlu ditambahkan manual ke tabel `regencies` atau update master data
+
+---
+
+### Data Ambigu (Dipilih Otomatis) - 14 baris
+
+| Baris | Kab/Kota | Dipilih | Province |
+|-------|---------|---------|----------|
+| 33 | Kabupaten Serang | KOTA (id=271) | Banten |
+| 45 | Kabupaten Bekasi | KOTA (id=181) | Jawa Barat |
+| 46 | Kabupaten Bogor | KOTA (id=182) | Jawa Barat |
+| 61 | Kabupaten Magelang | KOTA (id=217) | Jawa Tengah |
+| 63 | Kabupaten Pekalongan | KOTA (id=218) | Jawa Tengah |
+| 65 | Kabupaten Semarang | KOTA (id=220) | Jawa Tengah |
+| 81 | Kabupaten Madiun | KOTA (id=260) | Jawa Timur |
+| 83 | Kabupaten Mojokerto | KOTA (id=262) | Jawa Timur |
+| 85 | Kabupaten Pasuruan | KOTA (id=263) | Jawa Timur |
+| 92 | Kabupaten Blitar | KOTA (id=258) | Jawa Timur |
+| 93 | Kabupaten Kediri | KOTA (id=259) | Jawa Timur |
+| 105 | Kabupaten Kupang | KOTA (id=451) | Nusa Tenggara Timur |
+| 119 | Kabupaten Gorontalo | KOTA (id=350) | Gorontalo |
+
+**Catatan:** Data ambigu terjadi karena nama sama ada di tabel KABUPATEN dan KOTA. Command memilih KOTA secara default. Sebaiknya cek dan perbaiki manual.
+
+---
+
+## Cara Kerja Command Import
+
+### Alur Kerja
+```
+1. Copy file Excel (.xlsx/.xls/.csv) ke: storage/app/import/
+2. Jalankan command: php artisan unitkerja:make-seeder-from-excel --file=storage/app/import/[namafile].xlsx
+3. Command akan:
+   - Baca file Excel
+   - Parse header dengan alias support
+   - Resolve Province + Kab/Kota ke Regency ID
+   - Generate file seeder PHP di: database/seeders/
+   - Tampilkan warning jika ada data bermasalah
+4. Jalankan seeder: php artisan db:seed --class=NamaSeeder
+```
+
+### Opsi Command
+| Opsi | Default | Keterangan |
+|------|---------|------------|
+| `--file=` | storage/app/import/unitkerja.xlsx | Path file Excel |
+| `--class=` | Auto (timestamp) | Nama class seeder |
+| `--sheet=0` | 0 (sheet pertama) | Index sheet Excel |
+
+### Alias Header yang Didukung
+```
+nama_unit, nama_unit_kerja, nama_rumahsakit, unit_kerja
+alamat, no_telp, telepon
+provinsi, province
+kab_kota, kab/kota, kabupaten_kota, kota/kab
+latitude, lat, longitude, long, lng
+matra, instansi, no_rs, kode_unit
+```
+
+### Fitur Command
+- **Auto-resolve:** Provinsi + Kab/Kota otomatis cocokkan
+- **Upsert:** Jika data sama ada, akan di-update (bukan duplikat)
+- **Alias:** Terima berbagai nama kolom Excel
+- **Normalisasi:** Matra, Instansi, Province name
+- **Warning:** Tampilkan baris bermasalah untuk ditinjau
+
+---
+
+## Command Import untuk Modul Lain
+
+| Modul | Command | Keterangan |
+|-------|---------|------------|
+| Unit Kerja | `php artisan unitkerja:make-seeder-from-excel` | Generate seeder Unit Kerja |
+| Formasi | `php artisan generate:formasi` | Generate seeder Formasi |
+| SDM/Pegawai | `php artisan generate:sdm` | Generate seeder Pegawai JFT |
+
+---
+
 ## Versi 1.5.1 - Perbaikan & Layout Pertimbangan Pengangkatan
 **Tanggal:** 16 Maret 2026
 **Status:** Dalam Pengembangan 🔄

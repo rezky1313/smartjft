@@ -23,8 +23,16 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'username',
+        'sdm_id',
         'password',
+        'status',
     ];
+
+    public function sdm()
+    {
+        return $this->belongsTo(\App\Models\Sdmmodels::class, 'sdm_id');
+    }
 
     /**
      * The attributes that should be hidden for serialization.

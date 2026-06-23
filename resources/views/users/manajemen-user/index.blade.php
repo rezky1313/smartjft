@@ -37,6 +37,7 @@
                             <th width="50">No</th>
                             <th>Nama</th>
                             <th>Email</th>
+                            <th>Username / NIP</th>
                             <th>Role</th>
                             <th>Status</th>
                             <th width="200">Aksi</th>
@@ -47,7 +48,14 @@
                         <tr>
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $user->name }}</td>
-                            <td>{{ $user->email }}</td>
+                            <td>{{ $user->email ?? '-' }}</td>
+                            <td>
+                                @if($user->username)
+                                    <small class="text-monospace">{{ $user->username }}</small>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>
                                 @foreach($user->roles as $role)
                                     @if($role->name == 'super_admin')
@@ -58,6 +66,10 @@
                                         <span class="badge badge-warning text-dark">{{ ucfirst($role->name) }}</span>
                                     @elseif($role->name == 'viewer')
                                         <span class="badge badge-success">{{ ucfirst($role->name) }}</span>
+                                    @elseif($role->name == 'pemangku')
+                                        <span class="badge badge-info">Pemangku</span>
+                                    @else
+                                        <span class="badge badge-secondary">{{ ucfirst(str_replace('_', ' ', $role->name)) }}</span>
                                     @endif
                                 @endforeach
                             </td>

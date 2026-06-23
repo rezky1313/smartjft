@@ -141,26 +141,102 @@
           </li>
           @endcan
 
-          {{-- Uji Kompetensi - Operator, Admin, Super Admin --}}
-          @role('operator|admin|super_admin')
+          {{-- [LAMA - DISEMBUNYIKAN] Uji Kompetensi - Operator, Admin, Super Admin --}}
+          {{-- @role('operator|admin|super_admin')
           <li class="nav-item">
             <a href="{{ route('ujikom.index') }}" class="nav-link" onclick="pindah(event)">
               <i class="nav-icon fas fa-clipboard-check"></i><p>Uji Kompetensi</p>
             </a>
           </li>
+          @endrole --}}
+
+          {{-- Kompetensi JFT - Operator, Admin, Super Admin --}}
+          @role('operator|admin|super_admin')
+          @php $kompetensiActive = request()->routeIs('ujikom.jadwal.*') || request()->routeIs('ujikom.permohonan.*'); @endphp
+          <li class="nav-item {{ $kompetensiActive ? 'menu-open' : '' }}">
+            <a href="#" class="nav-link {{ $kompetensiActive ? 'active' : '' }}">
+              <i class="nav-icon fas fa-clipboard-check"></i>
+              <p>Kompetensi JFT <i class="fas fa-angle-left right"></i></p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item {{ request()->routeIs('ujikom.jadwal.*') ? 'active' : '' }}">
+                <a href="{{ route('ujikom.jadwal.index') }}" class="nav-link {{ request()->routeIs('ujikom.jadwal.*') ? 'active' : '' }}" onclick="pindah(event)">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Pengumuman Jadwal Ujikom</p>
+                </a>
+              </li>
+              <li class="nav-item {{ request()->routeIs('ujikom.permohonan.*') ? 'active' : '' }}">
+                <a href="{{ route('ujikom.permohonan.index') }}" class="nav-link {{ request()->routeIs('ujikom.permohonan.*') ? 'active' : '' }}">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Pendaftaran Ujikom</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Uji Kompetensi <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Hasil Uji Kompetensi <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                </a>
+              </li>
+            </ul>
+          </li>
           @endrole
 
-          {{-- Pertimbangan Pengangkatan - Operator, Admin, Super Admin --}}
-          @role('operator|admin|super_admin')
+          {{-- [LAMA - DISEMBUNYIKAN] Pertimbangan Pengangkatan - Operator, Admin, Super Admin --}}
+          {{-- @role('operator|admin|super_admin')
           <li class="nav-item">
             <a href="{{ route('pengangkatan.index') }}" class="nav-link" onclick="pindah(event)">
               <i class="nav-icon fas fa-file-signature"></i><p>Pertimbangan Pengangkatan</p>
             </a>
           </li>
+          @endrole --}}
+
+          {{-- Pengembangan Karir JFT - Operator, Admin, Super Admin --}}
+          @role('operator|admin|super_admin')
+          <li class="nav-item">
+            <a href="#" class="nav-link">
+              <i class="nav-icon fas fa-chart-line"></i>
+              <p>Pengembangan Karir JFT <i class="fas fa-angle-left right"></i></p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Tabel Pengembangan Karir <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Riwayat Diklat <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ route('pengangkatan.index') }}" class="nav-link" onclick="pindah(event)">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Pertimbangan Pengangkatan</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+                  <i class="far fa-circle nav-icon"></i>
+                  <p>Analitik Pengembangan <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                </a>
+              </li>
+            </ul>
+          </li>
           @endrole
 
-          {{-- Laporan - Hanya Admin & Super Admin --}}
+          {{-- ADMINISTRASI --}}
           @role('admin|super_admin')
+          <li class="nav-header">ADMINISTRASI</li>
+
+          {{-- Laporan - Hanya Admin & Super Admin --}}
           <li class="nav-item">
             <a href="{{ route('user.laporan.index') }}" class="nav-link" onclick="pindah(event)">
               <i class="nav-icon fas fa-file-alt"></i><p>Laporan</p>
@@ -170,7 +246,6 @@
 
           {{-- Manajemen User - Hanya Super Admin --}}
           @role('super_admin')
-          <li class="nav-header">ADMINISTRASI</li>
           <li class="nav-item">
             <a href="{{ route('user.manajemen-user.index') }}" class="nav-link">
               <i class="nav-icon fas fa-users-cog"></i>

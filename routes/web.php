@@ -14,6 +14,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\UjikomController;
 use App\Http\Controllers\PengangkatanController;
+use App\Http\Controllers\UjikomJadwalController;
+use App\Http\Controllers\UjikomPendaftaranController;
 
 
 /*
@@ -183,6 +185,80 @@ Route::get('laporan/pemangku-simple',
         Route::get('export-excel/{tab}', [LaporanController::class, 'exportExcel'])->name('export-excel');
     });
 
+});
+
+// ─── Ujikom Jadwal (Pengumuman Jadwal Uji Kompetensi) ──────────────────────────
+// PENTING: Group ini harus di atas group ujikom/{id} agar tidak tertangkap wildcard
+Route::prefix('ujikom/jadwal')->name('ujikom.jadwal.')->middleware('auth')->group(function () {
+    Route::get('/',          [UjikomJadwalController::class, 'index'])->name('index');
+    Route::get('/create',    [UjikomJadwalController::class, 'create'])->name('create')
+        ->middleware('role:admin|super_admin');
+    Route::post('/',         [UjikomJadwalController::class, 'store'])->name('store')
+        ->middleware('role:admin|super_admin');
+    Route::get('/{id}',      [UjikomJadwalController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [UjikomJadwalController::class, 'edit'])->name('edit')
+        ->middleware('role:admin|super_admin');
+    Route::put('/{id}',      [UjikomJadwalController::class, 'update'])->name('update')
+        ->middleware('role:admin|super_admin');
+    Route::delete('/{id}',   [UjikomJadwalController::class, 'destroy'])->name('destroy')
+        ->middleware('role:admin|super_admin');
+    Route::post('/{id}/publish',     [UjikomJadwalController::class, 'publish'])->name('publish')
+        ->middleware('role:admin|super_admin');
+    Route::post('/{id}/selesaikan',  [UjikomJadwalController::class, 'selesaikan'])->name('selesaikan')
+        ->middleware('role:admin|super_admin');
+});
+
+// ─── Ujikom Pendaftaran (Permohonan Uji Kompetensi) ───────────────────────────
+// PENTING: Group ini harus di atas group ujikom/{id} agar tidak tertangkap wildcard
+Route::prefix('ujikom/pendaftaran')->name('ujikom.permohonan.')->middleware('auth')->group(function () {
+    // AJAX helpers — HARUS di atas /{id}
+    Route::get('/jadwal-info/{jadwalId}', [UjikomPendaftaranController::class, 'getJadwalInfo'])->name('jadwal-info');
+    Route::get('/pegawai-list',           [UjikomPendaftaranController::class, 'getPegawaiList'])->name('pegawai-list');
+    Route::get('/get-pegawai',            [UjikomPendaftaranController::class, 'getPegawai'])->name('get-pegawai');
+    Route::get('/get-formasi',            [UjikomPendaftaranController::class, 'getFormasi'])->name('get-formasi');
+    Route::get('/get-jabatan-tujuan',     [UjikomPendaftaranController::class, 'getJabatanTujuan'])->name('get-jabatan-tujuan');
+    Route::get('/cek-formasi/{pegawaiId}',[UjikomPendaftaranController::class, 'cekFormasi'])->name('cek-formasi');
+
+    // CRUD
+    Route::get('/',          [UjikomPendaftaranController::class, 'index'])->name('index');
+    Route::get('/create',    [UjikomPendaftaranController::class, 'create'])->name('create');
+    Route::post('/',         [UjikomPendaftaranController::class, 'store'])->name('store');
+    Route::get('/{id}',      [UjikomPendaftaranController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [UjikomPendaftaranController::class, 'edit'])->name('edit');
+    Route::put('/{id}',      [UjikomPendaftaranController::class, 'update'])->name('update');
+    Route::delete('/{id}',   [UjikomPendaftaranController::class, 'destroy'])->name('destroy');
+
+    // Workflow
+    Route::post('/{id}/ajukan',           [UjikomPendaftaranController::class, 'ajukan'])->name('ajukan');
+    Route::post('/{id}/verifikasi-admin', [UjikomPendaftaranController::class, 'verifikasiAdminUnit'])->name('verifikasi.admin');
+    Route::post('/{id}/tolak-admin',      [UjikomPendaftaranController::class, 'tolakAdminUnit'])->name('tolak.admin');
+    Route::post('/{id}/ajukan-pusbin',    [UjikomPendaftaranController::class, 'ajukanPusbin'])->name('ajukan.pusbin');
+    Route::post('/{id}/verifikasi-pusbin',[UjikomPendaftaranController::class, 'verifikasiPusbin'])->name('verifikasi.pusbin');
+    Route::post('/{id}/tolak-pusbin',     [UjikomPendaftaranController::class, 'tolakPusbin'])->name('tolak.pusbin');
+    Route::post('/{id}/verifikasi-berkas',[UjikomPendaftaranController::class, 'verifikasiBerkas'])->name('verifikasi.berkas');
+});
+
+// ─── Placeholder Routes — Coming Soon ─────────────────────────────────────────
+Route::middleware(['auth'])->group(function () {
+    Route::get('/ujikom/online', function () {
+        return view('coming_soon', ['judul' => 'Uji Kompetensi Online']);
+    })->name('ujikom.online.index');
+
+    Route::get('/ujikom/hasil', function () {
+        return view('coming_soon', ['judul' => 'Hasil Uji Kompetensi']);
+    })->name('ujikom.hasil.index');
+
+    Route::get('/karir', function () {
+        return view('coming_soon', ['judul' => 'Tabel Pengembangan Karir JFT']);
+    })->name('karir.index');
+
+    Route::get('/karir/diklat', function () {
+        return view('coming_soon', ['judul' => 'Riwayat Diklat']);
+    })->name('karir.diklat.index');
+
+    Route::get('/karir/analitik', function () {
+        return view('coming_soon', ['judul' => 'Analitik Pengembangan']);
+    })->name('karir.analitik.index');
 });
 
 // Uji Kompetensi (semua role kecuali viewer)

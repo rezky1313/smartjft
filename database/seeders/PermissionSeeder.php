@@ -53,5 +53,19 @@ class PermissionSeeder extends Seeder
 
         // Permissions untuk Manajemen User
         Permission::firstOrCreate(['name' => 'manage users']);
+
+        // Permissions untuk Jadwal & Pendaftaran Ujikom (role pemangku)
+        Permission::firstOrCreate(['name' => 'view ujikom jadwal']);
+        Permission::firstOrCreate(['name' => 'view ujikom permohonan']);
+        Permission::firstOrCreate(['name' => 'create ujikom permohonan']);
+
+        // Role Pemangku
+        $pemangku = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'pemangku']);
+        $pemangku->syncPermissions([
+            'view dashboard',
+            'view ujikom jadwal',
+            'view ujikom permohonan',
+            'create ujikom permohonan',
+        ]);
     }
 }

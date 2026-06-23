@@ -125,13 +125,13 @@
 
         {{-- Username atau Email --}}
         <div class="input-row">
-          <label for="login" style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px">Username atau Email</label>
+          <label for="login" style="display:block;font-size:13px;color:#6b7280;margin-bottom:6px">Email / NIP</label>
           <div class="field">
             <svg class="icon" viewBox="0 0 24 24" fill="none">
               <path d="M12 12a5 5 0 100-10 5 5 0 000 10Z" stroke="currentColor" stroke-width="1.6"/>
               <path d="M4 22a8 8 0 1116 0" stroke="currentColor" stroke-width="1.6"/>
             </svg>
-            <input id="email" name="email" type="text" value="{{ old('email') }}" placeholder="Masukkan username atau email" required autofocus>
+            <input id="login" name="login" type="text" value="{{ old('login') }}" placeholder="Masukkan Email atau NIP" required autofocus>
           </div>
         </div>
 

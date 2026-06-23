@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Sdmmodels;
+use App\Models\Rumahsakit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -14,7 +16,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::with('roles')->orderBy('name')->get();
+        $users = User::with('roles', 'sdm')->orderBy('name')->get();
         return view('users.manajemen-user.index', compact('users'));
     }
 
@@ -24,7 +26,8 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::all();
-        return view('users.manajemen-user.form', compact('roles'));
+        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        return view('users.manajemen-user.form', compact('roles', 'unitKerjas'));
     }
 
     /**
@@ -32,20 +35,46 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6|confirmed',
-            'role' => 'required|exists:roles,name',
-            'status' => 'required|in:active,inactive',
-        ]);
+        $isPemangku = $request->role === 'pemangku';
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'status' => $request->status,
-        ]);
+        if ($isPemangku) {
+            $request->validate([
+                'name'     => 'required|string|max:255',
+                'email'    => 'nullable|string|email|max:255|unique:users',
+                'sdm_id'   => 'required|exists:sumber_daya_manusia,id',
+                'role'     => 'required|exists:roles,name',
+                'status'   => 'required|in:active,inactive',
+            ], [
+                'sdm_id.required' => 'Data pegawai JFT wajib dipilih untuk role Pemangku.',
+                'sdm_id.exists'   => 'Data pegawai yang dipilih tidak valid.',
+            ]);
+
+            $sdm = Sdmmodels::findOrFail($request->sdm_id);
+
+            $user = User::create([
+                'name'     => $sdm->nama_lengkap,
+                'email'    => $request->email ?? null,
+                'username' => $sdm->nip,
+                'sdm_id'   => $sdm->id,
+                'password' => Hash::make($sdm->nip),
+                'status'   => $request->status,
+            ]);
+        } else {
+            $request->validate([
+                'name'     => 'required|string|max:255',
+                'email'    => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:6|confirmed',
+                'role'     => 'required|exists:roles,name',
+                'status'   => 'required|in:active,inactive',
+            ]);
+
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'status'   => $request->status,
+            ]);
+        }
 
         $user->assignRole($request->role);
 
@@ -59,8 +88,9 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::all();
-        $user->load('roles');
-        return view('users.manajemen-user.form', compact('user', 'roles'));
+        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        $user->load('roles', 'sdm');
+        return view('users.manajemen-user.form', compact('user', 'roles', 'unitKerjas'));
     }
 
     /**
@@ -68,20 +98,43 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|exists:roles,name',
-            'status' => 'required|in:active,inactive',
-        ]);
+        $isPemangku = $request->role === 'pemangku';
 
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'status' => $request->status,
-        ]);
+        if ($isPemangku) {
+            $request->validate([
+                'name'   => 'required|string|max:255',
+                'email'  => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+                'sdm_id' => 'required|exists:sumber_daya_manusia,id',
+                'role'   => 'required|exists:roles,name',
+                'status' => 'required|in:active,inactive',
+            ], [
+                'sdm_id.required' => 'Data pegawai JFT wajib dipilih untuk role Pemangku.',
+            ]);
 
-        // Hapus semua role lama dan assign role baru
+            $sdm = Sdmmodels::findOrFail($request->sdm_id);
+
+            $user->update([
+                'name'     => $sdm->nama_lengkap,
+                'email'    => $request->email ?? $user->email,
+                'username' => $sdm->nip,
+                'sdm_id'   => $sdm->id,
+                'status'   => $request->status,
+            ]);
+        } else {
+            $request->validate([
+                'name'   => 'required|string|max:255',
+                'email'  => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                'role'   => 'required|exists:roles,name',
+                'status' => 'required|in:active,inactive',
+            ]);
+
+            $user->update([
+                'name'   => $request->name,
+                'email'  => $request->email,
+                'status' => $request->status,
+            ]);
+        }
+
         $user->syncRoles([$request->role]);
 
         return redirect()->route('user.manajemen-user.index')

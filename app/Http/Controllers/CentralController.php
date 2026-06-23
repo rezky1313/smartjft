@@ -23,36 +23,38 @@ class CentralController extends Controller
     }
 
     public function LoginAksi(Request $request){
-            $request->validate([
-                'email'=>'required',
-                'password'=>'required'
-            ],
-            [
-                'email.required' => 'Email Wajib Diisi',
-                'password.required' => 'Password Wajib Diisi',
-            ]);
+        $request->validate([
+            'login'    => 'required',
+            'password' => 'required',
+        ], [
+            'login.required'    => 'Email atau NIP wajib diisi.',
+            'password.required' => 'Password wajib diisi.',
+        ]);
 
-            $infologin = [
-                'email' => $request->email,
-                'password' => $request->password,
-            ];
+        $loginField = $request->login;
 
-            if(Auth::attempt($infologin)){
-                // Reload user untuk mendapatkan data terbaru termasuk roles dari Spatie
-                $user = Auth::user()->fresh();
+        // Deteksi apakah input berupa email atau username/NIP
+        $fieldType = filter_var($loginField, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-                // Cek apakah user punya role Spatie
-                if ($user->roles->isEmpty()) {
-                    // Jika user belum punya role, assign default role 'viewer'
-                    $user->assignRole('viewer');
-                }
+        $credentials = [
+            $fieldType => $loginField,
+            'password' => $request->password,
+        ];
 
-                // Redirect semua user ke dashboard
-                return redirect()->route('user.peta');
-            }else{
-                return redirect('')->withErrors('Username Atau Password Yang Dimasukkan Tidak Sesuai')->withInput();
+        if (Auth::attempt($credentials)) {
+            $user = Auth::user()->fresh();
+
+            if ($user->roles->isEmpty()) {
+                $user->assignRole('viewer');
             }
+
+            return redirect()->route('user.peta');
         }
+
+        return back()->withErrors([
+            'login' => 'Email/NIP atau password salah.',
+        ])->withInput();
+    }
 
     //Register
     public function register(){
