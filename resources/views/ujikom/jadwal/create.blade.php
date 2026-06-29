@@ -35,6 +35,35 @@
             @error('judul')<div class="invalid-feedback">{{ $message }}</div>@enderror
           </div>
 
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Jenis Ujian</label>
+                <select name="jenis_ujian" class="form-control @error('jenis_ujian') is-invalid @enderror">
+                  <option value="">-- Pilih Jenis Ujian --</option>
+                  <option value="kenaikan_jabatan"      {{ old('jenis_ujian') === 'kenaikan_jabatan'      ? 'selected' : '' }}>Kenaikan Jabatan</option>
+                  <option value="perpindahan_jabatan"   {{ old('jenis_ujian') === 'perpindahan_jabatan'   ? 'selected' : '' }}>Perpindahan Jabatan</option>
+                  <option value="penyesuaian_inpassing" {{ old('jenis_ujian') === 'penyesuaian_inpassing' ? 'selected' : '' }}>Penyesuaian (Inpassing)</option>
+                </select>
+                @error('jenis_ujian')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Matra</label>
+                <select name="matra" class="form-control @error('matra') is-invalid @enderror">
+                  <option value="">-- Pilih Matra --</option>
+                  <option value="Darat"  {{ old('matra') === 'Darat'  ? 'selected' : '' }}>Darat</option>
+                  <option value="Laut"   {{ old('matra') === 'Laut'   ? 'selected' : '' }}>Laut</option>
+                  <option value="Udara"  {{ old('matra') === 'Udara'  ? 'selected' : '' }}>Udara</option>
+                  <option value="ASDP"   {{ old('matra') === 'ASDP'   ? 'selected' : '' }}>ASDP</option>
+                  <option value="Semua"  {{ old('matra') === 'Semua'  ? 'selected' : '' }}>Semua Matra</option>
+                </select>
+                @error('matra')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Deskripsi</label>
             <textarea name="deskripsi" class="form-control @error('deskripsi') is-invalid @enderror"
@@ -80,7 +109,10 @@
 
           {{-- PERSYARATAN --}}
           <h5 class="font-weight-bold border-bottom pb-2 mb-3 mt-4">Persyaratan Peserta</h5>
-          <p class="text-muted small mb-2">Tambahkan persyaratan yang harus dipenuhi peserta. (Opsional)</p>
+          <p class="text-muted small mb-2">
+            <i class="fas fa-info-circle mr-1"></i>
+            12 persyaratan standar telah diisi otomatis. Anda dapat mengedit, menghapus, atau menambah persyaratan tambahan.
+          </p>
 
           <table class="table table-bordered table-sm" id="tabelPersyaratan">
             <thead class="thead-light">
@@ -94,15 +126,39 @@
               </tr>
             </thead>
             <tbody id="persyaratanBody">
-              {{-- Baris default --}}
+              @php
+              $persyaratanDefault = [
+                  'Surat Usulan Uji Kompetensi dari Pimpinan Unit Kerja',
+                  'Surat Keterangan Integritas dan Moralitas',
+                  'Surat Keterangan Sehat dari Dokter',
+                  'SK PNS',
+                  'SK Kenaikan Pangkat Terakhir',
+                  'SK Jabatan Terakhir',
+                  'Ijazah Terakhir',
+                  'Dokumen Evaluasi Kinerja Minimal Predikat BAIK 2 (dua) Tahun Terakhir',
+                  'PAK Kumulatif',
+                  'Surat Keterangan Tidak Sedang Menjalani Tugas Belajar (lebih dari 6 bulan dan diberhentikan dari jabatan) dan Tidak Sedang Cuti Diluar Tanggungan Negara',
+                  'Sertifikat Kompetensi Pelatihan yang Dipersyaratkan untuk Menduduki Jabatan',
+                  'Karya Tulis Ilmiah (bagi usulan ke Jenjang Ahli Madya)',
+              ];
+              @endphp
+              @foreach ($persyaratanDefault as $idx => $namaSyarat)
               <tr class="baris-persyaratan">
-                <td class="nomor-baris text-center">1</td>
-                <td><input type="text" name="persyaratan[0][nama_syarat]" class="form-control form-control-sm" placeholder="Nama syarat..."></td>
-                <td><input type="text" name="persyaratan[0][keterangan]" class="form-control form-control-sm" placeholder="Keterangan (opsional)"></td>
-                <td><input type="number" name="persyaratan[0][urutan]" class="form-control form-control-sm" value="1" min="1"></td>
-                <td><input type="file" name="persyaratan[0][file_contoh]" class="form-control-file" style="font-size:0.8rem;"></td>
-                <td class="text-center"><button type="button" class="btn btn-danger btn-xs hapus-baris"><i class="fas fa-times"></i></button></td>
+                <td class="nomor-baris text-center">{{ $idx + 1 }}</td>
+                <td><input type="text" name="persyaratan[{{ $idx }}][nama_syarat]" class="form-control form-control-sm"
+                           value="{{ old("persyaratan.{$idx}.nama_syarat", $namaSyarat) }}"></td>
+                <td><input type="text" name="persyaratan[{{ $idx }}][keterangan]" class="form-control form-control-sm"
+                           value="{{ old("persyaratan.{$idx}.keterangan") }}" placeholder="Keterangan (opsional)"></td>
+                <td><input type="number" name="persyaratan[{{ $idx }}][urutan]" class="form-control form-control-sm"
+                           value="{{ old("persyaratan.{$idx}.urutan", $idx + 1) }}" min="1"></td>
+                <td><input type="file" name="persyaratan[{{ $idx }}][file_contoh]" class="form-control-file" style="font-size:0.8rem;"></td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-danger btn-xs hapus-baris" title="Hapus baris ini">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </td>
               </tr>
+              @endforeach
             </tbody>
           </table>
 
@@ -134,7 +190,7 @@
 
 @push('scripts')
 <script>
-let barisIndex = 1;
+let barisIndex = 12;
 
 $('#tambahBaris').on('click', function () {
   const html = `
@@ -152,10 +208,8 @@ $('#tambahBaris').on('click', function () {
 });
 
 $(document).on('click', '.hapus-baris', function () {
-  if ($('.baris-persyaratan').length > 1) {
-    $(this).closest('tr').remove();
-    updateNomor();
-  }
+  $(this).closest('tr').remove();
+  updateNomor();
 });
 
 function updateNomor() {

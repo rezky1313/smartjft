@@ -14,11 +14,7 @@
   {{-- AdminLTE CSS --}}
   <link rel="stylesheet" href="/library/dist/css/adminlte.min.css">
 
-  {{-- Leaflet CSS (peta) --}}
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" crossorigin=""/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+  {{-- Leaflet CSS: dipush hanya oleh halaman yang membutuhkan peta --}}
 
   {{-- DataTables CSS --}}
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -63,9 +59,11 @@
           @role('super_admin')
             <span class="badge badge-danger ml-2">Super Admin</span>
           @elserole('admin')
-            <span class="badge badge-primary ml-2">Admin</span>
-          @elserole('operator')
-            <span class="badge badge-warning text-dark ml-2">Operator</span>
+            <span class="badge badge-primary ml-2">Admin Pusbin</span>
+          @elserole('admin_unit')
+            <span class="badge badge-info ml-2">Admin Unit</span>
+          @elserole('pemangku')
+            <span class="badge badge-warning text-dark ml-2">Pemangku JFT</span>
           @elserole('viewer')
             <span class="badge badge-success ml-2">Viewer</span>
           @endrole
@@ -150,8 +148,8 @@
           </li>
           @endrole --}}
 
-          {{-- Kompetensi JFT - Operator, Admin, Super Admin --}}
-          @role('operator|admin|super_admin')
+          {{-- Kompetensi JFT: semua role kecuali viewer --}}
+          @hasanyrole('super_admin|admin|admin_unit|pemangku')
           @php $kompetensiActive = request()->routeIs('ujikom.jadwal.*') || request()->routeIs('ujikom.permohonan.*'); @endphp
           <li class="nav-item {{ $kompetensiActive ? 'menu-open' : '' }}">
             <a href="#" class="nav-link {{ $kompetensiActive ? 'active' : '' }}">
@@ -159,18 +157,26 @@
               <p>Kompetensi JFT <i class="fas fa-angle-left right"></i></p>
             </a>
             <ul class="nav nav-treeview">
+              {{-- Jadwal Ujikom: semua role --}}
+              @can('view ujikom jadwal')
               <li class="nav-item {{ request()->routeIs('ujikom.jadwal.*') ? 'active' : '' }}">
                 <a href="{{ route('ujikom.jadwal.index') }}" class="nav-link {{ request()->routeIs('ujikom.jadwal.*') ? 'active' : '' }}" onclick="pindah(event)">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Pengumuman Jadwal Ujikom</p>
                 </a>
               </li>
+              @endcan
+
+              {{-- Pendaftaran Ujikom: semua kecuali viewer --}}
+              @can('view ujikom permohonan')
               <li class="nav-item {{ request()->routeIs('ujikom.permohonan.*') ? 'active' : '' }}">
-                <a href="{{ route('ujikom.permohonan.index') }}" class="nav-link {{ request()->routeIs('ujikom.permohonan.*') ? 'active' : '' }}">
+                <a href="{{ route('ujikom.permohonan.index') }}" class="nav-link {{ request()->routeIs('ujikom.permohonan.*') ? 'active' : '' }}" onclick="pindah(event)">
                   <i class="far fa-circle nav-icon"></i>
                   <p>Pendaftaran Ujikom</p>
                 </a>
               </li>
+              @endcan
+
               <li class="nav-item">
                 <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
                   <i class="far fa-circle nav-icon"></i>
@@ -185,19 +191,10 @@
               </li>
             </ul>
           </li>
-          @endrole
+          @endhasanyrole
 
-          {{-- [LAMA - DISEMBUNYIKAN] Pertimbangan Pengangkatan - Operator, Admin, Super Admin --}}
-          {{-- @role('operator|admin|super_admin')
-          <li class="nav-item">
-            <a href="{{ route('pengangkatan.index') }}" class="nav-link" onclick="pindah(event)">
-              <i class="nav-icon fas fa-file-signature"></i><p>Pertimbangan Pengangkatan</p>
-            </a>
-          </li>
-          @endrole --}}
-
-          {{-- Pengembangan Karir JFT - Operator, Admin, Super Admin --}}
-          @role('operator|admin|super_admin')
+          {{-- Pengembangan Karir JFT: hanya admin dan super_admin --}}
+          @hasanyrole('super_admin|admin')
           <li class="nav-item">
             <a href="#" class="nav-link">
               <i class="nav-icon fas fa-chart-line"></i>
@@ -230,21 +227,19 @@
               </li>
             </ul>
           </li>
-          @endrole
+          @endhasanyrole
 
-          {{-- ADMINISTRASI --}}
-          @role('admin|super_admin')
+          {{-- ADMINISTRASI: hanya admin & super_admin --}}
+          @hasanyrole('admin|super_admin')
           <li class="nav-header">ADMINISTRASI</li>
-
-          {{-- Laporan - Hanya Admin & Super Admin --}}
           <li class="nav-item">
             <a href="{{ route('user.laporan.index') }}" class="nav-link" onclick="pindah(event)">
               <i class="nav-icon fas fa-file-alt"></i><p>Laporan</p>
             </a>
           </li>
-          @endrole
+          @endhasanyrole
 
-          {{-- Manajemen User - Hanya Super Admin --}}
+          {{-- Manajemen User: hanya super_admin --}}
           @role('super_admin')
           <li class="nav-item">
             <a href="{{ route('user.manajemen-user.index') }}" class="nav-link">
@@ -285,13 +280,10 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 
-{{-- Leaflet JS (peta) --}}
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet-geosearch@3.1.0/dist/geosearch.umd.js"></script>
-<script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
-<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+{{-- Leaflet JS: dipush hanya oleh halaman yang membutuhkan peta --}}
+@stack('leaflet')
 
-{{-- Komponen map bawaan project (kalau ada script di dalamnya) --}}
+{{-- Komponen map bawaan project (inisialisasi dengan existence check) --}}
 @include('layouts.component.map')
 
 {{-- Script halaman anak (Select2 init, dsb) HARUS setelah semua library di-load --}}

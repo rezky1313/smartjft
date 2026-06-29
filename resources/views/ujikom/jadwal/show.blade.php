@@ -52,6 +52,17 @@
           </div>
         </div>
 
+        <div class="row mt-3">
+          <div class="col-md-3">
+            <p class="mb-1 text-muted small font-weight-bold">JENIS UJIAN</p>
+            <p class="mb-0"><i class="fas fa-graduation-cap mr-1 text-info"></i>{{ $jadwal->jenis_ujian_label }}</p>
+          </div>
+          <div class="col-md-3">
+            <p class="mb-1 text-muted small font-weight-bold">MATRA</p>
+            <p class="mb-0"><i class="fas fa-layer-group mr-1 text-warning"></i>{{ $jadwal->matra ?: '-' }}</p>
+          </div>
+        </div>
+
         @if ($jadwal->pembuat)
         <div class="row mt-2">
           <div class="col-md-6">
@@ -66,7 +77,7 @@
         @endif
 
         {{-- Tombol Aksi Admin --}}
-        @role('admin|super_admin')
+        @hasanyrole('super_admin|admin')
         <hr>
         <div class="d-flex flex-wrap gap-2">
           @if ($jadwal->status === 'draft')
@@ -80,25 +91,27 @@
               <i class="fas fa-globe mr-1"></i> Publikasikan
             </button>
           </form>
+          @endif
+          @if ($jadwal->status === 'published')
+          <form action="{{ route('ujikom.jadwal.selesaikan', $jadwal->id) }}" method="POST" class="d-inline"
+                onsubmit="return confirm('Tandai jadwal ini sebagai selesai?')">
+            @csrf
+            <button type="submit" class="btn btn-secondary btn-sm mr-2">
+              <i class="fas fa-check-double mr-1"></i> Tandai Selesai
+            </button>
+          </form>
+          @endif
+          @if ($jadwal->status !== 'selesai')
           <form action="{{ route('ujikom.jadwal.destroy', $jadwal->id) }}" method="POST" class="d-inline"
-                onsubmit="return confirm('Hapus jadwal ini secara permanen?')">
+                onsubmit="return confirm('Hapus jadwal ini secara permanen? Semua data pendaftaran terkait (draft/ditolak) juga akan dihapus.')">
             @csrf @method('DELETE')
             <button type="submit" class="btn btn-danger btn-sm">
               <i class="fas fa-trash mr-1"></i> Hapus
             </button>
           </form>
           @endif
-          @if ($jadwal->status === 'published')
-          <form action="{{ route('ujikom.jadwal.selesaikan', $jadwal->id) }}" method="POST" class="d-inline"
-                onsubmit="return confirm('Tandai jadwal ini sebagai selesai?')">
-            @csrf
-            <button type="submit" class="btn btn-secondary btn-sm">
-              <i class="fas fa-check-double mr-1"></i> Tandai Selesai
-            </button>
-          </form>
-          @endif
         </div>
-        @endrole
+        @endhasanyrole
       </div>
     </div>
 
@@ -154,11 +167,11 @@
           <i class="fas fa-users mr-2"></i>Peserta Terdaftar
           <span class="badge badge-{{ $totalPeserta > 0 ? 'primary' : 'secondary' }} ml-2">{{ $totalPeserta }}</span>
         </h3>
-        @role('operator|admin|super_admin')
-        <a href="{{ route('ujikom.permohonan.create') }}?jadwal_id={{ $jadwal->id }}" class="btn btn-primary btn-sm">
+        @can('create ujikom permohonan')
+        <a href="{{ route('ujikom.permohonan.create', ['jadwal_id' => $jadwal->id]) }}" class="btn btn-primary btn-sm">
           <i class="fas fa-plus mr-1"></i> Daftar Ujikom
         </a>
-        @endrole
+        @endcan
       </div>
       <div class="card-body">
         @if ($totalPeserta === 0)
@@ -184,7 +197,8 @@
                     <th width="40">No</th>
                     <th>NIP</th>
                     <th>Nama Pegawai</th>
-                    <th>Jabatan / Jenjang</th>
+                    <th>Jenjang Saat Ini</th>
+                    <th>Jabatan Tujuan</th>
                     <th>Status Formasi</th>
                   </tr>
                 </thead>
@@ -193,8 +207,9 @@
                   <tr>
                     <td class="text-center">{{ $i + 1 }}</td>
                     <td><small>{{ $peserta->pegawai?->nip ?? '-' }}</small></td>
-                    <td>{{ $peserta->pegawai?->nama ?? '-' }}</td>
-                    <td><small>{{ $peserta->pegawai?->jabatan?->nama_jabatan ?? '-' }} / {{ $peserta->pegawai?->jenjang?->jenjang ?? '-' }}</small></td>
+                    <td>{{ $peserta->pegawai?->nama_lengkap ?? '-' }}</td>
+                    <td><small>{{ $peserta->pegawai?->formasi?->jenjang?->nama_jenjang ?? '-' }}</small></td>
+                    <td><small>{{ $peserta->jabatanTujuan?->nama_formasi ?? '-' }} / {{ $peserta->jenjang_tujuan ?? '-' }}</small></td>
                     <td>
                       <span class="badge badge-{{ $peserta->status_formasi === 'tersedia' ? 'success' : 'warning' }}">
                         {{ $peserta->status_formasi === 'tersedia' ? 'Tersedia' : 'Tidak Tersedia' }}

@@ -246,7 +246,11 @@ class UjikomPendaftaranController extends Controller
         $user  = Auth::user();
         $query = UjikomPendaftaran::with(['jadwal', 'unitKerja', 'peserta']);
 
-        if (!$user->hasRole(['admin', 'super_admin'])) {
+        if ($user->hasRole('admin_unit')) {
+            // Admin unit: lihat semua pendaftaran dari unit kerjanya
+            $query->where('unit_kerja_id', $user->unit_kerja_id);
+        } elseif (!$user->hasRole(['admin', 'super_admin'])) {
+            // Pemangku & viewer: hanya lihat milik sendiri
             $query->where('dibuat_oleh', $user->id);
         }
 
@@ -261,11 +265,20 @@ class UjikomPendaftaranController extends Controller
 
     public function create()
     {
-        $jadwals     = UjikomJadwal::where('status', 'published')
+        $jadwals    = UjikomJadwal::where('status', 'published')
                         ->orderBy('tanggal_mulai', 'desc')->get();
-        $unitKerjas  = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
 
-        return view('ujikom.pendaftaran.create', compact('jadwals', 'unitKerjas'));
+        $sdmPemangku = null;
+        if (Auth::user()->hasRole('pemangku')) {
+            $sdmPemangku = Auth::user()->sdm;
+            if (!$sdmPemangku) {
+                return redirect()->route('ujikom.permohonan.index')
+                    ->with('error', 'Akun Anda belum terhubung ke data pegawai. Hubungi admin untuk menghubungkan akun Anda.');
+            }
+        }
+
+        return view('ujikom.pendaftaran.create', compact('jadwals', 'unitKerjas', 'sdmPemangku'));
     }
 
     public function store(Request $request)
@@ -470,30 +483,46 @@ class UjikomPendaftaranController extends Controller
             return back()->with('error', 'Permohonan harus memiliki minimal 1 peserta sebelum diajukan.');
         }
 
-        $pendaftaran->update(['status' => 'diajukan_admin_unit']);
-        return redirect()->route('ujikom.permohonan.show', $id)->with('success', 'Permohonan berhasil diajukan ke Admin Unit.');
+        $pendaftaran->update([
+            'status'             => 'diajukan_admin_unit',
+            'diajukan_oleh_role' => Auth::user()->roles->first()?->name,
+        ]);
+        return redirect()->route('ujikom.permohonan.show', $id)->with('success', 'Permohonan berhasil diajukan.');
     }
 
     public function verifikasiAdminUnit(Request $request, $id)
     {
         $pendaftaran = UjikomPendaftaran::findOrFail($id);
+        $user        = Auth::user();
+
+        // Admin unit hanya bisa verifikasi permohonan dari unit kerjanya sendiri
+        if ($user->hasRole('admin_unit') && $pendaftaran->unit_kerja_id != $user->unit_kerja_id) {
+            abort(403, 'Anda tidak berwenang memverifikasi permohonan unit kerja lain.');
+        }
 
         if ($pendaftaran->status !== 'diajukan_admin_unit') {
             return back()->with('error', 'Status tidak sesuai untuk aksi ini.');
         }
 
         $pendaftaran->update([
-            'status'              => 'diverifikasi_admin_unit',
-            'catatan_admin_unit'  => $request->catatan_admin_unit,
+            'status'             => 'diajukan_pusbin',
+            'catatan_admin_unit' => $request->catatan_admin_unit,
         ]);
 
-        return redirect()->route('ujikom.permohonan.show', $id)->with('success', 'Permohonan berhasil diverifikasi oleh Admin Unit.');
+        return redirect()->route('ujikom.permohonan.show', $id)
+            ->with('success', 'Permohonan berhasil diverifikasi dan diteruskan ke Pusbin.');
     }
 
     public function tolakAdminUnit(Request $request, $id)
     {
-        $request->validate(['catatan_admin_unit' => 'required|string']);
+        $request->validate(['catatan_admin_unit' => 'required|string|min:5']);
         $pendaftaran = UjikomPendaftaran::findOrFail($id);
+        $user        = Auth::user();
+
+        // Admin unit hanya bisa menolak permohonan dari unit kerjanya sendiri
+        if ($user->hasRole('admin_unit') && $pendaftaran->unit_kerja_id != $user->unit_kerja_id) {
+            abort(403, 'Anda tidak berwenang menolak permohonan unit kerja lain.');
+        }
 
         if ($pendaftaran->status !== 'diajukan_admin_unit') {
             return back()->with('error', 'Status tidak sesuai untuk aksi ini.');
@@ -504,7 +533,8 @@ class UjikomPendaftaranController extends Controller
             'catatan_admin_unit' => $request->catatan_admin_unit,
         ]);
 
-        return redirect()->route('ujikom.permohonan.show', $id)->with('success', 'Permohonan ditolak oleh Admin Unit.');
+        return redirect()->route('ujikom.permohonan.show', $id)
+            ->with('success', 'Permohonan ditolak oleh Admin Unit.');
     }
 
     public function ajukanPusbin($id)
@@ -579,6 +609,7 @@ class UjikomPendaftaranController extends Controller
     {
         $user = Auth::user();
         if ($user->hasRole(['admin', 'super_admin'])) return;
+        if ($user->hasRole('admin_unit') && $pendaftaran->unit_kerja_id == $user->unit_kerja_id) return;
         if ($pendaftaran->dibuat_oleh === $user->id) return;
         abort(403);
     }
@@ -590,6 +621,7 @@ class UjikomPendaftaranController extends Controller
         }
         $user = Auth::user();
         if ($user->hasRole(['admin', 'super_admin'])) return;
+        // Admin unit tidak bisa edit, hanya verifikasi
         if ($pendaftaran->dibuat_oleh === $user->id) return;
         abort(403);
     }

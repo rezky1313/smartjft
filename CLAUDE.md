@@ -241,3 +241,4 @@ Abaikan semua hal terkait SIJATI sampai ada instruksi lebih lanjut.
 5. Setiap perubahan besar, **jelaskan dulu rencana perubahannya** sebelum dieksekusi
 6. setiap ada perubahan atau penambahan fitur, dokumentasikan dengan detail, mengupdate file changelog.md pada folder root dan memory sertakan tanggal
 7. untuk setiap session chat baru di awal selalu baca file claude.md dan changelog.md pada root folder untuk mengetahui konteks dan perubahan
+8. **JANGAN tambahkan `Co-Authored-By: Claude` di commit message.** User tidak ingin Claude muncul sebagai co-author di GitHub.

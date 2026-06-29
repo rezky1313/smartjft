@@ -13,6 +13,8 @@ class UjikomJadwal extends Model
 
     protected $fillable = [
         'judul',
+        'jenis_ujian',
+        'matra',
         'deskripsi',
         'tanggal_mulai',
         'tanggal_selesai',
@@ -35,6 +37,16 @@ class UjikomJadwal extends Model
     public function pembuat()
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
+
+    public function getJenisUjianLabelAttribute(): string
+    {
+        return match ($this->jenis_ujian) {
+            'kenaikan_jabatan'      => 'Kenaikan Jabatan',
+            'perpindahan_jabatan'   => 'Perpindahan Jabatan',
+            'penyesuaian_inpassing' => 'Penyesuaian (Inpassing)',
+            default                 => '-',
+        };
     }
 
     public function getStatusLabelAttribute(): string

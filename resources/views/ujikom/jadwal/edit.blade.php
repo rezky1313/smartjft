@@ -40,6 +40,35 @@
             @error('judul')<div class="invalid-feedback">{{ $message }}</div>@enderror
           </div>
 
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Jenis Ujian</label>
+                <select name="jenis_ujian" class="form-control @error('jenis_ujian') is-invalid @enderror">
+                  <option value="">-- Pilih Jenis Ujian --</option>
+                  <option value="kenaikan_jabatan"      {{ old('jenis_ujian', $jadwal->jenis_ujian) === 'kenaikan_jabatan'      ? 'selected' : '' }}>Kenaikan Jabatan</option>
+                  <option value="perpindahan_jabatan"   {{ old('jenis_ujian', $jadwal->jenis_ujian) === 'perpindahan_jabatan'   ? 'selected' : '' }}>Perpindahan Jabatan</option>
+                  <option value="penyesuaian_inpassing" {{ old('jenis_ujian', $jadwal->jenis_ujian) === 'penyesuaian_inpassing' ? 'selected' : '' }}>Penyesuaian (Inpassing)</option>
+                </select>
+                @error('jenis_ujian')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Matra</label>
+                <select name="matra" class="form-control @error('matra') is-invalid @enderror">
+                  <option value="">-- Pilih Matra --</option>
+                  <option value="Darat"  {{ old('matra', $jadwal->matra) === 'Darat'  ? 'selected' : '' }}>Darat</option>
+                  <option value="Laut"   {{ old('matra', $jadwal->matra) === 'Laut'   ? 'selected' : '' }}>Laut</option>
+                  <option value="Udara"  {{ old('matra', $jadwal->matra) === 'Udara'  ? 'selected' : '' }}>Udara</option>
+                  <option value="ASDP"   {{ old('matra', $jadwal->matra) === 'ASDP'   ? 'selected' : '' }}>ASDP</option>
+                  <option value="Semua"  {{ old('matra', $jadwal->matra) === 'Semua'  ? 'selected' : '' }}>Semua Matra</option>
+                </select>
+                @error('matra')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Deskripsi</label>
             <textarea name="deskripsi" class="form-control @error('deskripsi') is-invalid @enderror"

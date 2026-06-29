@@ -21,20 +21,35 @@
         <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-info-circle mr-2"></i>1. Informasi Pendaftaran</h3></div>
         <div class="card-body">
           <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-{{ auth()->user()->hasRole('pemangku') ? '8' : '6' }}">
               <div class="form-group">
                 <label>Jadwal Uji Kompetensi <span class="text-danger">*</span></label>
                 <select name="ujikom_jadwal_id" id="jadwalSelect" class="form-control @error('ujikom_jadwal_id') is-invalid @enderror" required>
                   <option value="">-- Pilih Jadwal --</option>
                   @foreach ($jadwals as $j)
-                  <option value="{{ $j->id }}" {{ old('ujikom_jadwal_id') == $j->id ? 'selected' : '' }}>
+                  <option value="{{ $j->id }}"
+                    {{ old('ujikom_jadwal_id', request('jadwal_id')) == $j->id ? 'selected' : '' }}>
                     {{ $j->judul }} — {{ $j->tanggal_mulai->format('d M Y') }}
+                    @if ($j->matra) ({{ $j->matra }}) @endif
                   </option>
                   @endforeach
                 </select>
                 @error('ujikom_jadwal_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
             </div>
+
+            @hasrole('pemangku')
+            {{-- Pemangku: unit kerja dan jenis otomatis --}}
+            <input type="hidden" name="unit_kerja_id"     value="{{ $sdmPemangku->unit_kerja_id }}">
+            <input type="hidden" name="jenis_pendaftaran" value="mandiri">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>Unit Kerja</label>
+                <input type="text" class="form-control" value="{{ $sdmPemangku->unitKerja?->nama_rumahsakit ?? '-' }}" readonly>
+              </div>
+            </div>
+            @else
+            {{-- Admin / Admin Unit: dropdown pilih unit kerja + jenis --}}
             <div class="col-md-4">
               <div class="form-group">
                 <label>Unit Kerja <span class="text-danger">*</span></label>
@@ -58,6 +73,7 @@
                 </select>
               </div>
             </div>
+            @endhasrole
           </div>
 
           {{-- Card Info Jadwal (muncul setelah jadwal dipilih) --}}
@@ -71,7 +87,7 @@
         </div>
       </div>
 
-      {{-- Info Formasi Unit Kerja (muncul setelah unit kerja dipilih) --}}
+      {{-- Info Formasi Unit Kerja --}}
       <div id="infoFormasiCard" class="card" style="display:none;">
         <div class="card-header bg-info py-2">
           <h3 class="card-title mb-0 text-white" style="font-size:0.95rem;">
@@ -104,6 +120,55 @@
       <div class="card">
         <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-users mr-2"></i>2. Daftar Peserta</h3></div>
         <div class="card-body">
+
+          @hasrole('pemangku')
+          {{-- ─── TAMPILAN PEMANGKU: data diri otomatis ─── --}}
+          <div class="alert alert-info mb-3">
+            <i class="fas fa-user-check mr-1"></i>
+            Anda mendaftar atas nama diri sendiri. Data peserta diisi otomatis berdasarkan akun Anda.
+          </div>
+
+          {{-- Hidden inputs peserta[0] --}}
+          <input type="hidden" name="peserta[0][pegawai_id]"     value="{{ $sdmPemangku->id }}">
+          <input type="hidden" name="peserta[0][sisa_formasi]"   id="pemangkuSisaFormasi"   value="">
+          <input type="hidden" name="peserta[0][status_formasi]" id="pemangkuStatusFormasi" value="tidak_tersedia">
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm">
+              <thead class="thead-light">
+                <tr>
+                  <th width="40">No</th>
+                  <th>Nama Pegawai</th>
+                  <th>NIP</th>
+                  <th>Jabatan / Jenjang Saat Ini</th>
+                  <th>Jabatan / Jenjang Tujuan</th>
+                  <th>Status Formasi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-center">1</td>
+                  <td><strong>{{ $sdmPemangku->nama_lengkap }}</strong></td>
+                  <td><small>{{ $sdmPemangku->nip }}</small></td>
+                  <td id="pemangkuJabatanSekarang">
+                    <span class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i>Memuat...</span>
+                  </td>
+                  <td>
+                    <select name="peserta[0][formasi_tujuan_id]" id="jabatanTujuanSelect"
+                            class="form-control form-control-sm" style="min-width:220px;">
+                      <option value="">Memuat pilihan...</option>
+                    </select>
+                  </td>
+                  <td id="pemangkuStatusFormasiDisplay">
+                    <span class="badge badge-secondary">Mengecek...</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          @else
+          {{-- ─── TAMPILAN ADMIN / ADMIN UNIT: pilih banyak pegawai ─── --}}
           <div class="row mb-3">
             <div class="col-md-5">
               <label>Pilih Pegawai</label>
@@ -137,6 +202,8 @@
             </table>
           </div>
           <div id="pesertaError" class="text-danger small mt-1 d-none">Minimal 1 peserta harus ditambahkan.</div>
+
+          @endhasrole
         </div>
       </div>
 
@@ -178,14 +245,120 @@
 @push('scripts')
 <script>
 // ── State Global ────────────────────────────────────────────────────────────
-let pesertaList    = [];
+let pesertaList     = [];
 let persyaratanList = [];
 let pesertaCounter  = 0;
-let cachedPegawai  = [];
+let cachedPegawai   = [];
+
+// Apakah user adalah pemangku (diset dari Blade)
+const isPemangku = {{ auth()->user()->hasRole('pemangku') ? 'true' : 'false' }};
 
 $(document).ready(function() {
 
-// ── Inisialisasi Select2 Pegawai (placeholder awal sebelum unit kerja dipilih) ──
+// ─── INISIALISASI PEMANGKU ────────────────────────────────────────────────
+@hasrole('pemangku')
+// Pre-populate pesertaList dengan data pemangku
+pesertaList.push({
+  idx: 0,
+  id: {{ $sdmPemangku->id }},
+  nama: @json($sdmPemangku->nama_lengkap),
+  nip: @json($sdmPemangku->nip),
+  jabatan_sekarang: '-',
+  jenjang_sekarang: '-',
+  opsi_jabatan: [],
+  sisa_formasi: null,
+  status_formasi: 'tidak_tersedia',
+  formasi_label: 'Mengecek...',
+  formasi_badge: 'secondary',
+});
+
+// Auto-load data jabatan tujuan pemangku
+$.ajax({
+  url: '{{ route("ujikom.permohonan.get-jabatan-tujuan") }}',
+  method: 'GET',
+  data: { pegawai_id: {{ $sdmPemangku->id }} },
+  success: function(res) {
+    // Update tampilan jabatan sekarang
+    $('#pemangkuJabatanSekarang').html(
+      '<small>' + res.jabatan_sekarang + ' / ' + res.jenjang_sekarang + '</small>'
+    );
+
+    // Update hidden inputs
+    $('#pemangkuSisaFormasi').val(res.sisa);
+    $('#pemangkuStatusFormasi').val(res.status);
+
+    // Update badge status formasi
+    const badgeClass = res.badge;
+    $('#pemangkuStatusFormasiDisplay').html(
+      '<span class="badge badge-' + badgeClass + '">' + res.label + '</span>'
+    );
+
+    // Populate dropdown jabatan tujuan
+    const sel = $('#jabatanTujuanSelect');
+    sel.empty().append('<option value="">-- Pilih Jabatan Tujuan --</option>');
+    (res.opsi_jabatan || []).forEach(function(group) {
+      const og = $('<optgroup>').attr('label', group.label);
+      (group.options || []).forEach(function(opt) {
+        const label = opt.text + (opt.is_rekomendasi ? ' ⭐' : '');
+        og.append(new Option(label, opt.id, opt.is_rekomendasi, opt.is_rekomendasi));
+      });
+      sel.append(og);
+    });
+
+    // Tampilkan pesan khusus jika ada
+    if (res.pesan_khusus) {
+      $('#jabatanTujuanSelect').after(
+        '<small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>' + res.pesan_khusus + '</small>'
+      );
+    }
+
+    // Update pesertaList state
+    pesertaList[0].jabatan_sekarang = res.jabatan_sekarang;
+    pesertaList[0].jenjang_sekarang = res.jenjang_sekarang;
+    pesertaList[0].sisa_formasi     = res.sisa;
+    pesertaList[0].status_formasi   = res.status;
+    pesertaList[0].formasi_label    = res.label;
+    pesertaList[0].formasi_badge    = res.badge;
+
+    // Rebuild berkas jika jadwal sudah dipilih
+    rebuildBerkasSection();
+  },
+  error: function() {
+    $('#pemangkuJabatanSekarang').html('<span class="text-danger">Gagal memuat data.</span>');
+  }
+});
+
+// Auto-load formasi info untuk unit kerja pemangku
+$.ajax({
+  url: '{{ route("ujikom.permohonan.get-formasi") }}',
+  method: 'GET',
+  data: { unit_kerja_id: {{ $sdmPemangku->unit_kerja_id }} },
+  success: function(response) {
+    const tbody = $('#formasiTbody');
+    tbody.empty();
+    if (!response.data || response.data.length === 0) {
+      tbody.append('<tr><td colspan="5" class="text-center text-muted">Belum ada data formasi.</td></tr>');
+    } else {
+      $.each(response.data, function(i, f) {
+        const badgeClass  = f.status === 'tersedia' ? 'success' : (f.status === 'penuh' ? 'warning' : 'danger');
+        const labelStatus = f.status === 'tersedia' ? 'Tersedia' : (f.status === 'penuh' ? 'Penuh' : 'Over Kuota');
+        const sisaClass   = f.sisa < 0 ? 'text-danger font-weight-bold' : (f.sisa === 0 ? 'text-warning font-weight-bold' : '');
+        tbody.append(`<tr>
+          <td>${f.jabatan}</td>
+          <td class="text-center">${f.kuota}</td>
+          <td class="text-center">${f.terisi}</td>
+          <td class="text-center ${sisaClass}">${f.sisa}</td>
+          <td class="text-center"><span class="badge badge-${badgeClass}">${labelStatus}</span></td>
+        </tr>`);
+      });
+    }
+    $('#infoFormasiCard').show();
+  }
+});
+@endhasrole
+
+// ─── SELECT2 PEGAWAI (non-pemangku) ──────────────────────────────────────
+@if(!auth()->user()->hasRole('pemangku'))
 $('#pegawaiSelect').select2({
   theme: 'bootstrap4',
   placeholder: '-- Pilih unit kerja di section 1 terlebih dahulu --',
@@ -193,13 +366,12 @@ $('#pegawaiSelect').select2({
   allowClear: true,
 });
 
-// ── Unit Kerja Berubah → Load pegawai + formasi sekaligus ────────────────────
+// Unit Kerja Berubah → Load pegawai + formasi
 $('#unitKerjaSelect').on('change', function() {
   const unitKerjaId = $(this).val();
   cachedPegawai = [];
 
   if (!unitKerjaId) {
-    // Reset dropdown pegawai ke state awal
     const sel = $('#pegawaiSelect');
     if (sel.hasClass('select2-hidden-accessible')) sel.select2('destroy');
     sel.empty().append('<option value="">-- Pilih unit kerja di section 1 terlebih dahulu --</option>');
@@ -208,7 +380,6 @@ $('#unitKerjaSelect').on('change', function() {
     return;
   }
 
-  // AJAX 1: Load pegawai untuk unit kerja ini
   $.ajax({
     url: '{{ route("ujikom.permohonan.get-pegawai") }}',
     method: 'GET',
@@ -223,12 +394,9 @@ $('#unitKerjaSelect').on('change', function() {
       });
       select.select2({ theme: 'bootstrap4', placeholder: '-- Pilih Pegawai --', width: '100%', allowClear: true });
     },
-    error: function(xhr) {
-      console.error('Gagal load pegawai:', xhr.responseText);
-    }
+    error: function(xhr) { console.error('Gagal load pegawai:', xhr.responseText); }
   });
 
-  // Load info formasi
   $.ajax({
     url: '{{ route("ujikom.permohonan.get-formasi") }}',
     method: 'GET',
@@ -256,8 +424,9 @@ $('#unitKerjaSelect').on('change', function() {
     }
   });
 });
+@endif
 
-// ── Jadwal Berubah → Load info jadwal + persyaratan ─────────────────────────
+// ─── JADWAL BERUBAH → Load info jadwal + persyaratan ──────────────────────
 $('#jadwalSelect').on('change', function() {
   const jadwalId = $(this).val();
   if (!jadwalId) {
@@ -279,7 +448,17 @@ $('#jadwalSelect').on('change', function() {
   });
 });
 
-// ── Tambah Peserta ───────────────────────────────────────────────────────────
+// ─── AUTO-SELECT JADWAL jika ada ?jadwal_id di URL ────────────────────────
+@php $jadwalPreselect = request('jadwal_id'); @endphp
+@if ($jadwalPreselect)
+  const preJadwalId = {{ (int) $jadwalPreselect }};
+  if (preJadwalId) {
+    $('#jadwalSelect').val(preJadwalId).trigger('change');
+  }
+@endif
+
+// ─── TAMBAH PESERTA (non-pemangku) ───────────────────────────────────────
+@if(!auth()->user()->hasRole('pemangku'))
 $('#tambahPesertaBtn').on('click', function() {
   const pegawaiId = $('#pegawaiSelect').val();
   if (!pegawaiId) { alert('Pilih pegawai terlebih dahulu.'); return; }
@@ -315,8 +494,9 @@ $('#tambahPesertaBtn').on('click', function() {
     error: function() { alert('Gagal mengambil data jabatan tujuan.'); }
   });
 });
+@endif
 
-// ── Render Tabel Peserta ─────────────────────────────────────────────────────
+// ─── Render Tabel Peserta (non-pemangku) ─────────────────────────────────
 function renderPesertaTable() {
   const tbody = $('#pesertaBody');
   tbody.empty();
@@ -327,7 +507,6 @@ function renderPesertaTable() {
   }
 
   pesertaList.forEach((p, i) => {
-    // Build dropdown jabatan tujuan
     let selectHtml = `<select name="peserta[${p.idx}][formasi_tujuan_id]" class="form-control form-control-sm" style="min-width:220px;">
       <option value="">-- Pilih --</option>`;
     (p.opsi_jabatan || []).forEach(group => {
@@ -348,8 +527,8 @@ function renderPesertaTable() {
       <tr>
         <td class="text-center">${i + 1}</td>
         <td>${p.nama}
-          <input type="hidden" name="peserta[${p.idx}][pegawai_id]" value="${p.id}">
-          <input type="hidden" name="peserta[${p.idx}][sisa_formasi]" value="${p.sisa_formasi ?? ''}">
+          <input type="hidden" name="peserta[${p.idx}][pegawai_id]"     value="${p.id}">
+          <input type="hidden" name="peserta[${p.idx}][sisa_formasi]"   value="${p.sisa_formasi ?? ''}">
           <input type="hidden" name="peserta[${p.idx}][status_formasi]" value="${p.status_formasi}">
         </td>
         <td><small>${p.nip}</small></td>
@@ -366,7 +545,7 @@ function renderPesertaTable() {
   });
 }
 
-// ── Hapus Peserta ────────────────────────────────────────────────────────────
+// ─── Hapus Peserta ────────────────────────────────────────────────────────
 $(document).on('click', '.hapus-peserta', function() {
   const pid = $(this).data('id');
   pesertaList = pesertaList.filter(p => p.id != pid);
@@ -374,7 +553,7 @@ $(document).on('click', '.hapus-peserta', function() {
   rebuildBerkasSection();
 });
 
-// ── Rebuild Bagian Upload Berkas ─────────────────────────────────────────────
+// ─── Rebuild Bagian Upload Berkas ─────────────────────────────────────────
 function rebuildBerkasSection() {
   const container = $('#berkasContainer');
   container.empty();
@@ -413,9 +592,9 @@ function rebuildBerkasSection() {
   });
 }
 
-// ── Validasi sebelum submit ──────────────────────────────────────────────────
+// ─── Validasi sebelum submit ──────────────────────────────────────────────
 $('#formPendaftaran').on('submit', function(e) {
-  if (pesertaList.length === 0) {
+  if (!isPemangku && pesertaList.length === 0) {
     e.preventDefault();
     $('#pesertaError').removeClass('d-none');
     $('html,body').animate({ scrollTop: $('#tabelPeserta').offset().top - 100 }, 400);

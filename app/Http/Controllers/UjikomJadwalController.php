@@ -43,13 +43,15 @@ class UjikomJadwalController extends Controller
     {
         $request->validate([
             'judul'                              => 'required|string|max:255',
+            'jenis_ujian'                        => 'nullable|in:kenaikan_jabatan,perpindahan_jabatan,penyesuaian_inpassing',
+            'matra'                              => 'nullable|string|max:100',
             'deskripsi'                          => 'nullable|string',
             'tanggal_mulai'                      => 'required|date',
             'tanggal_selesai'                    => 'required|date|after_or_equal:tanggal_mulai',
             'tempat'                             => 'required|string|max:255',
             'kuota'                              => 'required|integer|min:1',
             'persyaratan'                        => 'nullable|array',
-            'persyaratan.*.nama_syarat'          => 'required_with:persyaratan|string|max:255',
+            'persyaratan.*.nama_syarat'          => 'required_with:persyaratan|string|max:500',
             'persyaratan.*.keterangan'           => 'nullable|string',
             'persyaratan.*.urutan'               => 'nullable|integer|min:1',
             'persyaratan.*.file_contoh'          => 'nullable|file|mimes:pdf,doc,docx,xlsx,xls,jpg,jpeg,png|max:5120',
@@ -59,6 +61,8 @@ class UjikomJadwalController extends Controller
 
         $jadwal = UjikomJadwal::create([
             'judul'           => $request->judul,
+            'jenis_ujian'     => $request->jenis_ujian,
+            'matra'           => $request->matra,
             'deskripsi'       => $request->deskripsi,
             'tanggal_mulai'   => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
@@ -68,7 +72,13 @@ class UjikomJadwalController extends Controller
             'dibuat_oleh'     => Auth::id(),
         ]);
 
-        $this->simpanPersyaratan($request, $jadwal->id);
+        // Jika user mengirimkan persyaratan dari form, gunakan itu.
+        // Jika tidak, insert persyaratan default otomatis.
+        if ($request->has('persyaratan') && !empty(array_filter(array_column($request->persyaratan ?? [], 'nama_syarat')))) {
+            $this->simpanPersyaratan($request, $jadwal->id);
+        } else {
+            $this->insertPersyaratanDefault($jadwal->id);
+        }
 
         $msg = $status === 'published'
             ? 'Jadwal berhasil disimpan dan dipublikasikan.'
@@ -86,7 +96,7 @@ class UjikomJadwalController extends Controller
         }
 
         // Peserta dari pendaftaran yang sudah selesai/diverifikasi pusbin
-        $pendaftaranList = UjikomPendaftaran::with(['peserta.pegawai', 'unitKerja'])
+        $pendaftaranList = UjikomPendaftaran::with(['peserta.pegawai.formasi.jenjang', 'peserta.jabatanTujuan', 'unitKerja'])
             ->where('ujikom_jadwal_id', $id)
             ->whereIn('status', ['diverifikasi_pusbin', 'selesai'])
             ->get();
@@ -119,13 +129,15 @@ class UjikomJadwalController extends Controller
 
         $request->validate([
             'judul'                              => 'required|string|max:255',
+            'jenis_ujian'                        => 'nullable|in:kenaikan_jabatan,perpindahan_jabatan,penyesuaian_inpassing',
+            'matra'                              => 'nullable|string|max:100',
             'deskripsi'                          => 'nullable|string',
             'tanggal_mulai'                      => 'required|date',
             'tanggal_selesai'                    => 'required|date|after_or_equal:tanggal_mulai',
             'tempat'                             => 'required|string|max:255',
             'kuota'                              => 'required|integer|min:1',
             'persyaratan'                        => 'nullable|array',
-            'persyaratan.*.nama_syarat'          => 'required_with:persyaratan|string|max:255',
+            'persyaratan.*.nama_syarat'          => 'required_with:persyaratan|string|max:500',
             'persyaratan.*.keterangan'           => 'nullable|string',
             'persyaratan.*.urutan'               => 'nullable|integer|min:1',
             'persyaratan.*.file_contoh'          => 'nullable|file|mimes:pdf,doc,docx,xlsx,xls,jpg,jpeg,png|max:5120',
@@ -135,6 +147,8 @@ class UjikomJadwalController extends Controller
 
         $jadwal->update([
             'judul'           => $request->judul,
+            'jenis_ujian'     => $request->jenis_ujian,
+            'matra'           => $request->matra,
             'deskripsi'       => $request->deskripsi,
             'tanggal_mulai'   => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
@@ -164,11 +178,32 @@ class UjikomJadwalController extends Controller
     {
         $jadwal = UjikomJadwal::with('persyaratan')->findOrFail($id);
 
-        if ($jadwal->status !== 'draft') {
-            return redirect()->route('ujikom.jadwal.index')
-                ->with('error', 'Hanya jadwal berstatus Draft yang dapat dihapus.');
+        // Cek apakah ada pendaftaran yang sudah dalam proses verifikasi atau selesai
+        $statusTerverifikasi = ['diverifikasi_admin_unit', 'diajukan_pusbin', 'diverifikasi_pusbin', 'selesai'];
+        $adaPendaftarTerproses = UjikomPendaftaran::where('ujikom_jadwal_id', $id)
+            ->whereIn('status', $statusTerverifikasi)
+            ->exists();
+
+        if ($adaPendaftarTerproses) {
+            $jumlah = UjikomPendaftaran::where('ujikom_jadwal_id', $id)
+                ->whereIn('status', $statusTerverifikasi)
+                ->count();
+            return redirect()->back()
+                ->with('error', "Jadwal tidak dapat dihapus karena terdapat {$jumlah} pendaftaran yang sudah diverifikasi atau sedang diproses. Selesaikan atau tolak pendaftaran tersebut terlebih dahulu.");
         }
 
+        // Hapus pendaftaran yang masih draft/ditolak beserta berkas & pesertanya
+        $pendaftaranList = UjikomPendaftaran::where('ujikom_jadwal_id', $id)->get();
+        foreach ($pendaftaranList as $pend) {
+            foreach ($pend->berkas as $berkas) {
+                Storage::disk('public')->delete($berkas->file_path);
+            }
+            $pend->berkas()->delete();
+            $pend->peserta()->delete();
+            $pend->delete();
+        }
+
+        // Hapus persyaratan beserta file contohnya
         foreach ($jadwal->persyaratan as $p) {
             if ($p->file_contoh) {
                 Storage::disk('public')->delete($p->file_contoh);
@@ -177,7 +212,7 @@ class UjikomJadwalController extends Controller
         }
 
         $jadwal->delete();
-        return redirect()->route('ujikom.jadwal.index')->with('success', 'Jadwal berhasil dihapus.');
+        return redirect()->route('ujikom.jadwal.index')->with('success', 'Jadwal uji kompetensi berhasil dihapus.');
     }
 
     public function publish($id)
@@ -209,6 +244,34 @@ class UjikomJadwalController extends Controller
     }
 
     // ─── Private Helper ───────────────────────────────────────────────────────
+
+    private function insertPersyaratanDefault(int $jadwalId): void
+    {
+        $defaults = [
+            ['nama_syarat' => 'Surat Usulan Uji Kompetensi dari Pimpinan Unit Kerja', 'urutan' => 1],
+            ['nama_syarat' => 'Surat Keterangan Integritas dan Moralitas', 'urutan' => 2],
+            ['nama_syarat' => 'Surat Keterangan Sehat dari Dokter', 'urutan' => 3],
+            ['nama_syarat' => 'SK PNS', 'urutan' => 4],
+            ['nama_syarat' => 'SK Kenaikan Pangkat Terakhir', 'urutan' => 5],
+            ['nama_syarat' => 'SK Jabatan Terakhir', 'urutan' => 6],
+            ['nama_syarat' => 'Ijazah Terakhir', 'urutan' => 7],
+            ['nama_syarat' => 'Dokumen Evaluasi Kinerja Minimal Predikat BAIK 2 (dua) Tahun Terakhir', 'urutan' => 8],
+            ['nama_syarat' => 'PAK Kumulatif', 'urutan' => 9],
+            ['nama_syarat' => 'Surat Keterangan Tidak Sedang Menjalani Tugas Belajar (lebih dari 6 bulan dan diberhentikan dari jabatan) dan Tidak Sedang Cuti Diluar Tanggungan Negara', 'urutan' => 10],
+            ['nama_syarat' => 'Sertifikat Kompetensi Pelatihan yang Dipersyaratkan untuk Menduduki Jabatan', 'urutan' => 11],
+            ['nama_syarat' => 'Karya Tulis Ilmiah (bagi usulan ke Jenjang Ahli Madya)', 'urutan' => 12],
+        ];
+
+        foreach ($defaults as $syarat) {
+            UjikomPersyaratan::create([
+                'ujikom_jadwal_id' => $jadwalId,
+                'nama_syarat'      => $syarat['nama_syarat'],
+                'urutan'           => $syarat['urutan'],
+                'keterangan'       => null,
+                'file_contoh'      => null,
+            ]);
+        }
+    }
 
     private function simpanPersyaratan(Request $request, int $jadwalId): void
     {

@@ -1,4 +1,5 @@
 @extends('layouts.users.master')
+@include('layouts.component.leaflet-assets')
 @section('title','Pusbin JFT - ADMIN')
 @section('isi')
 

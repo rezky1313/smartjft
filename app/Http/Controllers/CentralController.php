@@ -42,6 +42,7 @@ class CentralController extends Controller
         ];
 
         if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
             $user = Auth::user()->fresh();
 
             if ($user->roles->isEmpty()) {

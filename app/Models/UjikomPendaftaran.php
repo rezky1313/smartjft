@@ -21,6 +21,7 @@ class UjikomPendaftaran extends Model
         'catatan_admin_unit',
         'catatan_pusbin',
         'dibuat_oleh',
+        'diajukan_oleh_role',
     ];
 
     // ─── Relasi ───────────────────────────────────────────────────────────────
@@ -54,17 +55,20 @@ class UjikomPendaftaran extends Model
 
     public function getLabelStatusAttribute(): string
     {
-        return match ($this->status) {
+        $labelDiajukan = $this->jenis_pendaftaran === 'mandiri'
+            ? 'Diajukan Pemangku'
+            : 'Diajukan Admin Unit';
+
+        return [
             'draft'                   => 'Draft',
-            'diajukan_admin_unit'     => 'Diajukan (Admin Unit)',
+            'diajukan_admin_unit'     => $labelDiajukan,
             'diverifikasi_admin_unit' => 'Diverifikasi Admin Unit',
-            'diajukan_pusbin'         => 'Diajukan ke Pusbin',
+            'diajukan_pusbin'         => 'Diteruskan ke Pusbin',
             'diverifikasi_pusbin'     => 'Diverifikasi Pusbin',
             'ditolak_admin_unit'      => 'Ditolak Admin Unit',
             'ditolak_pusbin'          => 'Ditolak Pusbin',
             'selesai'                 => 'Selesai',
-            default                   => '-',
-        };
+        ][$this->status] ?? $this->status;
     }
 
     public function getBadgeStatusAttribute(): string
@@ -72,7 +76,7 @@ class UjikomPendaftaran extends Model
         return match ($this->status) {
             'draft'                   => 'secondary',
             'diajukan_admin_unit'     => 'primary',
-            'diverifikasi_admin_unit' => 'warning',
+            'diverifikasi_admin_unit' => 'info',
             'diajukan_pusbin'         => 'info',
             'diverifikasi_pusbin'     => 'success',
             'ditolak_admin_unit'      => 'danger',

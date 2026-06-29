@@ -1,5 +1,86 @@
 # CHANGELOG - SMART JFT
 
+## Catatan Konvensi Git
+- **Jangan** tambahkan `Co-Authored-By: Claude` di commit message (per instruksi user, 24 Juni 2026)
+
+---
+
+## Versi 1.8.3 - Fix Tampilan Halaman Detail Pendaftaran & Jadwal Ujikom
+**Tanggal:** 29 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Serangkaian perbaikan tampilan di dua halaman: detail pendaftaran ujikom (`show.blade.php`) dan detail jadwal ujikom (`ujikom/jadwal/show.blade.php`). Mencakup fix label status badge, kolom jabatan tujuan yang duplikat, timeline stepper 5 langkah, dan kolom peserta terdaftar di halaman jadwal.
+
+---
+
+## Perubahan
+
+### Model
+- **UBAH** `app/Models/UjikomPendaftaran.php`
+  - `getLabelStatusAttribute()`: ganti logika label "Diajukan" — pakai `jenis_pendaftaran === 'mandiri'` → "Diajukan Pemangku", selain itu → "Diajukan Admin Unit". Label `diajukan_pusbin` diubah jadi "Diteruskan ke Pusbin"
+  - `getBadgeStatusAttribute()`: warna `diverifikasi_admin_unit` diubah ke `info`
+
+### Controller
+- **UBAH** `app/Http/Controllers/UjikomJadwalController.php`
+  - `show()`: eager load diperbarui dari `peserta.pegawai` → `peserta.pegawai.formasi.jenjang` + `peserta.jabatanTujuan` agar nama, jabatan, dan jenjang pegawai tampil dengan benar
+
+### View
+- **UBAH** `resources/views/ujikom/pendaftaran/show.blade.php`
+  - **Timeline stepper:** Diperbarui jadi 5 langkah: Draft → Diajukan → Verifikasi Admin Unit → Verifikasi Pusbin → Selesai. Mapping status ke step aktif sudah benar. Status ditolak menampilkan ikon ✗ merah di step yang sesuai.
+  - **Kolom Jabatan Tujuan:** Fix duplikat — sebelumnya `jabatan_tujuan_nama` menggabungkan nama jabatan + jenjang. Sekarang pakai `jabatanTujuan->nama_formasi` (hanya nama jabatan) dan `jenjang_tujuan` (hanya jenjang) secara terpisah.
+
+- **UBAH** `resources/views/ujikom/jadwal/show.blade.php`
+  - **Kolom "Nama Pegawai":** Fix kolom `nama` → `nama_lengkap` (sesuai kolom di tabel `sumber_daya_manusia`)
+  - **Kolom "Jabatan / Jenjang":** Dipisah — sekarang hanya menampilkan jenjang saat ini (`formasi->jenjang->nama_jenjang`)
+  - **Kolom baru "Jabatan Tujuan":** Tambah kolom yang menampilkan `jabatanTujuan->nama_formasi / jenjang_tujuan`
+
+---
+
+## Versi 1.8.2 - Fix Alur & Role Panel Aksi Pendaftaran Ujikom
+**Tanggal:** 25 Juni 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Perbaikan alur status dan pemisahan panel aksi berdasarkan role di halaman detail pendaftaran ujikom. Sebelumnya tombol aksi untuk Admin Unit dan Admin Pusbin tidak terpisah dengan benar — admin Pusbin bisa lihat panel Admin Unit, dan terdapat status intermediate `diverifikasi_admin_unit` yang tidak perlu.
+
+---
+
+## Perubahan
+
+### Controller
+- **UBAH** `app/Http/Controllers/UjikomPendaftaranController.php`
+  - `verifikasiAdminUnit()`: status langsung ke `diajukan_pusbin` (sebelumnya ke `diverifikasi_admin_unit`)
+  - Success message diperbarui: "diteruskan ke Pusbin"
+
+### View
+- **UBAH** `resources/views/ujikom/pendaftaran/show.blade.php`
+  - **Timeline stepper:** Dikurangi dari 6 steps → 4 steps (hapus `diverifikasi_admin_unit` dan `diverifikasi_pusbin` karena tidak muncul sebagai status aktual). Mapping status ke display step ditambahkan. Setiap step aktif sekarang punya subtitle "Menunggu...".
+  - **Panel `diajukan_admin_unit`:** `@hasanyrole` diubah dari `super_admin|admin|admin_unit` → `super_admin|admin_unit` (admin Pusbin tidak lagi dapat tombol di tahap ini)
+  - **Panel `diverifikasi_admin_unit`:** Dihapus sepenuhnya (tahap ini tidak lagi digunakan dalam alur)
+  - **Tombol verifikasi admin unit:** Label diubah dari "Verifikasi & Teruskan ke Pusbin" → "Verifikasi & Kirim ke Pusbin"
+
+---
+
+## Alur Status Final
+
+```
+draft
+  → [Operator/Pemangku] diajukan_admin_unit
+      → [Admin Unit/Super Admin] diajukan_pusbin   ← langsung, tanpa intermediate
+          → [Admin Pusbin/Super Admin] selesai
+      → [Admin Unit/Super Admin] ditolak_admin_unit
+  → [Admin Pusbin/Super Admin] ditolak_pusbin
+```
+
+---
+
 ## Versi 1.8.1 - Kolom Jabatan Tujuan di Pendaftaran Ujikom
 **Tanggal:** 23 Juni 2026
 **Status:** Selesai ✅

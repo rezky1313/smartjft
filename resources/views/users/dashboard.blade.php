@@ -1,4 +1,5 @@
 @extends('layouts.users.master')
+@include('layouts.component.leaflet-assets')
 
 @section('title')
 @if (Auth::user()->role =='user') Pusbin JFT - ADMIN @else Pusbin JFT - USER @endif

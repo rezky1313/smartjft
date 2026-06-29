@@ -34,13 +34,13 @@
                 <table id="tableUser" class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th width="50">No</th>
+                            <th width="40">No</th>
                             <th>Nama</th>
-                            <th>Email</th>
-                            <th>Username / NIP</th>
+                            <th>Email / Username</th>
+                            <th>Unit Kerja / NIP</th>
                             <th>Role</th>
                             <th>Status</th>
-                            <th width="200">Aksi</th>
+                            <th width="130">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -48,10 +48,17 @@
                         <tr>
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $user->name }}</td>
-                            <td>{{ $user->email ?? '-' }}</td>
                             <td>
+                                {{ $user->email ?? '-' }}
                                 @if($user->username)
-                                    <small class="text-monospace">{{ $user->username }}</small>
+                                    <br><small class="text-monospace text-muted">NIP: {{ $user->username }}</small>
+                                @endif
+                            </td>
+                            <td>
+                                @if($user->unitKerja)
+                                    <small>{{ $user->unitKerja->nama_rumahsakit }}</small>
+                                @elseif($user->sdm?->unitKerja)
+                                    <small class="text-muted">{{ $user->sdm->unitKerja->nama_rumahsakit ?? '-' }}</small>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
@@ -59,15 +66,15 @@
                             <td>
                                 @foreach($user->roles as $role)
                                     @if($role->name == 'super_admin')
-                                        <span class="badge badge-danger">{{ ucfirst(str_replace('_', ' ', $role->name)) }}</span>
+                                        <span class="badge badge-danger">Super Admin</span>
                                     @elseif($role->name == 'admin')
-                                        <span class="badge badge-primary">{{ ucfirst($role->name) }}</span>
-                                    @elseif($role->name == 'operator')
-                                        <span class="badge badge-warning text-dark">{{ ucfirst($role->name) }}</span>
-                                    @elseif($role->name == 'viewer')
-                                        <span class="badge badge-success">{{ ucfirst($role->name) }}</span>
+                                        <span class="badge badge-primary">Admin Pusbin</span>
+                                    @elseif($role->name == 'admin_unit')
+                                        <span class="badge badge-info">Admin Unit</span>
                                     @elseif($role->name == 'pemangku')
-                                        <span class="badge badge-info">Pemangku</span>
+                                        <span class="badge badge-warning text-dark">Pemangku JFT</span>
+                                    @elseif($role->name == 'viewer')
+                                        <span class="badge badge-success">Viewer</span>
                                     @else
                                         <span class="badge badge-secondary">{{ ucfirst(str_replace('_', ' ', $role->name)) }}</span>
                                     @endif

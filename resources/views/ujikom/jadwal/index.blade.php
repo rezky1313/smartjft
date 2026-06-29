@@ -47,12 +47,14 @@
               <tr>
                 <th width="40">No</th>
                 <th>Judul</th>
+                <th>Jenis Ujian</th>
+                <th>Matra</th>
                 <th>Tanggal Mulai</th>
                 <th>Tanggal Selesai</th>
                 <th>Tempat</th>
                 <th width="70">Kuota</th>
                 <th width="130">Status</th>
-                <th width="150">Aksi</th>
+                <th width="160">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -60,6 +62,14 @@
               <tr>
                 <td>{{ $jadwals->firstItem() + $i }}</td>
                 <td>{{ $j->judul }}</td>
+                <td>
+                  @if ($j->jenis_ujian)
+                    <span class="badge badge-info">{{ $j->jenis_ujian_label }}</span>
+                  @else
+                    <span class="text-muted">-</span>
+                  @endif
+                </td>
+                <td>{{ $j->matra ?: '-' }}</td>
                 <td>{{ $j->tanggal_mulai->format('d/m/Y') }}</td>
                 <td>{{ $j->tanggal_selesai->format('d/m/Y') }}</td>
                 <td>{{ $j->tempat }}</td>
@@ -82,13 +92,6 @@
                       <i class="fas fa-globe"></i>
                     </button>
                   </form>
-                  <form action="{{ route('ujikom.jadwal.destroy', $j->id) }}" method="POST" class="d-inline"
-                        onsubmit="return confirm('Hapus jadwal ini?')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn btn-danger btn-xs" title="Hapus">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </form>
                   @endif
                   @if ($j->status === 'published')
                   <form action="{{ route('ujikom.jadwal.selesaikan', $j->id) }}" method="POST" class="d-inline"
@@ -99,11 +102,20 @@
                     </button>
                   </form>
                   @endif
+                  @if ($j->status !== 'selesai')
+                  <form action="{{ route('ujikom.jadwal.destroy', $j->id) }}" method="POST" class="d-inline"
+                        onsubmit="return confirm('Hapus jadwal ini? Pendaftaran draft/ditolak terkait juga akan dihapus.')">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-danger btn-xs" title="Hapus">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                  @endif
                 </td>
               </tr>
               @empty
               <tr>
-                <td colspan="8" class="text-center text-muted py-4">
+                <td colspan="10" class="text-center text-muted py-4">
                   <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                   Belum ada jadwal uji kompetensi.
                 </td>
@@ -154,9 +166,14 @@
                   @endif
                 </div>
                 <div class="card-footer bg-transparent border-0">
-                  <a href="{{ route('ujikom.jadwal.show', $j->id) }}" class="btn btn-outline-primary btn-sm btn-block">
+                  <a href="{{ route('ujikom.jadwal.show', $j->id) }}" class="btn btn-outline-primary btn-sm btn-block mb-1">
                     <i class="fas fa-eye mr-1"></i> Lihat Detail
                   </a>
+                  @can('create ujikom permohonan')
+                  <a href="{{ route('ujikom.permohonan.create', ['jadwal_id' => $j->id]) }}" class="btn btn-primary btn-sm btn-block">
+                    <i class="fas fa-plus mr-1"></i> Daftar Ujikom
+                  </a>
+                  @endcan
                 </div>
               </div>
             </div>

@@ -11,46 +11,34 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $users = User::with('roles', 'sdm')->orderBy('name')->get();
+        $users = User::with('roles', 'sdm', 'unitKerja')->orderBy('name')->get();
         return view('users.manajemen-user.index', compact('users'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        $roles = Role::all();
+        $roles      = Role::orderBy('name')->get();
         $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
         return view('users.manajemen-user.form', compact('roles', 'unitKerjas'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $isPemangku = $request->role === 'pemangku';
+        $role = $request->role;
 
-        if ($isPemangku) {
+        if ($role === 'pemangku') {
             $request->validate([
-                'name'     => 'required|string|max:255',
-                'email'    => 'nullable|string|email|max:255|unique:users',
-                'sdm_id'   => 'required|exists:sumber_daya_manusia,id',
-                'role'     => 'required|exists:roles,name',
-                'status'   => 'required|in:active,inactive',
+                'sdm_id' => 'required|exists:sumber_daya_manusia,id',
+                'email'  => 'nullable|string|email|max:255|unique:users',
+                'role'   => 'required|exists:roles,name',
+                'status' => 'required|in:active,inactive',
             ], [
                 'sdm_id.required' => 'Data pegawai JFT wajib dipilih untuk role Pemangku.',
-                'sdm_id.exists'   => 'Data pegawai yang dipilih tidak valid.',
             ]);
 
-            $sdm = Sdmmodels::findOrFail($request->sdm_id);
-
+            $sdm  = Sdmmodels::findOrFail($request->sdm_id);
             $user = User::create([
                 'name'     => $sdm->nama_lengkap,
                 'email'    => $request->email ?? null,
@@ -59,6 +47,27 @@ class UserController extends Controller
                 'password' => Hash::make($sdm->nip),
                 'status'   => $request->status,
             ]);
+
+        } elseif ($role === 'admin_unit') {
+            $request->validate([
+                'name'         => 'required|string|max:255',
+                'email'        => 'required|string|email|max:255|unique:users',
+                'password'     => 'required|string|min:6|confirmed',
+                'unit_kerja_id'=> 'required|exists:rumahsakits,no_rs',
+                'role'         => 'required|exists:roles,name',
+                'status'       => 'required|in:active,inactive',
+            ], [
+                'unit_kerja_id.required' => 'Unit Kerja wajib dipilih untuk role Admin Unit.',
+            ]);
+
+            $user = User::create([
+                'name'         => $request->name,
+                'email'        => $request->email,
+                'unit_kerja_id'=> $request->unit_kerja_id,
+                'password'     => Hash::make($request->password),
+                'status'       => $request->status,
+            ]);
+
         } else {
             $request->validate([
                 'name'     => 'required|string|max:255',
@@ -76,35 +85,28 @@ class UserController extends Controller
             ]);
         }
 
-        $user->assignRole($request->role);
+        $user->assignRole($role);
 
         return redirect()->route('user.manajemen-user.index')
             ->with('success', 'User berhasil ditambahkan.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(User $user)
     {
-        $roles = Role::all();
+        $roles      = Role::orderBy('name')->get();
         $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
-        $user->load('roles', 'sdm');
+        $user->load('roles', 'sdm', 'unitKerja');
         return view('users.manajemen-user.form', compact('user', 'roles', 'unitKerjas'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, User $user)
     {
-        $isPemangku = $request->role === 'pemangku';
+        $role = $request->role;
 
-        if ($isPemangku) {
+        if ($role === 'pemangku') {
             $request->validate([
-                'name'   => 'required|string|max:255',
-                'email'  => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
                 'sdm_id' => 'required|exists:sumber_daya_manusia,id',
+                'email'  => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
                 'role'   => 'required|exists:roles,name',
                 'status' => 'required|in:active,inactive',
             ], [
@@ -112,14 +114,35 @@ class UserController extends Controller
             ]);
 
             $sdm = Sdmmodels::findOrFail($request->sdm_id);
+            $user->update([
+                'name'         => $sdm->nama_lengkap,
+                'email'        => $request->email ?? $user->email,
+                'username'     => $sdm->nip,
+                'sdm_id'       => $sdm->id,
+                'unit_kerja_id'=> null,
+                'status'       => $request->status,
+            ]);
+
+        } elseif ($role === 'admin_unit') {
+            $request->validate([
+                'name'         => 'required|string|max:255',
+                'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                'unit_kerja_id'=> 'required|exists:rumahsakits,no_rs',
+                'role'         => 'required|exists:roles,name',
+                'status'       => 'required|in:active,inactive',
+            ], [
+                'unit_kerja_id.required' => 'Unit Kerja wajib dipilih untuk role Admin Unit.',
+            ]);
 
             $user->update([
-                'name'     => $sdm->nama_lengkap,
-                'email'    => $request->email ?? $user->email,
-                'username' => $sdm->nip,
-                'sdm_id'   => $sdm->id,
-                'status'   => $request->status,
+                'name'         => $request->name,
+                'email'        => $request->email,
+                'unit_kerja_id'=> $request->unit_kerja_id,
+                'sdm_id'       => null,
+                'username'     => null,
+                'status'       => $request->status,
             ]);
+
         } else {
             $request->validate([
                 'name'   => 'required|string|max:255',
@@ -129,24 +152,23 @@ class UserController extends Controller
             ]);
 
             $user->update([
-                'name'   => $request->name,
-                'email'  => $request->email,
-                'status' => $request->status,
+                'name'         => $request->name,
+                'email'        => $request->email,
+                'unit_kerja_id'=> null,
+                'sdm_id'       => null,
+                'username'     => null,
+                'status'       => $request->status,
             ]);
         }
 
-        $user->syncRoles([$request->role]);
+        $user->syncRoles([$role]);
 
         return redirect()->route('user.manajemen-user.index')
             ->with('success', 'User berhasil diperbarui.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(User $user)
     {
-        // Cegah penghapusan diri sendiri
         if ($user->id === auth()->id()) {
             return redirect()->route('user.manajemen-user.index')
                 ->with('error', 'Anda tidak dapat menghapus akun sendiri.');
@@ -158,9 +180,6 @@ class UserController extends Controller
             ->with('success', 'User berhasil dihapus.');
     }
 
-    /**
-     * Reset password user.
-     */
     public function resetPassword(Request $request, User $user)
     {
         $request->validate([

@@ -25,6 +25,7 @@ class User extends Authenticatable
         'email',
         'username',
         'sdm_id',
+        'unit_kerja_id',
         'password',
         'status',
     ];
@@ -32,6 +33,11 @@ class User extends Authenticatable
     public function sdm()
     {
         return $this->belongsTo(\App\Models\Sdmmodels::class, 'sdm_id');
+    }
+
+    public function unitKerja()
+    {
+        return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
     }
 
     /**
