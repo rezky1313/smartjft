@@ -5,6 +5,136 @@
 
 ---
 
+## Versi 1.9.0 - Modul Bank Soal, Paket Ujian & Ujikom Online
+**Tanggal:** 1 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Implementasi 3 modul besar sekaligus: Bank Soal (CRUD + import Excel), Paket Ujian (builder soal manual/acak), dan Ujikom Online (CAT-style exam engine dengan monitoring admin real-time).
+
+---
+
+## Modul A: Bank Soal (v1.9.0-a)
+
+### Database
+- **BARU** `database/migrations/2026_07_01_000001_create_bank_soal_tables.php`
+  - `soal_kategori`: id, nama, jenjang (enum), matra (enum), deskripsi, status (aktif/nonaktif)
+  - `bank_soal`: semua field soal (pertanyaan, jenis, tingkat_kesulitan, taksonomi_bloom, kategori FK, status, softDeletes)
+  - `bank_soal_pilihan`: kode_pilihan A-D, teks, is_benar, cascade delete
+  - `bank_soal_import_log`: log per batch import
+
+### Model
+- **BARU** `app/Models/SoalKategori.php` — scope aktif(), accessor label_jenjang, label_matra
+- **BARU** `app/Models/BankSoal.php` — scope aktif/umum/spesifik, accessor label_tingkat/badge_tingkat/label_taksonomi, relasi pilihan/jawabanBenar/kategori
+- **BARU** `app/Models/BankSoalPilihan.php`
+- **BARU** `app/Models/BankSoalImportLog.php`
+
+### Controller
+- **BARU** `app/Http/Controllers/BankSoalController.php` — 10 method (index, create, store, show, edit, update, destroy, aktifkan, import GET/POST, downloadTemplate)
+- **BARU** `app/Http/Controllers/SoalKategoriController.php` — 4 method CRUD
+
+### Import/Export
+- **BARU** `app/Imports/BankSoalImport.php` — ToCollection, WithHeadingRow, SkipsOnError, auto-log
+- **BARU** `app/Exports/BankSoalTemplateExport.php` — 3 sheet: Petunjuk, Daftar Kategori, Data Soal
+
+### Seeder
+- **BARU** `database/seeders/SoalKategoriSeeder.php` — 10 kategori soal default
+
+### View
+- **BARU** `resources/views/bank_soal/index.blade.php` — tabel + filter status/kategori/tingkat
+- **BARU** `resources/views/bank_soal/create.blade.php` — form dinamis pilihan A-D, auto-isi kode benar
+- **BARU** `resources/views/bank_soal/edit.blade.php`
+- **BARU** `resources/views/bank_soal/show.blade.php` — preview soal + pilihan + badge status
+- **BARU** `resources/views/bank_soal/import.blade.php` — upload Excel + riwayat log + modal detail error
+- **BARU** `resources/views/soal_kategori/index.blade.php`
+
+### Route
+- 10 route `/bank-soal/...` (CRUD + import + template)
+- 4 route `/soal-kategori/...` (CRUD)
+- Static routes `get-by-kategori`, `import`, `template` ditempatkan **sebelum** `/{id}` untuk cegah konflik
+
+---
+
+## Modul B: Paket Ujian (v1.9.0-b)
+
+### Database
+- **BARU** `database/migrations/2026_07_01_000002_create_paket_ujian_tables.php`
+  - `paket_ujian`: FK jadwal (nullable), mode_pemilihan (acak_otomatis/manual), status, softDeletes
+  - `paket_ujian_soal`: pivot bank_soal ↔ paket, urutan
+  - `paket_ujian_kategori_acak`: konfigurasi per kategori untuk mode acak
+
+### Model
+- **BARU** `app/Models/PaketUjian.php`
+  - `generateSoalUntukPeserta($id)`: generate set soal (acak atau manual) + shuffle urutan/pilihan
+  - `cekKetersediaanSoal()`: cek apakah bank soal mencukupi konfigurasi acak
+  - Accessor: label_status, badge_status, label_mode
+- **BARU** `app/Models/PaketUjianSoal.php`
+- **BARU** `app/Models/PaketUjianKategoriAcak.php`
+
+### Controller
+- **BARU** `app/Http/Controllers/PaketUjianController.php` — 11 method (CRUD + aktifkan + nonaktifkan + previewSoal + getSoalByKategori)
+
+### View
+- **BARU** `resources/views/paket_ujian/index.blade.php` — statistik (total/aktif/draft/nonaktif) + filter + tabel
+- **BARU** `resources/views/paket_ujian/create.blade.php` — builder dua mode: acak (konfigurasi per kategori) + manual (two-panel AJAX soal pilih)
+- **BARU** `resources/views/paket_ujian/edit.blade.php`
+- **BARU** `resources/views/paket_ujian/show.blade.php` — info paket, ketersediaan soal, daftar soal (manual) / konfigurasi acak + preview AJAX
+
+### Route
+- 12 route `/paket-ujian/...`
+- `get-soal-kategori` ditempatkan **sebelum** `/{id}` untuk cegah konflik
+
+---
+
+## Modul C: Ujikom Online (v1.9.0-c)
+
+### Database
+- **BARU** `database/migrations/2026_07_01_000003_create_ujikom_sesi_tables.php`
+  - `ujikom_sesi`: FK jadwal + paket + peserta, status_sesi, waktu_mulai/selesai/batas, nilai_akhir, status_lulus, unique(jadwal, peserta)
+  - `ujikom_sesi_soal`: soal per peserta + jawaban (pilihan_dipilih, is_benar, waktu_dijawab), unique(sesi, soal)
+  - `ujikom_sesi_log`: audit trail setiap aksi (mulai/jawab/navigasi/submit/timeout/peringatan)
+
+### Model
+- **BARU** `app/Models/UjikomSesi.php`
+  - `hitungNilai()`: hitung nilai akhir, benar/salah/kosong, status lulus vs passing grade
+  - `getSisaWaktuAttribute()`: sisa waktu dalam detik (real-time)
+  - `getProgressAttribute()`: progress soal dijawab / total
+- **BARU** `app/Models/UjikomSesiSoal.php` — eager load `bankSoal.pilihan`
+- **BARU** `app/Models/UjikomSesiLog.php` — cast detail → array
+
+### Controller
+- **BARU** `app/Http/Controllers/UjikomOnlineController.php` — 11 method:
+  - Peserta: `index`, `mulai`, `ujian`, `jawab` (AJAX), `navigasi` (AJAX), `submit`, `hasil`
+  - Admin: `bukaSesi`, `tutupSesi`, `monitoring`, `forceSubmit`
+
+### View
+- **BARU** `resources/views/ujikom/online/index.blade.php` — dual view: admin (tabel manajemen sesi + Buka/Tutup/Monitoring) + peserta (card jadwal + status sesi)
+- **BARU** `resources/views/ujikom/online/ujian.blade.php` — CAT-style: timer countdown real-time, panel navigasi soal (hijau=dijawab/merah=belum/biru=aktif), AJAX save jawaban tanpa reload, auto-submit saat timeout, prevent browser back
+- **BARU** `resources/views/ujikom/online/hasil.blade.php` — card nilai besar + lulus/tidak lulus + statistik benar/salah/kosong + durasi
+- **BARU** `resources/views/ujikom/online/monitoring.blade.php` — tabel progress semua peserta + force submit, auto-refresh 30 detik
+
+### Route
+- **UBAH** `routes/web.php`: Ganti placeholder `ujikom.online.index` → 11 route baru
+  - Peserta: `/ujikom-online/...` (7 route)
+  - Admin: `/ujikom-online/admin/...` (4 route)
+
+### Sidebar
+- **UBAH** `resources/views/layouts/users/master.blade.php`: Sidebar "Uji Kompetensi (Segera)" → link aktif ke `ujikom-online.index`
+
+---
+
+## Catatan Teknis
+
+- **Keamanan jawaban:** Method `jawab()` TIDAK mengembalikan info benar/salah ke frontend
+- **Auto-submit timeout:** Timer JS → auto-submit form saat `sisaDetik <= 0`; controller juga cek `batas_waktu` saat `jawab()` dipanggil
+- **Akses peserta:** `authorizeAksesSesi()` cek `sdm_id` user vs `peserta.pegawai_id`
+- **Paket Ujian → Jadwal:** Relasi via `ujikom_jadwal_id` di `paket_ujian`; satu jadwal bisa punya banyak paket, sistem ambil yang `status = aktif`
+
+---
+
 ## Versi 1.8.3 - Fix Tampilan Halaman Detail Pendaftaran & Jadwal Ujikom
 **Tanggal:** 29 Juni 2026
 **Status:** Selesai ✅

@@ -16,6 +16,9 @@ use App\Http\Controllers\UjikomController;
 use App\Http\Controllers\PengangkatanController;
 use App\Http\Controllers\UjikomJadwalController;
 use App\Http\Controllers\UjikomPendaftaranController;
+use App\Http\Controllers\BankSoalController;
+use App\Http\Controllers\SoalKategoriController;
+use App\Http\Controllers\PaketUjianController;
 
 
 /*
@@ -238,12 +241,28 @@ Route::prefix('ujikom/pendaftaran')->name('ujikom.permohonan.')->middleware('aut
     Route::post('/{id}/verifikasi-berkas',[UjikomPendaftaranController::class, 'verifikasiBerkas'])->name('verifikasi.berkas');
 });
 
+// ─── Ujikom Online — Peserta ─────────────────────────────────────────────────
+Route::prefix('ujikom-online')->name('ujikom-online.')->middleware('auth')->group(function () {
+    Route::get('/', [\App\Http\Controllers\UjikomOnlineController::class, 'index'])->name('index');
+    Route::post('/mulai/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'mulai'])
+        ->name('mulai')->middleware('role:pemangku|admin_unit|admin|super_admin');
+    Route::get('/ujian/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'ujian'])->name('ujian');
+    Route::post('/jawab/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'jawab'])->name('jawab');
+    Route::post('/navigasi/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'navigasi'])->name('navigasi');
+    Route::post('/submit/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'submit'])->name('submit');
+    Route::get('/hasil/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'hasil'])->name('hasil');
+});
+
+// ─── Ujikom Online — Admin ──────────────────────────────────────────────────
+Route::prefix('ujikom-online/admin')->name('ujikom-online.admin.')->middleware(['auth', 'role:admin|super_admin'])->group(function () {
+    Route::post('/buka-sesi/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'bukaSesi'])->name('buka-sesi');
+    Route::post('/tutup-sesi/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'tutupSesi'])->name('tutup-sesi');
+    Route::get('/monitoring/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'monitoring'])->name('monitoring');
+    Route::post('/force-submit/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'forceSubmit'])->name('force-submit');
+});
+
 // ─── Placeholder Routes — Coming Soon ─────────────────────────────────────────
 Route::middleware(['auth'])->group(function () {
-    Route::get('/ujikom/online', function () {
-        return view('coming_soon', ['judul' => 'Uji Kompetensi Online']);
-    })->name('ujikom.online.index');
-
     Route::get('/ujikom/hasil', function () {
         return view('coming_soon', ['judul' => 'Hasil Uji Kompetensi']);
     })->name('ujikom.hasil.index');
@@ -311,5 +330,48 @@ Route::middleware(['auth'])->prefix('pengangkatan')->as('pengangkatan.')->group(
     Route::post('/{id}/nomor', [PengangkatanController::class, 'simpanNomor'])->name('simpan-nomor')->middleware('permission:verifikasi pengangkatan');
     Route::post('/{id}/selesaikan', [PengangkatanController::class, 'selesaikan'])->name('selesaikan')->middleware('permission:verifikasi pengangkatan');
     Route::get('/{id}/export', [PengangkatanController::class, 'exportPdf'])->name('export')->middleware('permission:view pengangkatan');
+});
+
+// ─── Bank Soal ────────────────────────────────────────────────────────────────
+Route::prefix('bank-soal')->name('bank-soal.')->middleware('auth')->group(function () {
+    // ── Static routes HARUS di atas /{id} ──
+    Route::get('/get-by-kategori', [BankSoalController::class, 'getByKategori'])->name('get-by-kategori');
+    Route::get('/import', [BankSoalController::class, 'importPage'])->name('import')->middleware('role:admin|super_admin');
+    Route::post('/import', [BankSoalController::class, 'import'])->name('import.store')->middleware('role:admin|super_admin');
+    Route::get('/template', [BankSoalController::class, 'downloadTemplate'])->name('template')->middleware('role:admin|super_admin');
+    Route::get('/', [BankSoalController::class, 'index'])->name('index');
+    Route::get('/create', [BankSoalController::class, 'create'])->name('create')->middleware('role:admin|super_admin');
+    Route::post('/', [BankSoalController::class, 'store'])->name('store')->middleware('role:admin|super_admin');
+    // ── Dynamic /{id} routes ──
+    Route::get('/{id}', [BankSoalController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [BankSoalController::class, 'edit'])->name('edit')->middleware('role:admin|super_admin');
+    Route::put('/{id}', [BankSoalController::class, 'update'])->name('update')->middleware('role:admin|super_admin');
+    Route::delete('/{id}', [BankSoalController::class, 'destroy'])->name('destroy')->middleware('role:admin|super_admin');
+    Route::post('/{id}/approve', [BankSoalController::class, 'approve'])->name('approve')->middleware('role:admin|super_admin');
+    Route::post('/{id}/nonaktifkan', [BankSoalController::class, 'nonaktifkan'])->name('nonaktifkan')->middleware('role:admin|super_admin');
+    Route::get('/{id}/import-error', [BankSoalController::class, 'lihatDetailError'])->name('import.error')->middleware('role:admin|super_admin');
+});
+
+// ─── Soal Kategori ────────────────────────────────────────────────────────────
+Route::prefix('soal-kategori')->name('soal-kategori.')->middleware(['auth', 'role:admin|super_admin'])->group(function () {
+    Route::get('/', [SoalKategoriController::class, 'index'])->name('index');
+    Route::post('/', [SoalKategoriController::class, 'store'])->name('store');
+    Route::put('/{id}', [SoalKategoriController::class, 'update'])->name('update');
+    Route::delete('/{id}', [SoalKategoriController::class, 'destroy'])->name('destroy');
+});
+
+// ─── Paket Ujian ─────────────────────────────────────────────────────────────
+Route::prefix('paket-ujian')->name('paket-ujian.')->middleware(['auth', 'role:admin|super_admin'])->group(function () {
+    Route::get('/get-soal-kategori', [PaketUjianController::class, 'getSoalByKategori'])->name('get-soal');
+    Route::get('/', [PaketUjianController::class, 'index'])->name('index');
+    Route::get('/create', [PaketUjianController::class, 'create'])->name('create');
+    Route::post('/', [PaketUjianController::class, 'store'])->name('store');
+    Route::get('/{id}', [PaketUjianController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [PaketUjianController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [PaketUjianController::class, 'update'])->name('update');
+    Route::delete('/{id}', [PaketUjianController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/aktifkan', [PaketUjianController::class, 'aktifkan'])->name('aktifkan');
+    Route::post('/{id}/nonaktifkan', [PaketUjianController::class, 'nonaktifkan'])->name('nonaktifkan');
+    Route::get('/{id}/preview', [PaketUjianController::class, 'previewSoal'])->name('preview');
 });
 

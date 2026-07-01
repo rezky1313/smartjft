@@ -177,10 +177,10 @@
               </li>
               @endcan
 
-              <li class="nav-item">
-                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+              <li class="nav-item {{ request()->routeIs('ujikom-online.*') ? 'active' : '' }}">
+                <a href="{{ route('ujikom-online.index') }}" class="nav-link {{ request()->routeIs('ujikom-online.*') ? 'active' : '' }}" onclick="pindah(event)">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Uji Kompetensi <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                  <p>Uji Kompetensi</p>
                 </a>
               </li>
               <li class="nav-item">
@@ -235,6 +235,16 @@
           <li class="nav-item">
             <a href="{{ route('user.laporan.index') }}" class="nav-link" onclick="pindah(event)">
               <i class="nav-icon fas fa-file-alt"></i><p>Laporan</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ route('bank-soal.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-database"></i><p>Bank Soal</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ route('soal-kategori.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-tags"></i><p>Kategori Soal</p>
             </a>
           </li>
           @endhasanyrole
