@@ -39,6 +39,16 @@ class UjikomJadwal extends Model
         return $this->belongsTo(User::class, 'dibuat_oleh');
     }
 
+    public function hasilUjikom()
+    {
+        return $this->hasMany(UjikomHasil::class, 'ujikom_jadwal_id');
+    }
+
+    public function pendaftaran()
+    {
+        return $this->hasMany(UjikomPendaftaran::class, 'ujikom_jadwal_id');
+    }
+
     public function getJenisUjianLabelAttribute(): string
     {
         return match ($this->jenis_ujian) {

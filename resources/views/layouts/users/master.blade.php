@@ -183,12 +183,15 @@
                   <p>Uji Kompetensi</p>
                 </a>
               </li>
-              <li class="nav-item">
-                <a href="#" class="nav-link" style="pointer-events:none; opacity:0.55;">
+              @hasanyrole('super_admin|admin|admin_unit|pemangku')
+              <li class="nav-item {{ request()->routeIs('ujikom.hasil.*') ? 'active' : '' }}">
+                <a href="{{ auth()->user()->hasRole('pemangku') ? route('ujikom.hasil.riwayat') : route('ujikom.hasil.index') }}"
+                   class="nav-link {{ request()->routeIs('ujikom.hasil.*') ? 'active' : '' }}" onclick="pindah(event)">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Hasil Uji Kompetensi <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
+                  <p>Hasil Uji Kompetensi</p>
                 </a>
               </li>
+              @endhasanyrole
             </ul>
           </li>
           @endhasanyrole

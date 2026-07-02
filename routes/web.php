@@ -261,12 +261,31 @@ Route::prefix('ujikom-online/admin')->name('ujikom-online.admin.')->middleware([
     Route::post('/force-submit/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'forceSubmit'])->name('force-submit');
 });
 
+// ─── Ujikom Hasil — HARUS di atas group ujikom/{id} ─────────────────────────
+Route::prefix('ujikom/hasil')->name('ujikom.hasil.')->middleware('auth')->group(function () {
+    // Static routes dahulu sebelum wildcard
+    Route::get('/riwayat/saya', [\App\Http\Controllers\UjikomHasilController::class, 'riwayatPeserta'])
+        ->name('riwayat')->middleware('role:pemangku|admin_unit|admin|super_admin');
+    Route::post('/catatan/{hasilId}', [\App\Http\Controllers\UjikomHasilController::class, 'updateCatatan'])
+        ->name('update-catatan')->middleware('role:admin|super_admin');
+
+    // Admin routes
+    Route::get('/', [\App\Http\Controllers\UjikomHasilController::class, 'index'])
+        ->name('index')->middleware('role:admin|super_admin');
+    Route::get('/{jadwalId}', [\App\Http\Controllers\UjikomHasilController::class, 'show'])
+        ->name('show')->middleware('role:admin|super_admin');
+    Route::get('/{jadwalId}/input-offline', [\App\Http\Controllers\UjikomHasilController::class, 'inputOffline'])
+        ->name('input-offline')->middleware('role:admin|super_admin');
+    Route::post('/{jadwalId}/simpan-offline', [\App\Http\Controllers\UjikomHasilController::class, 'simpanOffline'])
+        ->name('simpan-offline')->middleware('role:admin|super_admin');
+    Route::get('/{jadwalId}/export-pdf', [\App\Http\Controllers\UjikomHasilController::class, 'exportPdf'])
+        ->name('export-pdf')->middleware('role:admin|super_admin');
+    Route::get('/{jadwalId}/export-excel', [\App\Http\Controllers\UjikomHasilController::class, 'exportExcel'])
+        ->name('export-excel')->middleware('role:admin|super_admin');
+});
+
 // ─── Placeholder Routes — Coming Soon ─────────────────────────────────────────
 Route::middleware(['auth'])->group(function () {
-    Route::get('/ujikom/hasil', function () {
-        return view('coming_soon', ['judul' => 'Hasil Uji Kompetensi']);
-    })->name('ujikom.hasil.index');
-
     Route::get('/karir', function () {
         return view('coming_soon', ['judul' => 'Tabel Pengembangan Karir JFT']);
     })->name('karir.index');

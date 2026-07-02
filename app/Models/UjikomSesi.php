@@ -130,5 +130,32 @@ class UjikomSesi extends Model
             'status_sesi'   => 'selesai',
             'waktu_selesai' => Carbon::now(),
         ]);
+
+        // Sync otomatis ke tabel ujikom_hasil
+        $this->syncKeHasil();
+    }
+
+    /**
+     * Sync hasil ujian online ke tabel ujikom_hasil (sumber kebenaran tunggal).
+     */
+    public function syncKeHasil(): void
+    {
+        $fresh = $this->fresh();
+
+        UjikomHasil::updateOrCreate(
+            [
+                'ujikom_jadwal_id' => $fresh->ujikom_jadwal_id,
+                'peserta_id'       => $fresh->peserta_id,
+            ],
+            [
+                'ujikom_sesi_id'   => $fresh->id,
+                'jenis_ujian'      => 'online',
+                'nilai'            => $fresh->nilai_akhir,
+                'status_kelulusan' => $fresh->status_lulus,
+                'passing_grade'    => $fresh->paketUjian->passing_grade ?? null,
+                'tanggal_ujian'    => $fresh->waktu_selesai?->toDateString(),
+                'dinilai_oleh'     => null,
+            ]
+        );
     }
 }
