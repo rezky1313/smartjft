@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Rumahsakit;
 use App\Models\Province;
 use App\Models\Regency;
+use App\Models\UjikomJadwal;
+use App\Models\UjikomPendaftaran;
+use App\Models\UjikomHasil;
+use App\Models\UjikomSesi;
+use App\Models\Sdmmodels;
 use Illuminate\Support\Arr;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -326,10 +331,98 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
 }
 
     
+    // ===== DASHBOARD ADMIN UNIT =====
+    private function dashboardAdminUnit($user)
+    {
+        $unitKerja   = $user->unitKerja;
+        $unitKerjaId = $user->unit_kerja_id;
+
+        $totalPegawai = DB::table('sumber_daya_manusia as sdm')
+            ->join('formasi_jabatan as f', 'f.id', '=', 'sdm.formasi_jabatan_id')
+            ->where('f.unit_kerja_id', $unitKerjaId)
+            ->where('sdm.aktif', 1)
+            ->count();
+
+        $formasiUnit = DB::table('formasi_jabatan as f')
+            ->join('jenjang_jabatan as j', 'j.id', '=', 'f.jenjang_id')
+            ->where('f.unit_kerja_id', $unitKerjaId)
+            ->selectRaw('f.id, f.nama_formasi, j.nama_jenjang, f.kuota, f.tahun_formasi')
+            ->orderBy('f.nama_formasi')
+            ->get();
+
+        $terisiMap = DB::table('sumber_daya_manusia as sdm')
+            ->join('formasi_jabatan as f', 'f.id', '=', 'sdm.formasi_jabatan_id')
+            ->where('f.unit_kerja_id', $unitKerjaId)
+            ->where('sdm.aktif', 1)
+            ->selectRaw('sdm.formasi_jabatan_id, COUNT(*) as jumlah')
+            ->groupBy('sdm.formasi_jabatan_id')
+            ->pluck('jumlah', 'formasi_jabatan_id');
+
+        $permohonanMenunggu = UjikomPendaftaran::where('unit_kerja_id', $unitKerjaId)
+            ->where('status', 'diajukan_admin_unit')->count();
+        $permohonanDiproses = UjikomPendaftaran::where('unit_kerja_id', $unitKerjaId)
+            ->whereIn('status', ['diverifikasi_admin_unit', 'diajukan_pusbin'])->count();
+        $permohonanSelesai  = UjikomPendaftaran::where('unit_kerja_id', $unitKerjaId)
+            ->whereIn('status', ['diverifikasi_pusbin', 'selesai'])->count();
+
+        $jadwalAktif = UjikomJadwal::where('status', 'dipublikasikan')
+            ->orderBy('tanggal_mulai')->take(5)->get();
+
+        return view('users.dashboard', compact(
+            'unitKerja', 'totalPegawai', 'formasiUnit', 'terisiMap',
+            'permohonanMenunggu', 'permohonanDiproses', 'permohonanSelesai',
+            'jadwalAktif'
+        ));
+    }
+
+    // ===== DASHBOARD PEMANGKU =====
+    private function dashboardPemangku($user)
+    {
+        $sdmId = $user->sdm_id;
+
+        $sdm = $sdmId
+            ? Sdmmodels::with(['formasiJabatan.jenjang', 'unitKerja'])->find($sdmId)
+            : null;
+
+        $jadwalTerdekat = UjikomJadwal::where('status', 'dipublikasikan')
+            ->where('tanggal_mulai', '>=', now()->toDateString())
+            ->orderBy('tanggal_mulai')
+            ->take(3)
+            ->get();
+
+        $pesertaIds = $sdmId
+            ? DB::table('ujikom_pendaftaran_peserta')->where('pegawai_id', $sdmId)->pluck('id')
+            : collect();
+
+        $riwayatHasil = $pesertaIds->isNotEmpty()
+            ? UjikomHasil::with('jadwal')
+                ->whereIn('peserta_id', $pesertaIds)
+                ->orderByDesc('tanggal_ujian')
+                ->take(10)->get()
+            : collect();
+
+        $pendaftaranAktif = $sdmId
+            ? UjikomPendaftaran::with('jadwal')
+                ->whereHas('peserta', fn($q) => $q->where('pegawai_id', $sdmId))
+                ->whereNotIn('status', ['selesai', 'ditolak_admin_unit', 'ditolak_pusbin'])
+                ->orderByDesc('created_at')
+                ->take(5)->get()
+            : collect();
+
+        return view('users.dashboard', compact('sdm', 'jadwalTerdekat', 'riwayatHasil', 'pendaftaranAktif'));
+    }
+
     public function index(Request $request)
     {
-        
-        
+        $user = auth()->user();
+
+        // Role-based early returns
+        if ($user->hasRole('admin_unit')) {
+            return $this->dashboardAdminUnit($user);
+        }
+        if ($user->hasRole('pemangku')) {
+            return $this->dashboardPemangku($user);
+        }
 
         // ================== FILTER INPUT ==================
         $matras = ['Darat','Laut','Udara','Kereta'];
@@ -593,19 +686,31 @@ foreach ($levels as $lvl) {
         $jumlahrs = Rumahsakit::count();
 
 
-   return view('users.dashboard', compact(
-    'markers','jumlahrs',
-    'totalJftAktif','perJenjang','levels',
-    'matras','daftarFormasi','provinces','regencies',
-    'fMatra','fFormasi','fProvinceId','fRegencyId',
-    'filteredTotal','filteredPerJenjang',
-    'donutLabels','donutData',
-    'lineChartYears','lineChartData',
-    'unitPerMatra',
-    'pyramidLabels','pyramidValues',
-    'matrixJft' // <—— tambahkan ini
+        // Perlu Tindakan untuk admin/super_admin
+        $perluTindakan = null;
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            $perluTindakan = [
+                'permohonan_pending_pusbin'    => UjikomPendaftaran::where('status', 'diajukan_pusbin')->count(),
+                'permohonan_pending_admin_unit' => UjikomPendaftaran::where('status', 'diajukan_admin_unit')->count(),
+                'jadwal_aktif'                 => UjikomJadwal::where('status', 'dipublikasikan')->count(),
+                'sesi_berlangsung'             => UjikomSesi::where('status_sesi', 'berlangsung')->count(),
+                'hasil_belum_dinilai'          => UjikomHasil::where('status_kelulusan', 'belum_dinilai')->count(),
+            ];
+        }
 
-));
+        return view('users.dashboard', compact(
+            'markers', 'jumlahrs',
+            'totalJftAktif', 'perJenjang', 'levels',
+            'matras', 'daftarFormasi', 'provinces', 'regencies',
+            'fMatra', 'fFormasi', 'fProvinceId', 'fRegencyId',
+            'filteredTotal', 'filteredPerJenjang',
+            'donutLabels', 'donutData',
+            'lineChartYears', 'lineChartData',
+            'unitPerMatra',
+            'pyramidLabels', 'pyramidValues',
+            'matrixJft',
+            'perluTindakan'
+        ));
 
 
     }

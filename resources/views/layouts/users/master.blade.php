@@ -196,10 +196,11 @@
           </li>
           @endhasanyrole
 
-          {{-- Pengembangan Karir JFT: hanya admin dan super_admin --}}
-          @hasanyrole('super_admin|admin')
-          <li class="nav-item">
-            <a href="#" class="nav-link">
+          {{-- Pengembangan Karir JFT: admin, super_admin, admin_unit --}}
+          @hasanyrole('super_admin|admin|admin_unit')
+          @php $karirActive = request()->routeIs('pengangkatan.*'); @endphp
+          <li class="nav-item {{ $karirActive ? 'menu-open' : '' }}">
+            <a href="#" class="nav-link {{ $karirActive ? 'active' : '' }}">
               <i class="nav-icon fas fa-chart-line"></i>
               <p>Pengembangan Karir JFT <i class="fas fa-angle-left right"></i></p>
             </a>
@@ -216,10 +217,10 @@
                   <p>Riwayat Diklat <span class="badge badge-warning ml-1" style="font-size:0.6rem;">Segera</span></p>
                 </a>
               </li>
-              <li class="nav-item">
-                <a href="{{ route('pengangkatan.index') }}" class="nav-link" onclick="pindah(event)">
+              <li class="nav-item {{ request()->routeIs('pengangkatan.*') ? 'active' : '' }}">
+                <a href="{{ route('pengangkatan.index') }}" class="nav-link {{ request()->routeIs('pengangkatan.*') ? 'active' : '' }}" onclick="pindah(event)">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>Pertimbangan Pengangkatan</p>
+                  <p>Pengangkatan JFT</p>
                 </a>
               </li>
               <li class="nav-item">

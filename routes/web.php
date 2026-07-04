@@ -321,34 +321,39 @@ Route::middleware(['auth'])->prefix('ujikom')->as('ujikom.')->group(function () 
     Route::get('/pegawai-list', [UjikomController::class, 'getPegawaiList'])->name('pegawai-list')->middleware('permission:view ujikom');
 });
 
-// Pertimbangan Pengangkatan JF (Operator, Admin, Super Admin)
-Route::middleware(['auth'])->prefix('pengangkatan')->as('pengangkatan.')->group(function () {
-    // AJAX & Export - HARUS DIAWAL sebelum route dengan parameter {id}
-    Route::get('/get-pegawai', [PengangkatanController::class, 'getPegawai'])->name('get-pegawai')->middleware('auth');
-    Route::get('/pegawai-list', [PengangkatanController::class, 'getPegawaiList'])->name('pegawai-list')->middleware('auth');
-    Route::post('/validasi-peserta', [PengangkatanController::class, 'validasiPeserta'])->name('validasi-peserta')->middleware('permission:create pengangkatan');
+// Pertimbangan Pengangkatan JFT (Rombak v2)
+Route::prefix('pengangkatan')->name('pengangkatan.')->middleware('auth')->group(function () {
+    Route::get('/', [PengangkatanController::class, 'index'])->name('index');
 
-    // Route CRUD
-    Route::get('/', [PengangkatanController::class, 'index'])->name('index')->middleware('permission:view pengangkatan');
-    Route::get('/create', [PengangkatanController::class, 'create'])->name('create')->middleware('permission:create pengangkatan');
-    Route::post('/', [PengangkatanController::class, 'store'])->name('store')->middleware('permission:create pengangkatan');
-    Route::get('/{id}', [PengangkatanController::class, 'show'])->name('show')->middleware('permission:view pengangkatan');
-    Route::get('/{id}/edit', [PengangkatanController::class, 'edit'])->name('edit')->middleware('permission:edit pengangkatan');
-    Route::put('/{id}', [PengangkatanController::class, 'update'])->name('update')->middleware('permission:edit pengangkatan');
-    Route::delete('/{id}', [PengangkatanController::class, 'destroy'])->name('destroy')->middleware('permission:delete pengangkatan');
+    // Admin Unit + Admin + Super Admin
+    Route::get('/create', [PengangkatanController::class, 'create'])->name('create')
+        ->middleware('role:admin_unit|admin|super_admin');
+    Route::post('/', [PengangkatanController::class, 'store'])->name('store')
+        ->middleware('role:admin_unit|admin|super_admin');
+    Route::get('/{id}/edit', [PengangkatanController::class, 'edit'])->name('edit')
+        ->middleware('role:admin_unit|admin|super_admin');
+    Route::put('/{id}', [PengangkatanController::class, 'update'])->name('update')
+        ->middleware('role:admin_unit|admin|super_admin');
+    Route::delete('/{id}', [PengangkatanController::class, 'destroy'])->name('destroy')
+        ->middleware('role:admin_unit|admin|super_admin');
+    Route::post('/{id}/ajukan', [PengangkatanController::class, 'ajukan'])->name('ajukan')
+        ->middleware('role:admin_unit|admin|super_admin');
 
-    // Aksi workflow
-    Route::post('/{id}/ajukan', [PengangkatanController::class, 'ajukan'])->name('ajukan')->middleware('permission:create pengangkatan');
-    Route::post('/{id}/verifikasi', [PengangkatanController::class, 'verifikasi'])->name('verifikasi')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/tolak', [PengangkatanController::class, 'tolak'])->name('tolak')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/draft-surat', [PengangkatanController::class, 'buatDraftSurat'])->name('draft-surat')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/paraf-katim', [PengangkatanController::class, 'konfirmasiParafKatim'])->name('paraf-katim')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/paraf-kabid', [PengangkatanController::class, 'konfirmasiParafKabid'])->name('paraf-kabid')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/ttd', [PengangkatanController::class, 'konfirmasiTtd'])->name('ttd')->middleware('permission:verifikasi pengangkatan');
-    Route::get('/{id}/nomor', [PengangkatanController::class, 'inputNomor'])->name('nomor')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/nomor', [PengangkatanController::class, 'simpanNomor'])->name('simpan-nomor')->middleware('permission:verifikasi pengangkatan');
-    Route::post('/{id}/selesaikan', [PengangkatanController::class, 'selesaikan'])->name('selesaikan')->middleware('permission:verifikasi pengangkatan');
-    Route::get('/{id}/export', [PengangkatanController::class, 'exportPdf'])->name('export')->middleware('permission:view pengangkatan');
+    // Admin Pusbin
+    Route::post('/{id}/proses', [PengangkatanController::class, 'proses'])->name('proses')
+        ->middleware('role:admin|super_admin');
+    Route::post('/{id}/setujui', [PengangkatanController::class, 'setujui'])->name('setujui')
+        ->middleware('role:admin|super_admin');
+    Route::post('/{id}/tolak', [PengangkatanController::class, 'tolak'])->name('tolak')
+        ->middleware('role:admin|super_admin');
+    Route::post('/{id}/konfirmasi-ttd', [PengangkatanController::class, 'konfirmasiTtd'])->name('konfirmasi-ttd')
+        ->middleware('role:admin|super_admin');
+    Route::post('/{id}/kandidat/update', [PengangkatanController::class, 'updateKandidat'])->name('kandidat.update')
+        ->middleware('role:admin|super_admin');
+
+    // Show & Surat (semua yg punya akses)
+    Route::get('/{id}', [PengangkatanController::class, 'show'])->name('show');
+    Route::get('/{id}/surat', [PengangkatanController::class, 'generateSurat'])->name('surat');
 });
 
 // ─── Bank Soal ────────────────────────────────────────────────────────────────

@@ -5,6 +5,210 @@
 
 ---
 
+## Versi 1.12.0 - Pengangkatan JFT (Rombak Total)
+**Tanggal:** 3 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Rombak total modul Pertimbangan Pengangkatan (sebelumnya v1.5.0/v1.5.1) menjadi alur baru berbasis hasil Uji Kompetensi: Admin Unit mengajukan permohonan pengangkatan untuk unit kerjanya → Admin Pusbin memproses (generate ranking kandidat otomatis dari `ujikom_hasil` yang lulus) → setujui → generate surat rekomendasi PDF → konfirmasi TTD → formasi pegawai ter-update otomatis. Konsep "peserta manual per permohonan" pada versi lama dihapus, digantikan generate kandidat otomatis dari data kelulusan ujikom. File & tabel lama disimpan sebagai backup (suffix `_lama`), tidak lagi dipakai di routes.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_03_000001_rombak_pengangkatan_tables.php`
+  - Drop tabel lama: `pengangkatan_surat`, `pengangkatan_peserta`, `pengangkatan_permohonan`
+  - **BARU** `pengangkatan_permohonan`: kode_permohonan, unit_kerja_id, file_surat_permohonan, tanggal_permohonan, status (draft/diajukan/diproses/disetujui/ditolak/selesai), catatan_pusbin, diajukan_oleh, diproses_oleh, tanggal_disetujui, softDeletes
+  - **BARU** `pengangkatan_kandidat` (menggantikan `pengangkatan_peserta`): FK permohonan, pegawai_id, ujikom_hasil_id, jabatan_asal, jenjang_asal, jabatan_tujuan_id, jenjang_tujuan, nilai_ujikom, ranking, formasi_tersedia, status_kandidat (direkomendasikan/antrian/ditolak_pusbin), catatan
+  - **BARU** `pengangkatan_surat`: FK permohonan, nomor_surat, file_surat, tanggal_surat, ditandatangani (boolean)
+
+### Model
+- **BARU** `app/Models/PengangkatanKandidat.php`
+  - Relasi: permohonan(), pegawai() → Sdmmodels, hasilUjikom() → UjikomHasil, jabatanTujuan() → Formasijabatan
+  - Accessor: label_status_kandidat, badge_status_kandidat
+- **DIROMBAK** `app/Models/PengangkatanPermohonan.php`
+  - Relasi baru: unitKerja(), pengaju(), pemroses(), kandidat() → hasMany(PengangkatanKandidat), surat() → hasOne(PengangkatanSurat)
+  - `generateKode()`: format `ANGKAT/{bulan-romawi}/{tahun}/{urut}`
+  - **BARU** `generateKandidat()`: ambil semua `UjikomHasil` lulus di unit kerja terkait, group per jabatan tujuan, ranking berdasarkan nilai tertinggi, tandai `direkomendasikan` jika ranking ≤ sisa formasi (selebihnya `antrian`)
+  - **BARU** `selesaikan()`: update `formasi_jabatan_id` & `tmt_pengangkatan` pegawai untuk semua kandidat berstatus `direkomendasikan`, lalu set status permohonan `selesai`
+- **DISEDERHANAKAN** `app/Models/PengangkatanSurat.php` — hanya field nomor_surat, file_surat, tanggal_surat, ditandatangani + relasi permohonan()
+- **DIHAPUS** `app/Models/PengangkatanPeserta.php` — digantikan `PengangkatanKandidat`
+
+### Controller
+- **DIROMBAK TOTAL** `app/Http/Controllers/PengangkatanController.php` (846 baris → jauh lebih ringkas)
+  - `index()`: list permohonan (admin_unit hanya lihat unit sendiri) + 4 stat card (total/diajukan/disetujui/selesai) + filter status/unit_kerja/tahun
+  - `create()`, `store()`: buat permohonan baru (upload surat permohonan PDF), opsi langsung ajukan
+  - `show()`: detail permohonan + kandidat grouped per jabatan tujuan
+  - `edit()`, `update()`, `destroy()`: hanya untuk status `draft`
+  - `ajukan()`: draft → diajukan (Admin Unit)
+  - **BARU** `proses()`: diajukan → diproses + panggil `generateKandidat()` (Admin Pusbin)
+  - **BARU** `setujui()`: diproses → disetujui + buat record `PengangkatanSurat` (Admin Pusbin)
+  - `tolak()`: diajukan/diproses → ditolak, wajib catatan_pusbin
+  - **BARU** `konfirmasiTtd()`: disetujui → selesai, tandai surat `ditandatangani` + panggil `selesaikan()` (update formasi pegawai)
+  - **BARU** `generateSurat()`: PDF surat rekomendasi (DomPDF) berisi kandidat berstatus direkomendasikan
+  - **BARU** `updateKandidat()`: AJAX, Admin Pusbin ubah status_kandidat per kandidat (direkomendasikan/antrian/ditolak_pusbin) + catatan
+  - Method lama dihapus: `getPegawai`, `getPegawaiList`, `validasiPeserta`, `verifikasi`, `buatDraftSurat`, `konfirmasiParafKatim`, `konfirmasiParafKabid`, `inputNomor`, `simpanNomor`, `selesaikan` (lama), `exportPdf` (lama)
+- Disimpan sebagai backup: `app/Http/Controllers/PengangkatanController_lama.php`, `app/Models/PengangkatanPermohonan_lama.php`, `app/Models/PengangkatanPeserta_lama.php`, `app/Models/PengangkatanSurat_lama.php` — tidak direferensikan di routes
+
+### View
+- **DIROMBAK** `resources/views/pengangkatan/index.blade.php` — 4 stat card, filter status/unit kerja (admin|super_admin)/tahun, tombol Buat Permohonan (admin_unit|admin|super_admin)
+- **DIROMBAK** `resources/views/pengangkatan/create.blade.php` — form permohonan disederhanakan: unit kerja, tanggal permohonan, upload surat permohonan (PDF)
+- **DIROMBAK** `resources/views/pengangkatan/show.blade.php` — info permohonan, timeline stepper (Draft → Diajukan → Diproses → Disetujui → TTD → Selesai), daftar kandidat per jabatan tujuan, panel aksi sesuai role & status
+- **BARU** `resources/views/pengangkatan/pdf/surat_rekomendasi.blade.php` — PDF surat rekomendasi kandidat direkomendasikan
+- **DIHAPUS** `resources/views/pengangkatan/edit.blade.php`, `nomor.blade.php`, `pdf/detail.blade.php`, `pdf/surat_pertimbangan.blade.php`
+- Disimpan sebagai backup: `resources/views/pengangkatan_lama/` (create, edit, index, nomor, show, pdf — versi lama utuh)
+
+### Route
+- **DIROMBAK** `routes/web.php` — group `pengangkatan.` diganti total:
+  - Middleware berbasis role (`role:admin_unit|admin|super_admin` untuk create/store/edit/update/destroy/ajukan; `role:admin|super_admin` untuk proses/setujui/tolak/konfirmasi-ttd/kandidat.update) — sebelumnya pakai `permission:...`
+  - Route baru: `proses`, `setujui`, `konfirmasi-ttd` (rename dari `ttd`), `kandidat.update`, `surat` (generate PDF, rename dari `export`)
+  - Route dihapus: `get-pegawai`, `pegawai-list`, `validasi-peserta`, `verifikasi`, `draft-surat`, `paraf-katim`, `paraf-kabid`, `nomor`, `simpan-nomor`, `selesaikan` (lama)
+
+### Sidebar
+- **UBAH** `resources/views/layouts/users/master.blade.php`
+  - Menu "Pengembangan Karir JFT" kini juga tampil untuk `admin_unit` (sebelumnya hanya admin|super_admin)
+  - Label menu "Pertimbangan Pengangkatan" → "Pengangkatan JFT"
+  - Tambah highlight `active`/`menu-open` otomatis berdasar `request()->routeIs('pengangkatan.*')`
+
+---
+
+## Catatan Teknis
+
+- `generateKandidat()` selalu hapus kandidat lama sebelum generate ulang (`$this->kandidat()->delete()`) — aman dipanggil ulang saat re-proses
+- Status `direkomendasikan` ditentukan murni oleh ranking vs sisa formasi saat `generateKandidat()` dijalankan; Admin Pusbin tetap bisa override manual via `updateKandidat()`
+- Tabel `pengangkatan_kandidat` **tidak** soft delete — kandidat dihapus permanen saat regenerate
+- Field `unit_kerja_id` bertipe string, relasi ke `Rumahsakit` via kolom `no_rs` (bukan `id`), konsisten dengan modul lain (Formasi, Ujikom)
+
+---
+
+## Versi 1.11.0 - Dashboard per Role
+**Tanggal:** 1 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Implementasi Dashboard per Role: tampilan dashboard kini menyesuaikan diri berdasarkan role user yang login. Admin Unit mendapat dashboard unit-spesifik. Pemangku mendapat dashboard personal. Super Admin & Admin mendapat tambahan card "Perlu Tindakan" berisi notifikasi permohonan dan sesi aktif. Viewer tetap melihat dashboard nasional seperti sebelumnya.
+
+---
+
+## Perubahan
+
+### Controller
+- **DIUBAH** `app/Http/Controllers/PetaDashboardController.php`
+  - Tambah import: `UjikomJadwal`, `UjikomPendaftaran`, `UjikomHasil`, `UjikomSesi`, `Sdmmodels`
+  - `index()`: deteksi role di awal — early return untuk `admin_unit` dan `pemangku`; tambah `$perluTindakan` untuk `super_admin|admin`
+  - **BARU** `dashboardAdminUnit($user)`: total pegawai unit, rekap formasi (kuota/terisi/sisa), permohonan counts per status, jadwal ujikan aktif
+  - **BARU** `dashboardPemangku($user)`: profil SDM, jadwal terdekat (max 3), riwayat hasil ujian (max 10), permohonan aktif (max 5)
+
+### View
+- **DIUBAH** `resources/views/users/dashboard.blade.php`
+  - Tambah section `@role('pemangku')`: profil pemangku, jadwal terdekat, riwayat hasil ujian, permohonan aktif
+  - Tambah section `@role('admin_unit')`: info unit kerja, 4 stat cards, tabel rekap formasi, jadwal ujikan aktif
+  - Tambah block `@hasanyrole('super_admin|admin')` → card "Perlu Tindakan" dengan 5 metric: permohonan pending pusbin/admin_unit, jadwal aktif, sesi berlangsung, hasil belum dinilai
+  - Existing national dashboard dibungkus `@hasanyrole('super_admin|admin|viewer')`
+  - Link metric "sesi berlangsung" mengarah ke `route('ujikom-online.index')` — bukan `ujikom-online.monitoring` (route tersebut tidak terdaftar; monitoring per-jadwal diakses dari dalam halaman index)
+
+---
+
+## Versi 1.10.0 - Modul Hasil Uji Kompetensi
+**Tanggal:** 2 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Implementasi modul Hasil Uji Kompetensi sebagai sub-menu 1.4 di Kompetensi JFT. Menggantikan placeholder "Coming Soon". Tabel `ujikom_hasil` menjadi sumber kebenaran tunggal untuk hasil ujian, baik dari ujian online (auto-sync) maupun offline (input manual admin). Peserta pemangku dapat melihat riwayat ujikom milik sendiri.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_01_000004_create_ujikom_hasil_table.php`
+  - Tabel `ujikom_hasil`: FK jadwal, sesi (nullable), peserta; enum jenis_ujian (online/offline); nilai, status_kelulusan, passing_grade, catatan_admin, dinilai_oleh, tanggal_ujian
+  - unique(ujikom_jadwal_id, peserta_id) — satu peserta satu hasil per jadwal
+
+### Model
+- **BARU** `app/Models/UjikomHasil.php`
+  - Relasi: jadwal(), sesi(), peserta(), penilai()
+  - Accessor: label_status ('Lulus'/'Tidak Lulus'/'Belum Dinilai'), badge_status ('success'/'danger'/'secondary'), label_jenis ('Online'/'Offline')
+
+- **UBAH** `app/Models/UjikomSesi.php`
+  - Tambah method `syncKeHasil()`: sync nilai ujian online ke `ujikom_hasil` via `updateOrCreate`
+  - Tambah panggilan `$this->syncKeHasil()` di akhir `hitungNilai()` — otomatis mencakup semua jalur finalisasi (submit peserta, force submit admin, tutup sesi admin)
+
+- **UBAH** `app/Models/UjikomJadwal.php`
+  - Tambah relasi `hasilUjikom()` → hasMany(UjikomHasil)
+  - Tambah relasi `pendaftaran()` → hasMany(UjikomPendaftaran)
+
+### Export
+- **BARU** `app/Exports/UjikomHasilExcelExport.php`
+  - Implements FromCollection, WithHeadings, WithStyles, ShouldAutoSize, WithTitle
+  - Header biru tua (#1F3864), 12 kolom, semua peserta terverifikasi (termasuk yang belum punya nilai)
+
+### Controller
+- **BARU** `app/Http/Controllers/UjikomHasilController.php` — 8 method:
+  - `index()`: rekap per jadwal + statistik global + filter tahun/jenis
+  - `show($jadwalId)`: detail peserta + distribusi nilai 5 rentang + statistik kelulusan
+  - `inputOffline($jadwalId)`: form input nilai peserta belum dinilai
+  - `simpanOffline($jadwalId)`: simpan hasil offline dengan passing grade dari paket aktif
+  - `updateCatatan($hasilId)`: AJAX update catatan admin
+  - `exportPdf($jadwalId)`: DomPDF landscape — kop surat, statistik, tabel, TTD kosong
+  - `exportExcel($jadwalId)`: Maatwebsite Excel download
+  - `riwayatPeserta()`: riwayat ujikom pemangku berdasar `user->sdm_id`
+
+### View
+- **BARU** `resources/views/ujikom/hasil/index.blade.php`
+  - 5 statistik card global (total jadwal, peserta, lulus, tidak lulus, belum dinilai)
+  - Tabel jadwal: badge Campuran/Online/Offline, kolom lulus/tidak/belum, aksi Detail+PDF+Excel
+  - Filter tahun + jenis ujian
+
+- **BARU** `resources/views/ujikom/hasil/show.blade.php`
+  - 4 info-box statistik + bar chart distribusi nilai (CSS-only, 5 rentang: 0-60, 61-70, 71-80, 81-90, 91-100)
+  - Tabel peserta: inline edit catatan admin via AJAX (tampil/form toggle)
+  - Tombol Input Offline, Export PDF, Export Excel
+
+- **BARU** `resources/views/ujikom/hasil/input_offline.blade.php`
+  - Tabel peserta belum dinilai, auto-set status lulus/tidak dari nilai vs passing grade (jQuery)
+  - Tanggal ujian default = hari ini
+
+- **BARU** `resources/views/ujikom/hasil/riwayat.blade.php`
+  - Tabel riwayat ujikom peserta: jadwal, tanggal, jenis, nilai, passing grade, status kelulusan, catatan
+
+- **BARU** `resources/views/ujikom/hasil/pdf/rekap.blade.php`
+  - Layout landscape, kop surat (`public/images/kop_surat.png`), statistik summary, tabel peserta, TTD kosong
+
+### Route
+- **UBAH** `routes/web.php`
+  - Hapus placeholder `ujikom.hasil.index` (coming soon)
+  - Tambah group `Route::prefix('ujikom/hasil')->name('ujikom.hasil.')` dengan 8 route
+  - Static routes (`riwayat/saya`, `catatan/{hasilId}`) diprioritaskan sebelum wildcard `/{jadwalId}`
+  - Ditempatkan sebelum group `ujikom/{id}` untuk mencegah konflik wildcard
+
+### Sidebar
+- **UBAH** `resources/views/layouts/users/master.blade.php`
+  - "Hasil Uji Kompetensi (Segera)" → link aktif dengan kondisi role:
+    - Pemangku → `ujikom.hasil.riwayat`
+    - Admin/Super Admin → `ujikom.hasil.index`
+  - Wrapped dalam `@hasanyrole('super_admin|admin|admin_unit|pemangku')`
+
+---
+
+## Catatan Teknis
+
+- `syncKeHasil()` menggunakan `updateOrCreate` dengan key `[ujikom_jadwal_id, peserta_id]` sehingga aman dipanggil berkali-kali (idempotent)
+- Nilai offline tidak menimpa nilai online jika jenis_ujian berbeda (karena unique constraint per jadwal+peserta, hanya 1 hasil per peserta per jadwal)
+- `riwayatPeserta()` gunakan `user->sdm_id` → cari peserta_id → load hasil, konsisten dengan pola auth di modul ujikom online
+
+---
+
 ## Versi 1.9.0 - Modul Bank Soal, Paket Ujian & Ujikom Online
 **Tanggal:** 1 Juli 2026
 **Status:** Selesai ✅

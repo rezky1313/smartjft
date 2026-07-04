@@ -8,6 +8,368 @@
 @section('isi')
 <div class="container-fluid">
 
+  {{-- ============ DASHBOARD PEMANGKU ============ --}}
+  @role('pemangku')
+  <h3 class="mb-4 fw-bold">Dashboard Saya</h3>
+
+  {{-- Profil Pemangku --}}
+  @if ($sdm)
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="fw-semibold mb-3"><i class="fas fa-user-circle text-primary mr-2"></i>Profil Pemangku JFT</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-sm table-borderless mb-0">
+            <tr><td width="140" class="text-muted">Nama Lengkap</td><td>: <strong>{{ $sdm->nama_lengkap ?? '-' }}</strong></td></tr>
+            <tr><td class="text-muted">NIP</td><td>: {{ $sdm->nip ?? '-' }}</td></tr>
+            <tr><td class="text-muted">Jabatan</td><td>: {{ $sdm->formasiJabatan->nama_formasi ?? '-' }}</td></tr>
+            <tr><td class="text-muted">Jenjang</td><td>: {{ $sdm->formasiJabatan->jenjang->nama_jenjang ?? '-' }}</td></tr>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <table class="table table-sm table-borderless mb-0">
+            <tr><td width="140" class="text-muted">Pangkat/Gol.</td><td>: {{ $sdm->pangkat_golongan ?? '-' }}</td></tr>
+            <tr><td class="text-muted">Unit Kerja</td><td>: {{ $sdm->unitKerja->nama_rumahsakit ?? '-' }}</td></tr>
+            <tr><td class="text-muted">Status</td><td>: <span class="badge badge-success">Aktif</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  @else
+  <div class="alert alert-warning mb-4">
+    <i class="fas fa-exclamation-triangle mr-2"></i>
+    Data profil pegawai belum terhubung ke akun ini. Hubungi admin.
+  </div>
+  @endif
+
+  {{-- Jadwal Ujikon Terdekat --}}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom">
+      <h6 class="mb-0"><i class="fas fa-calendar-alt text-primary mr-2"></i>Jadwal Uji Kompetensi Terdekat</h6>
+    </div>
+    <div class="card-body p-0">
+      @if ($jadwalTerdekat->isEmpty())
+        <div class="text-center text-muted py-4">
+          <i class="fas fa-calendar-times fa-2x mb-2 d-block"></i>
+          Belum ada jadwal ujian yang dipublikasikan.
+        </div>
+      @else
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Judul Ujian</th>
+              <th width="120" class="text-center">Tanggal</th>
+              <th width="80" class="text-center">Jenis</th>
+              <th width="100" class="text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($jadwalTerdekat as $jadwal)
+            <tr>
+              <td><strong>{{ $jadwal->judul }}</strong><br><small class="text-muted">{{ $jadwal->tempat ?? '-' }}</small></td>
+              <td class="text-center"><small>{{ $jadwal->tanggal_mulai?->format('d M Y') ?? '-' }}</small></td>
+              <td class="text-center">
+                <span class="badge badge-{{ $jadwal->jenis_ujian === 'online' ? 'primary' : 'secondary' }}">
+                  {{ ucfirst($jadwal->jenis_ujian ?? '-') }}
+                </span>
+              </td>
+              <td class="text-center">
+                <a href="{{ route('ujikom.jadwal.show', $jadwal->id) }}" class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-eye"></i> Detail
+                </a>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      @endif
+    </div>
+  </div>
+
+  {{-- Riwayat Hasil Ujian --}}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center">
+      <h6 class="mb-0"><i class="fas fa-history text-primary mr-2"></i>Riwayat Uji Kompetensi</h6>
+      <a href="{{ route('ujikom.hasil.riwayat') }}" class="btn btn-sm btn-outline-primary ml-auto">Lihat Semua</a>
+    </div>
+    <div class="card-body p-0">
+      @if ($riwayatHasil->isEmpty())
+        <div class="text-center text-muted py-4">
+          <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+          Belum ada riwayat uji kompetensi.
+        </div>
+      @else
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Nama Jadwal</th>
+              <th width="110" class="text-center">Tanggal</th>
+              <th width="70" class="text-center">Nilai</th>
+              <th width="110" class="text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($riwayatHasil as $hasil)
+            <tr>
+              <td>{{ $hasil->jadwal?->judul ?? '-' }}</td>
+              <td class="text-center"><small>{{ $hasil->tanggal_ujian?->format('d M Y') ?? '-' }}</small></td>
+              <td class="text-center">
+                <strong class="text-{{ $hasil->status_kelulusan === 'lulus' ? 'success' : ($hasil->status_kelulusan === 'tidak_lulus' ? 'danger' : 'muted') }}">
+                  {{ $hasil->nilai !== null ? number_format($hasil->nilai, 0) : '—' }}
+                </strong>
+              </td>
+              <td class="text-center">
+                <span class="badge badge-{{ $hasil->badge_status }}">{{ $hasil->label_status }}</span>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      @endif
+    </div>
+  </div>
+
+  {{-- Permohonan Aktif --}}
+  @if ($pendaftaranAktif->isNotEmpty())
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom">
+      <h6 class="mb-0"><i class="fas fa-file-alt text-primary mr-2"></i>Permohonan Pendaftaran Ujikom Aktif</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Jadwal</th>
+              <th width="110" class="text-center">Tanggal Daftar</th>
+              <th width="150" class="text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($pendaftaranAktif as $daftar)
+            <tr>
+              <td>{{ $daftar->jadwal?->judul ?? '-' }}</td>
+              <td class="text-center"><small>{{ $daftar->created_at?->format('d M Y') ?? '-' }}</small></td>
+              <td class="text-center">
+                <span class="badge badge-info" style="font-size:0.75rem;">{{ str_replace('_', ' ', $daftar->status) }}</span>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  @endif
+  @endrole
+
+  {{-- ============ DASHBOARD ADMIN UNIT ============ --}}
+  @role('admin_unit')
+  <h3 class="mb-4 fw-bold">Dashboard Unit Kerja</h3>
+  @if ($unitKerja)
+  <div class="alert alert-info mb-3 py-2">
+    <i class="fas fa-building mr-2"></i>
+    <strong>{{ $unitKerja->nama_rumahsakit }}</strong>
+    — {{ optional($unitKerja->regency)->type }} {{ optional($unitKerja->regency)->name }},
+    {{ optional(optional($unitKerja->regency)->province)->name }}
+  </div>
+  @endif
+
+  {{-- Stat Cards --}}
+  <div class="row mb-4">
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-info" style="font-size:2rem;"><i class="fas fa-users"></i></div>
+          <h3 class="mb-0 font-weight-bold">{{ number_format($totalPegawai) }}</h3>
+          <small class="text-muted">Total Pemangku JFT Aktif</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-warning" style="font-size:2rem;"><i class="fas fa-clock"></i></div>
+          <h3 class="mb-0 font-weight-bold text-warning">{{ number_format($permohonanMenunggu) }}</h3>
+          <small class="text-muted">Permohonan Menunggu Verifikasi</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-primary" style="font-size:2rem;"><i class="fas fa-spinner"></i></div>
+          <h3 class="mb-0 font-weight-bold text-primary">{{ number_format($permohonanDiproses) }}</h3>
+          <small class="text-muted">Permohonan Diproses Pusbin</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="text-success" style="font-size:2rem;"><i class="fas fa-check-circle"></i></div>
+          <h3 class="mb-0 font-weight-bold text-success">{{ number_format($permohonanSelesai) }}</h3>
+          <small class="text-muted">Permohonan Selesai</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{-- Rekap Formasi Unit --}}
+  @if ($formasiUnit->isNotEmpty())
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom">
+      <h6 class="mb-0"><i class="fas fa-briefcase text-primary mr-2"></i>Rekap Formasi Unit Kerja</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Nama Formasi</th>
+              <th width="120">Jenjang</th>
+              <th width="80" class="text-center">Kuota</th>
+              <th width="80" class="text-center">Terisi</th>
+              <th width="80" class="text-center">Sisa</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($formasiUnit as $f)
+            @php $terisi = (int)($terisiMap[$f->id] ?? 0); $sisa = max((int)$f->kuota - $terisi, 0); @endphp
+            <tr>
+              <td>{{ $f->nama_formasi }}</td>
+              <td>{{ $f->nama_jenjang }}</td>
+              <td class="text-center">{{ $f->kuota }}</td>
+              <td class="text-center">{{ $terisi }}</td>
+              <td class="text-center">
+                <span class="badge badge-{{ $sisa > 0 ? 'success' : 'danger' }}">{{ $sisa }}</span>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  @endif
+
+  {{-- Jadwal Ujikon Aktif --}}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center">
+      <h6 class="mb-0"><i class="fas fa-calendar-check text-primary mr-2"></i>Jadwal Ujian Aktif</h6>
+      <a href="{{ route('ujikom.jadwal.index') }}" class="btn btn-sm btn-outline-primary ml-auto">Lihat Semua</a>
+    </div>
+    <div class="card-body p-0">
+      @if ($jadwalAktif->isEmpty())
+        <div class="text-center text-muted py-4">Belum ada jadwal aktif.</div>
+      @else
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Judul Ujian</th>
+              <th width="120" class="text-center">Tanggal</th>
+              <th width="80" class="text-center">Jenis</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach ($jadwalAktif as $jadwal)
+            <tr>
+              <td><a href="{{ route('ujikom.jadwal.show', $jadwal->id) }}">{{ $jadwal->judul }}</a></td>
+              <td class="text-center"><small>{{ $jadwal->tanggal_mulai?->format('d M Y') ?? '-' }}</small></td>
+              <td class="text-center">
+                <span class="badge badge-{{ $jadwal->jenis_ujian === 'online' ? 'primary' : 'secondary' }}">
+                  {{ ucfirst($jadwal->jenis_ujian ?? '-') }}
+                </span>
+              </td>
+            </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
+      @endif
+    </div>
+  </div>
+  @endrole
+
+  {{-- ============ DASHBOARD SUPER ADMIN / ADMIN / VIEWER ============ --}}
+  @hasanyrole('super_admin|admin|viewer')
+
+  {{-- Perlu Tindakan (hanya admin & super admin) --}}
+  @hasanyrole('super_admin|admin')
+  @if ($perluTindakan)
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom">
+      <h6 class="mb-0"><i class="fas fa-bell text-danger mr-2"></i>Perlu Tindakan</h6>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4 col-6 mb-3">
+          <a href="{{ route('ujikom.permohonan.index', ['status' => 'diajukan_pusbin']) }}" class="text-decoration-none">
+            <div class="p-3 rounded border border-danger bg-light d-flex align-items-center">
+              <div class="text-danger mr-3" style="font-size:1.8rem;"><i class="fas fa-file-import"></i></div>
+              <div>
+                <div class="h4 mb-0 font-weight-bold text-danger">{{ $perluTindakan['permohonan_pending_pusbin'] }}</div>
+                <small class="text-muted">Permohonan Menunggu Verifikasi Pusbin</small>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-4 col-6 mb-3">
+          <a href="{{ route('ujikom.permohonan.index', ['status' => 'diajukan_admin_unit']) }}" class="text-decoration-none">
+            <div class="p-3 rounded border border-warning bg-light d-flex align-items-center">
+              <div class="text-warning mr-3" style="font-size:1.8rem;"><i class="fas fa-hourglass-half"></i></div>
+              <div>
+                <div class="h4 mb-0 font-weight-bold text-warning">{{ $perluTindakan['permohonan_pending_admin_unit'] }}</div>
+                <small class="text-muted">Permohonan di Admin Unit</small>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-4 col-6 mb-3">
+          <a href="{{ route('ujikom.jadwal.index') }}" class="text-decoration-none">
+            <div class="p-3 rounded border border-primary bg-light d-flex align-items-center">
+              <div class="text-primary mr-3" style="font-size:1.8rem;"><i class="fas fa-calendar-check"></i></div>
+              <div>
+                <div class="h4 mb-0 font-weight-bold text-primary">{{ $perluTindakan['jadwal_aktif'] }}</div>
+                <small class="text-muted">Jadwal Ujian Aktif</small>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-4 col-6 mb-3">
+          <a href="{{ route('ujikom-online.index') }}" class="text-decoration-none">
+            <div class="p-3 rounded border border-info bg-light d-flex align-items-center">
+              <div class="text-info mr-3" style="font-size:1.8rem;"><i class="fas fa-desktop"></i></div>
+              <div>
+                <div class="h4 mb-0 font-weight-bold text-info">{{ $perluTindakan['sesi_berlangsung'] }}</div>
+                <small class="text-muted">Sesi Ujian Berlangsung</small>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-4 col-6 mb-3">
+          <a href="{{ route('ujikom.hasil.index') }}" class="text-decoration-none">
+            <div class="p-3 rounded border border-secondary bg-light d-flex align-items-center">
+              <div class="text-secondary mr-3" style="font-size:1.8rem;"><i class="fas fa-clipboard-list"></i></div>
+              <div>
+                <div class="h4 mb-0 font-weight-bold text-secondary">{{ $perluTindakan['hasil_belum_dinilai'] }}</div>
+                <small class="text-muted">Hasil Belum Dinilai</small>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  @endif
+  @endhasanyrole
+
   {{-- ============ HERO ============ --}}
 
       <h3 class="mb-4 fw-bold">Halaman Dashboard</h3>
@@ -246,9 +608,11 @@
     </div>
     <div id="leafletMap-dashboard" style="height: 650px;"></div>
 
-    
+
 
   </div>
+
+  @endhasanyrole {{-- end super_admin|admin|viewer --}}
 
 </div>
 @endsection

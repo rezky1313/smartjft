@@ -2,49 +2,32 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PengangkatanSurat extends Model
 {
-    use SoftDeletes;
+    use HasFactory;
 
     protected $table = 'pengangkatan_surat';
 
     protected $fillable = [
         'pengangkatan_permohonan_id',
         'nomor_surat',
-        'file_path',
-        'dibuat_oleh',
-        'tanggal_dibuat',
+        'file_surat',
+        'tanggal_surat',
+        'ditandatangani',
     ];
 
     protected $casts = [
-        'tanggal_dibuat' => 'datetime',
+        'tanggal_surat'   => 'date',
+        'ditandatangani'  => 'boolean',
     ];
 
-    /**
-     * Relasi ke Permohonan
-     */
-    public function permohonan(): BelongsTo
+    // ─── Relasi ───
+
+    public function permohonan()
     {
         return $this->belongsTo(PengangkatanPermohonan::class, 'pengangkatan_permohonan_id');
-    }
-
-    /**
-     * Relasi ke User yang membuat surat
-     */
-    public function dibuatOleh(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'dibuat_oleh');
-    }
-
-    /**
-     * Scope untuk mendapatkan surat pertimbangan terbaru
-     */
-    public function scopeLatest($query)
-    {
-        return $query->orderBy('tanggal_dibuat', 'desc');
     }
 }
