@@ -122,6 +122,7 @@ class BankSoalController extends Controller
             'pilihan'          => 'required|array|size:4',
             'pilihan.*.teks'   => 'required|string',
             'jawaban_benar'    => 'required|in:A,B,C,D',
+            'status'           => 'required|in:draft,aktif,nonaktif',
         ]);
 
         $soal->update([
@@ -131,6 +132,7 @@ class BankSoalController extends Controller
             'tingkat_kesulitan' => $request->tingkat_kesulitan,
             'taksonomi_bloom'   => $request->taksonomi_bloom,
             'jenis'             => $request->jenis,
+            'status'            => $request->status,
         ]);
 
         foreach (['A', 'B', 'C', 'D'] as $kode) {
@@ -156,8 +158,8 @@ class BankSoalController extends Controller
     {
         $soal = BankSoal::findOrFail($id);
 
-        if ($soal->status !== 'draft') {
-            return back()->with('error', 'Hanya soal berstatus Draft yang dapat diaktifkan.');
+        if (!in_array($soal->status, ['draft', 'nonaktif'])) {
+            return back()->with('error', 'Hanya soal berstatus Draft atau Nonaktif yang dapat diaktifkan.');
         }
 
         $soal->update([

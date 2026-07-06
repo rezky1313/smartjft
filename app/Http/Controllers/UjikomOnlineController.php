@@ -111,15 +111,18 @@ class UjikomOnlineController extends Controller
             if (in_array($sesiExisting->status_sesi, ['selesai', 'timeout'])) {
                 return redirect()->route('ujikom-online.hasil', $sesiExisting->id);
             }
+            // status_sesi === 'menunggu' (dibuat massal oleh admin via bukaSesi(), belum ada soal/timer)
+            // → lanjut ke bawah untuk diaktifkan, JANGAN buat sesi baru (unique: ujikom_jadwal_id + peserta_id)
         }
 
-        // 3. Ambil paket ujian aktif untuk jadwal ini
+        // 3. Ambil paket ujian aktif untuk jadwal ini (ambil yang paling baru diaktifkan jika lebih dari 1)
         $paket = PaketUjian::where('ujikom_jadwal_id', $jadwalId)
             ->where('status', 'aktif')
+            ->latest()
             ->first();
 
         if (!$paket) {
-            return back()->with('error', 'Belum ada paket ujian aktif untuk jadwal ini.');
+            return back()->with('error', 'Paket ujian belum tersedia untuk jadwal ini. Silakan hubungi admin Pusbin.');
         }
 
         // 4. Generate soal
@@ -129,19 +132,26 @@ class UjikomOnlineController extends Controller
             return back()->with('error', 'Tidak ada soal yang tersedia di bank soal.');
         }
 
-        // 5. Buat sesi di dalam transaksi
-        $sesi = DB::transaction(function () use ($jadwalId, $paket, $peserta, $soalSet, $request) {
-            $now = Carbon::now();
+        // 5. Aktifkan sesi 'menunggu' yang sudah ada (dibuat admin), atau buat baru jika belum ada sama sekali
+        $sesi = DB::transaction(function () use ($jadwalId, $paket, $peserta, $soalSet, $request, $sesiExisting) {
+            $now  = Carbon::now();
+            $data = [
+                'paket_ujian_id' => $paket->id,
+                'status_sesi'    => 'berlangsung',
+                'waktu_mulai'    => $now,
+                'batas_waktu'    => $now->copy()->addMinutes($paket->durasi_menit),
+                'ip_address'     => $request->ip(),
+            ];
 
-            $sesi = UjikomSesi::create([
-                'ujikom_jadwal_id' => $jadwalId,
-                'paket_ujian_id'   => $paket->id,
-                'peserta_id'       => $peserta->id,
-                'status_sesi'      => 'berlangsung',
-                'waktu_mulai'      => $now,
-                'batas_waktu'      => $now->copy()->addMinutes($paket->durasi_menit),
-                'ip_address'       => $request->ip(),
-            ]);
+            if ($sesiExisting) {
+                $sesiExisting->update($data);
+                $sesi = $sesiExisting;
+            } else {
+                $sesi = UjikomSesi::create($data + [
+                    'ujikom_jadwal_id' => $jadwalId,
+                    'peserta_id'       => $peserta->id,
+                ]);
+            }
 
             // 6. Insert soal dengan urutan
             foreach ($soalSet as $urutan => $soal) {
@@ -351,9 +361,10 @@ class UjikomOnlineController extends Controller
     {
         $jadwal = UjikomJadwal::findOrFail($jadwalId);
 
-        // Cek paket aktif
+        // Cek paket aktif (ambil yang paling baru diaktifkan jika lebih dari 1)
         $paket = PaketUjian::where('ujikom_jadwal_id', $jadwalId)
             ->where('status', 'aktif')
+            ->latest()
             ->first();
 
         if (!$paket) {

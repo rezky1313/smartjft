@@ -6,6 +6,23 @@
 <div class="row">
   <div class="col-12">
 
+    {{-- Warning jika ada jadwal dengan paket aktif lebih dari 1 --}}
+    @php
+      $konflik = \App\Models\PaketUjian::where('status', 'aktif')
+          ->whereNotNull('ujikom_jadwal_id')
+          ->select('ujikom_jadwal_id', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+          ->groupBy('ujikom_jadwal_id')
+          ->having('total', '>', 1)
+          ->count();
+    @endphp
+    @if ($konflik > 0)
+    <div class="alert alert-warning">
+      <i class="fas fa-exclamation-triangle mr-1"></i>
+      <strong>Perhatian!</strong> Ada {{ $konflik }} jadwal ujikom yang memiliki lebih dari 1 paket aktif.
+      Sistem akan mengambil paket yang paling baru diaktifkan. Nonaktifkan paket yang tidak digunakan.
+    </div>
+    @endif
+
     {{-- Statistik --}}
     <div class="row mb-3">
       <div class="col-6 col-md-3">

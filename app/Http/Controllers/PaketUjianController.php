@@ -67,6 +67,18 @@ class PaketUjianController extends Controller
             'soal_terpilih.*' => 'exists:bank_soal,id',
         ]);
 
+        if ($request->simpan_sebagai === 'aktif' && $request->ujikom_jadwal_id) {
+            $paketAktifLain = PaketUjian::where('ujikom_jadwal_id', $request->ujikom_jadwal_id)
+                ->where('status', 'aktif')
+                ->first();
+
+            if ($paketAktifLain) {
+                return back()->withInput()->withErrors([
+                    'ujikom_jadwal_id' => "Jadwal ini sudah punya paket aktif: \"{$paketAktifLain->nama}\". Nonaktifkan dulu sebelum menambah paket aktif baru.",
+                ]);
+            }
+        }
+
         DB::transaction(function () use ($request) {
             $paket = PaketUjian::create([
                 'nama'             => $request->nama,
@@ -217,6 +229,19 @@ class PaketUjianController extends Controller
         $cek = $paket->cekKetersediaanSoal();
         if (!$cek['cukup']) {
             return back()->with('error', 'Jumlah soal di bank tidak mencukupi. Tambah soal terlebih dahulu.');
+        }
+
+        if ($paket->ujikom_jadwal_id) {
+            $paketAktifLain = PaketUjian::where('ujikom_jadwal_id', $paket->ujikom_jadwal_id)
+                ->where('status', 'aktif')
+                ->where('id', '!=', $id)
+                ->first();
+
+            if ($paketAktifLain) {
+                return back()->with('error',
+                    "Jadwal ujikom ini sudah memiliki paket aktif: \"{$paketAktifLain->nama}\". Nonaktifkan paket tersebut terlebih dahulu sebelum mengaktifkan paket baru."
+                );
+            }
         }
 
         $paket->update(['status' => 'aktif']);

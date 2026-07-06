@@ -54,6 +54,7 @@
                 <th>Tempat</th>
                 <th width="70">Kuota</th>
                 <th width="130">Status</th>
+                <th width="150">Paket Aktif</th>
                 <th width="160">Aksi</th>
               </tr>
             </thead>
@@ -76,6 +77,17 @@
                 <td class="text-center">{{ $j->kuota }}</td>
                 <td>
                   <span class="badge badge-{{ $j->badge_status }}">{{ $j->status_label }}</span>
+                </td>
+                <td>
+                  @php
+                    $paketAktif = \App\Models\PaketUjian::where('ujikom_jadwal_id', $j->id)
+                        ->where('status', 'aktif')->latest()->first();
+                  @endphp
+                  @if ($paketAktif)
+                    <span class="badge badge-success">{{ $paketAktif->nama }}</span>
+                  @else
+                    <span class="badge badge-danger">Belum ada paket aktif</span>
+                  @endif
                 </td>
                 <td>
                   <a href="{{ route('ujikom.jadwal.show', $j->id) }}" class="btn btn-info btn-xs" title="Lihat">
@@ -115,7 +127,7 @@
               </tr>
               @empty
               <tr>
-                <td colspan="10" class="text-center text-muted py-4">
+                <td colspan="11" class="text-center text-muted py-4">
                   <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                   Belum ada jadwal uji kompetensi.
                 </td>

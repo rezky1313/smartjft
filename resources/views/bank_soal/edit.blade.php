@@ -93,6 +93,18 @@
               </div>
             </div>
           </div>
+          <div class="row">
+            <div class="col-md-3">
+              <div class="form-group mb-0">
+                <label class="font-weight-bold">Status <span class="text-danger">*</span></label>
+                <select name="status" class="form-control">
+                  <option value="draft"    {{ old('status', $soal->status) === 'draft'    ? 'selected' : '' }}>Draft</option>
+                  <option value="aktif"    {{ old('status', $soal->status) === 'aktif'    ? 'selected' : '' }}>Aktif</option>
+                  <option value="nonaktif" {{ old('status', $soal->status) === 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

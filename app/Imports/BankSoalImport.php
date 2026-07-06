@@ -11,11 +11,21 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\WithStartRow;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
-class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, SkipsErrors
+class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, WithMultipleSheets
 {
+    use SkipsErrors;
+
+    public function sheets(): array
+    {
+        return [
+            'Data Soal' => $this,
+        ];
+    }
+
     public int   $berhasil    = 0;
     public int   $gagal       = 0;
     public array $detailGagal = [];

@@ -251,6 +251,11 @@
               <i class="nav-icon fas fa-tags"></i><p>Kategori Soal</p>
             </a>
           </li>
+          <li class="nav-item">
+            <a href="{{ route('paket-ujian.index') }}" class="nav-link">
+              <i class="nav-icon fas fa-boxes"></i><p>Paket Ujian</p>
+            </a>
+          </li>
           @endhasanyrole
 
           {{-- Manajemen User: hanya super_admin --}}

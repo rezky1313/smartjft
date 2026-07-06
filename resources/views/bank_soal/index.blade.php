@@ -146,7 +146,7 @@
                 <td class="text-center">{{ $soals->firstItem() + $i }}</td>
                 <td class="text-muted small">#{{ $s->id }}</td>
                 <td>{{ Str::limit($s->pertanyaan, 90) }}</td>
-                <td><small>{{ $s->kategori?->nama ?? '<span class="text-muted">—</span>' }}</small></td>
+                <td><small>{{ $s->kategori?->nama ?? 'Umum' }}</small></td>
                 <td class="text-center">
                   @php $badgeTingkat = ['mudah'=>'success','sedang'=>'warning','sulit'=>'danger']; @endphp
                   <span class="badge badge-{{ $badgeTingkat[$s->tingkat_kesulitan] ?? 'secondary' }}">{{ $s->label_tingkat }}</span>
@@ -170,7 +170,7 @@
                   <a href="{{ route('bank-soal.show', $s->id) }}" class="btn btn-xs btn-outline-info" title="Lihat"><i class="fas fa-eye"></i></a>
                   @hasanyrole('super_admin|admin')
                   <a href="{{ route('bank-soal.edit', $s->id) }}" class="btn btn-xs btn-outline-warning" title="Edit"><i class="fas fa-pencil-alt"></i></a>
-                  @if ($s->status === 'draft')
+                  @if ($s->status === 'draft' || $s->status === 'nonaktif')
                   <form action="{{ route('bank-soal.approve', $s->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Aktifkan soal ini?')">
                     @csrf <button class="btn btn-xs btn-outline-success" title="Aktifkan"><i class="fas fa-check"></i></button>
                   </form>

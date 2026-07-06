@@ -38,6 +38,12 @@ class Sdmmodels extends Model
         return $this->belongsTo(\App\Models\Formasijabatan::class, 'formasi_jabatan_id');
     }
 
+    // Alias formasi() — dipakai di dashboard.blade.php & PengangkatanPermohonan.php
+    public function formasiJabatan()
+    {
+        return $this->belongsTo(\App\Models\Formasijabatan::class, 'formasi_jabatan_id');
+    }
+
     public function unitKerja() {
   return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
 }

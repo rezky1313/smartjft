@@ -16,6 +16,7 @@ class SoalKategori extends Model
         'jabatan',
         'jenjang',
         'matra',
+        'klasifikasi',
         'bidang',
         'deskripsi',
         'aktif',
@@ -60,12 +61,23 @@ class SoalKategori extends Model
     public function getLabelMatraAttribute(): string
     {
         return match ($this->matra) {
-            'darat' => 'Darat',
-            'laut'  => 'Laut',
-            'udara' => 'Udara',
-            'asdp'  => 'ASDP',
-            'umum'  => 'Umum',
-            default => $this->matra,
+            'darat'          => 'Darat',
+            'laut'           => 'Laut',
+            'udara'          => 'Udara',
+            'asdp'           => 'ASDP',
+            'perkeretaapian' => 'Perkeretaapian',
+            'umum'           => 'Umum',
+            default          => $this->matra,
+        };
+    }
+
+    public function getLabelKlasifikasiAttribute(): string
+    {
+        return match ($this->klasifikasi) {
+            'keahlian'     => 'Keahlian',
+            'keterampilan' => 'Keterampilan',
+            'umum'         => 'Umum',
+            default        => $this->klasifikasi,
         };
     }
 }

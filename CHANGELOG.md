@@ -5,6 +5,80 @@
 
 ---
 
+## Versi 1.12.1 - Bug Fix: Bank Soal, Paket Ujian, Ujikom Online, Dashboard Pemangku
+**Tanggal:** 6 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Serangkaian perbaikan bug ditemukan saat pengujian pasca-rombak v1.9.0–v1.12.0: crash import Bank Soal, menu Paket Ujian hilang dari sidebar, tampilan kategori soal rusak, error relasi model di dashboard pemangku, sesi ujian online gagal dimulai untuk peserta yang sudah dibuka admin, dan potensi satu jadwal ujikom punya lebih dari satu paket aktif sekaligus.
+
+---
+
+## Perubahan
+
+### 1. Fix Import Bank Soal — `SkipsErrors` dipakai sebagai interface, padahal trait
+- **UBAH** `app/Imports/BankSoalImport.php`
+  - `class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, SkipsErrors` → `SkipsErrors` dipindah jadi `use SkipsErrors;` di dalam class body
+
+### 2. Menu Paket Ujian hilang dari sidebar
+- **UBAH** `resources/views/layouts/users/master.blade.php`
+  - Tambah item sidebar "Paket Ujian" (`route('paket-ujian.index')`) tepat setelah "Kategori Soal", dalam blok `@hasanyrole('admin|super_admin')` yang sama
+
+### 3. Bank Soal — 6 perbaikan sekaligus
+- **BARU** `database/migrations/2026_07_06_000001_update_soal_kategori_add_klasifikasi.php`
+  - Enum `matra` di `soal_kategori` tambah nilai `perkeretaapian` (raw `DB::statement` ALTER TABLE — `doctrine/dbal` tidak terinstall, `->change()` tidak bisa dipakai)
+  - Tambah kolom `klasifikasi` enum (`keahlian`/`keterampilan`/`umum`), default `umum`, setelah `matra`
+- **UBAH** `app/Models/SoalKategori.php`
+  - Tambah `klasifikasi` ke `$fillable`
+  - `getLabelMatraAttribute()`: tambah label `perkeretaapian` → "Perkeretaapian"
+  - **BARU** `getLabelKlasifikasiAttribute()`
+- **UBAH** `app/Imports/BankSoalImport.php`
+  - Tambah `implements WithMultipleSheets` + method `sheets()` — hanya baca sheet bernama "Data Soal" saat import Excel
+- **UBAH** `resources/views/bank_soal/index.blade.php`
+  - Fix bug tampilan: fallback nama kategori kosong sebelumnya berupa string HTML mentah (`'<span class="text-muted">—</span>'`) yang di-escape oleh `{{ }}` sehingga tampil sebagai teks tag literal di layar → diganti fallback `'Umum'` (plain text)
+  - Tombol "Aktifkan" di kolom Aksi kini juga muncul untuk soal berstatus `nonaktif` (sebelumnya hanya `draft`)
+- **UBAH** `resources/views/bank_soal/edit.blade.php`
+  - Tambah field **Status** (draft/aktif/nonaktif) — pakai `form-control` (Bootstrap 4, bukan `form-select`). Field Kategori tidak diubah karena sudah editable sebelumnya
+- **UBAH** `app/Http/Controllers/BankSoalController.php`
+  - `update()`: validasi & simpan `status`
+  - `approve()`: guard diubah dari hanya `draft` menjadi `draft` **atau** `nonaktif`
+- **BARU** `database/seeders/SoalKategoriLengkapSeeder.php`
+  - 97 kategori (24 jabatan fungsional × jenjang keterampilan/keahlian + 1 "Umum") via `updateOrCreate` — tidak menghapus data lama
+  - **Catatan:** total akhir di database jadi **106**, bukan 97, karena 10 kategori dari `SoalKategoriSeeder` lama (nama berbeda, mis. "PKB Terampil - Darat") tidak terhapus sesuai instruksi "jangan hapus data lama"
+
+### 4. Fix relasi `formasiJabatan` hilang di `Sdmmodels`
+- **UBAH** `app/Models/Sdmmodels.php`
+  - Tambah relasi `formasiJabatan()` (alias `belongsTo(Formasijabatan::class, 'formasi_jabatan_id')`) — relasi lama `formasi()` tidak pernah dipakai; 3 tempat lain (`dashboard.blade.php`, `PengangkatanPermohonan::generateKandidat()`) sudah memanggil nama `formasiJabatan`, jadi error sebelumnya bukan hanya di dashboard pemangku tapi juga bug laten di alur Pengangkatan JFT
+
+### 5. Fix duplicate session error saat peserta mulai ujian online
+- **UBAH** `app/Http/Controllers/UjikomOnlineController.php`
+  - Root cause: `bukaSesi()` membuat baris `ujikom_sesi` massal berstatus `menunggu` (tanpa soal/timer). Pengecekan sesi existing di `mulai()` hanya menangani status `berlangsung`/`selesai`/`timeout`, sehingga status `menunggu` lolos ke `UjikomSesi::create()` lagi dan bentrok dengan unique constraint `(ujikom_jadwal_id, peserta_id)`
+  - `mulai()`: jika sesi `menunggu` sudah ada, **update** baris tersebut (isi paket, status→berlangsung, waktu_mulai, batas_waktu, ip_address) alih-alih membuat baris baru
+
+### 6. Validasi satu jadwal hanya boleh punya satu paket ujian aktif
+- **UBAH** `app/Http/Controllers/PaketUjianController.php`
+  - `aktifkan()`: tolak aktivasi jika jadwal sudah punya paket aktif lain
+  - `store()`: tolak simpan jika `simpan_sebagai=aktif` dan jadwal sudah punya paket aktif lain (`update()` tidak disentuh — method itu tidak pernah mengubah kolom `status`)
+- **UBAH** `resources/views/paket_ujian/index.blade.php`
+  - Alert `alert-warning` jika ada jadwal dengan >1 paket aktif (deteksi via `groupBy`+`having count > 1`)
+- **UBAH** `resources/views/ujikom/jadwal/index.blade.php`
+  - Kolom baru "Paket Aktif" di tabel admin (badge `badge-success`/`badge-danger` — bukan `bg-success`/`bg-danger`, project ini Bootstrap 4)
+- **UBAH** `app/Http/Controllers/UjikomOnlineController.php`
+  - Query paket aktif di `mulai()` **dan** `bukaSesi()` (bug identik, disamakan untuk konsistensi) ditambah `->latest()` agar deterministik (ambil yang paling baru diaktifkan) jika ada lebih dari satu
+
+---
+
+## Catatan Teknis
+
+- `doctrine/dbal` tidak terinstall di project ini → migration yang mengubah kolom `enum` **tidak bisa** pakai `->change()`, harus pakai `DB::statement()` raw SQL `ALTER TABLE ... MODIFY COLUMN`
+- Sesi `ujikom_sesi` berstatus `menunggu` (dibuat massal via `bukaSesi()`) belum punya soal/timer — jangan pernah redirect langsung ke halaman ujian tanpa mengaktifkannya dulu
+- Konvensi UI project ini **Bootstrap 4** — hindari kelas Bootstrap 5 (`form-select`, `bg-success` untuk badge) saat menambah komponen baru
+
+---
+
 ## Versi 1.12.0 - Pengangkatan JFT (Rombak Total)
 **Tanggal:** 3 Juli 2026
 **Status:** Selesai ✅
