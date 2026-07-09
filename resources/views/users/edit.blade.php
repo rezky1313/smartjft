@@ -32,8 +32,8 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group ms-2">
-                    <label for="nama_rumahsakit" class="form-label">Nama Unit Kerja:</label>
-                    <input type="text" name="nama_rumahsakit" id="nama_rumahsakit" value="{{ $unitkerja->nama_rumahsakit }}" required class="form-control">
+                    <label for="nama_unit_kerja" class="form-label">Nama Unit Kerja:</label>
+                    <input type="text" name="nama_unit_kerja" id="nama_unit_kerja" value="{{ $unitkerja->nama_unit_kerja }}" required class="form-control">
                     </div>
             <div class="form-group ms-2">
                 <label for="alamat" class="form-label">Alamat:</label>

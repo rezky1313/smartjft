@@ -9,7 +9,7 @@
     <select name="unit_kerja_id" class="form-select" style="max-width:360px">
       <option value="">Semua Unit Kerja</option>
       @foreach($units as $u)
-        <option value="{{ $u->no_rs }}" @selected(($unitId??'')==$u->no_rs)>{{ $u->nama_rumahsakit }}</option>
+        <option value="{{ $u->id }}" @selected(($unitId??'')==$u->id)>{{ $u->nama_unit_kerja }}</option>
       @endforeach
     </select>
     <select name="tahun" class="form-select" style="max-width:180px">
@@ -39,7 +39,7 @@
         @forelse($hist as $h)
           <tr>
             <td>{{ \Carbon\Carbon::parse($h->snapshot_at)->format('Y-m-d H:i') }}</td>
-            <td>{{ $h->unitKerja->nama_rumahsakit ?? '-' }}</td>
+            <td>{{ $h->unitKerja->nama_unit_kerja ?? '-' }}</td>
             <td>{{ $h->tahun_formasi }}</td>
             <td>{{ $h->nama_formasi }}</td>
             <td>{{ $h->jenjang->nama_jenjang ?? '-' }}</td>

@@ -43,8 +43,8 @@
           <div class="row g-3">
             <div class="col-lg-6">
               <label class="form-label">Unit Kerja</label>
-              <input type="hidden" name="unit_kerja_id" value="{{ $unit->no_rs }}">
-              <input type="text" class="form-control" value="{{ $unit->nama_rumahsakit }}" disabled>
+              <input type="hidden" name="unit_kerja_id" value="{{ $unit->id }}">
+              <input type="text" class="form-control" value="{{ $unit->nama_unit_kerja }}" disabled>
             </div>
             <div class="col-lg-6">
               <label class="form-label">Tahun Formasi</label>
@@ -222,8 +222,8 @@
             <select name="unit_kerja_id" id="unit_kerja_id" class="form-select select2" required>
               <option value="">-- Pilih Unit Kerja --</option>
               @foreach ($unitkerja as $unit)
-                <option value="{{ $unit->no_rs }}" @selected(old('unit_kerja_id', $formasi->unit_kerja_id) == $unit->no_rs)>
-                  {{ $unit->nama_rumahsakit }}
+                <option value="{{ $unit->id }}" @selected(old('unit_kerja_id', $formasi->unit_kerja_id) == $unit->id)>
+                  {{ $unit->nama_unit_kerja }}
                 </option>
               @endforeach
             </select>

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -10,19 +10,19 @@ use Illuminate\Support\Facades\File;
 use App\Models\Province;
 use App\Models\Regency;
 
-class RumahsakitController extends Controller
+class UnitKerjaController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        // $rumahsakits = Rumahsakit::all();
-        $rumahsakits = Rumahsakit::with(['regency.province'])
-        ->orderBy('nama_rumahsakit')
+        // $unitKerjas = UnitKerja::all();
+        $unitKerjas = UnitKerja::with(['regency.province'])
+        ->orderBy('nama_unit_kerja')
         ->get();
-        $trashed = \App\Models\Rumahsakit::onlyTrashed()->count();
-    return view('users.index', compact('rumahsakits','trashed'));
+        $trashed = \App\Models\UnitKerja::onlyTrashed()->count();
+    return view('users.index', compact('unitKerjas','trashed'));
     }
 
     /**
@@ -32,8 +32,8 @@ class RumahsakitController extends Controller
     {
            $provinces = Province::orderBy('name')->get(['id','name']);
     $regencies = collect(); // kosong sampai provinsi dipilih
-    $rumahsakit = new Rumahsakit();
-        return view('users.create' , compact('provinces','regencies', 'rumahsakit'));
+    $unitKerja = new UnitKerja();
+        return view('users.create' , compact('provinces','regencies', 'unitKerja'));
     }
 
     /**
@@ -46,7 +46,7 @@ class RumahsakitController extends Controller
 // dd($request->regency_id);
 
        $validated =  $request->validate([
-            'nama_rumahsakit' => 'required',
+            'nama_unit_kerja' => 'required',
             'alamat' => 'required',
             'no_telp' => 'required',
             'latitude' => 'required',
@@ -56,9 +56,9 @@ class RumahsakitController extends Controller
     'instansi'        => 'required|in:Pusat,Daerah',            // <—
         ]);
 
-       
 
-        Rumahsakit::create($validated);
+
+        UnitKerja::create($validated);
 
         return redirect()->route('user.unitkerja.index')
             ->with('success', 'Unit Kerja berhasil ditambahkan.');
@@ -67,31 +67,31 @@ class RumahsakitController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Rumahsakit $rumahsakit)
+    public function show(UnitKerja $unitKerja)
     {
-        return view('users.show', compact('rumahsakit'));
+        return view('users.show', compact('unitKerja'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Rumahsakit $unitkerja)
+    public function edit(UnitKerja $unitKerja)
     {
          $provinces = Province::orderBy('name')->get(['id','name']);
-    $regencies = $unitkerja->regency
-        ? Regency::where('province_id', $unitkerja->regency->province_id)
+    $regencies = $unitKerja->regency
+        ? Regency::where('province_id', $unitKerja->regency->province_id)
             ->orderBy('type')->orderBy('name')->get(['id','name','type'])
         : collect();
-        return view('users.edit', compact('unitkerja','provinces','regencies'));
+        return view('users.edit', ['unitkerja' => $unitKerja, 'provinces' => $provinces, 'regencies' => $regencies]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Rumahsakit $unitkerja)
+    public function update(Request $request, UnitKerja $unitKerja)
     {
        $validated = $request->validate([
-            'nama_rumahsakit' => 'required',
+            'nama_unit_kerja' => 'required',
             'alamat' => 'required',
             'no_telp' => 'required',
             'latitude' => 'required',
@@ -102,9 +102,9 @@ class RumahsakitController extends Controller
         ]);
 
 
-      
 
-        $unitkerja->update($validated);
+
+        $unitKerja->update($validated);
 
         return redirect()->route('user.unitkerja.index')
             ->with('success', 'Unit Kerja berhasil diperbarui.');
@@ -113,31 +113,31 @@ class RumahsakitController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Rumahsakit $rumahsakit)
+    public function destroy(UnitKerja $unitKerja)
     {
-        $rumahsakit->delete();
+        $unitKerja->delete();
         return redirect()->route('user.unitkerja.index')
             ->with('success', 'Unit Kerja berhasil dihapus.');
     }
 
 public function trash()
 {
-    $rumahsakits = \App\Models\Rumahsakit::onlyTrashed()
-        ->with(['regency.province'])->orderBy('nama_rumahsakit')->get();
+    $unitKerjas = \App\Models\UnitKerja::onlyTrashed()
+        ->with(['regency.province'])->orderBy('nama_unit_kerja')->get();
 
-    return view('users.trash', compact('rumahsakits'));
+    return view('users.trash', compact('unitKerjas'));
 }
 
 public function restore($id)
 {
-    $rs = \App\Models\Rumahsakit::withTrashed()->whereKey($id)->firstOrFail();
+    $rs = \App\Models\UnitKerja::withTrashed()->whereKey($id)->firstOrFail();
     $rs->restore();
     return back()->with('success','Unit Kerja direstore.');
 }
 
 public function forceDelete($id)
 {
-    $rs = \App\Models\Rumahsakit::withTrashed()->whereKey($id)->firstOrFail();
+    $rs = \App\Models\UnitKerja::withTrashed()->whereKey($id)->firstOrFail();
     $rs->forceDelete(); // hati-hati: permanen
     return back()->with('success','Unit Kerja dihapus permanen.');
 }

@@ -22,7 +22,7 @@
           <div class="col-md-6">
             <table class="table table-sm table-borderless mb-0">
               <tr><td width="160" class="text-muted">Kode Permohonan</td><td>: <strong>{{ $permohonan->kode_permohonan }}</strong></td></tr>
-              <tr><td class="text-muted">Unit Kerja</td><td>: {{ $permohonan->unitKerja?->nama_rumahsakit ?? '-' }}</td></tr>
+              <tr><td class="text-muted">Unit Kerja</td><td>: {{ $permohonan->unitKerja?->nama_unit_kerja ?? '-' }}</td></tr>
               <tr><td class="text-muted">Tanggal Permohonan</td><td>: {{ $permohonan->tanggal_permohonan?->format('d M Y') }}</td></tr>
               <tr><td class="text-muted">Diajukan Oleh</td><td>: {{ $permohonan->pengaju?->name ?? '-' }}</td></tr>
             </table>

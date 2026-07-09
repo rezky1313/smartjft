@@ -49,7 +49,7 @@
                                 <select name="unit_kerja_id" id="unit_kerja_id" class="form-control select2" required>
                                     <option value="">-- Pilih Unit Kerja --</option>
                                     @foreach($unitKerja as $uk)
-                                        <option value="{{ $uk->no_rs }}">{{ $uk->nama_rumahsakit }}</option>
+                                        <option value="{{ $uk->id }}">{{ $uk->nama_unit_kerja }}</option>
                                     @endforeach
                                 </select>
                                 @error('unit_kerja_id') <span class="text-danger">{{ $message }}</span> @enderror
@@ -368,7 +368,7 @@
             // Unit Kerja Tujuan (dropdown)
             let optionsUnitKerja = '<option value="">-- Pilih --</option>';
             @foreach($unitKerja as $uk)
-                optionsUnitKerja += '<option value="{{ $uk->no_rs }}">{{ $uk->nama_rumahsakit }}</option>';
+                optionsUnitKerja += '<option value="{{ $uk->id }}">{{ $uk->nama_unit_kerja }}</option>';
             @endforeach
             tr.append('<td><select name="peserta[' + index + '][unit_kerja_tujuan_id]" class="form-control form-control-sm select2" onchange="validasiPeserta(' + index + ')">' + optionsUnitKerja + '</select></td>');
 

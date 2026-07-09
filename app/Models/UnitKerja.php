@@ -8,32 +8,33 @@ use App\Models\Regency;
 use App\Models\Province;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Rumahsakit extends Model
+class UnitKerja extends Model
 {
     use SoftDeletes;
-  
-public $incrementing = true;
-protected $keyType = 'int';
 
-    protected $primaryKey = 'no_rs';
+    protected $table = 'unit_kerja'; // WAJIB, default Eloquent akan cari 'unit_kerjas'
+
+    public $incrementing = true;
+    protected $keyType = 'int';
+
+    // primaryKey otomatis 'id' (default Laravel), tidak perlu deklarasi eksplisit lagi
     protected $fillable = [
-        'nama_rumahsakit',
+        'nama_unit_kerja',
         'alamat',
         'no_telp',
         'latitude',
         'longitude',
         'regency_id',
-          'matra',        // <—
-    'instansi', 
+        'matra',
+        'instansi',
     ];
 
     public function formasis()
-{
-    // unit_kerja_id di formasi mengacu ke no_rs di rumahsakits
-    return $this->hasMany(\App\Models\Formasijabatan::class, 'unit_kerja_id', 'no_rs');
-}
+    {
+        return $this->hasMany(\App\Models\Formasijabatan::class, 'unit_kerja_id');
+    }
 
-        public function regency()
+    public function regency()
     {
         return $this->belongsTo(Regency::class);
     }

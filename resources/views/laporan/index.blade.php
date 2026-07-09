@@ -315,7 +315,7 @@
               <select name="unit_kerja_id" class="form-select">
                 <option value="">Semua Unit Kerja</option>
                 @foreach($unitKerja as $u)
-                  <option value="{{ $u->no_rs }}" {{ (request('unit_kerja_id') == $u->no_rs) ? 'selected' : '' }}>{{ $u->nama_rumahsakit }}</option>
+                  <option value="{{ $u->id }}" {{ (request('unit_kerja_id') == $u->id) ? 'selected' : '' }}>{{ $u->nama_unit_kerja }}</option>
                 @endforeach
               </select>
             </div>
@@ -431,7 +431,7 @@
               <select name="unit_kerja_id" class="form-select">
                 <option value="">Semua Unit Kerja</option>
                 @foreach($unitKerja as $u)
-                  <option value="{{ $u->no_rs }}" {{ (request('unit_kerja_id') == $u->no_rs) ? 'selected' : '' }}>{{ $u->nama_rumahsakit }}</option>
+                  <option value="{{ $u->id }}" {{ (request('unit_kerja_id') == $u->id) ? 'selected' : '' }}>{{ $u->nama_unit_kerja }}</option>
                 @endforeach
               </select>
             </div>

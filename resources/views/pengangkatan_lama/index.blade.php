@@ -73,7 +73,7 @@
                             <select name="unit_kerja_id" class="form-select select2">
                                 <option value="">Semua Unit Kerja</option>
                                 @foreach($unitKerja as $uk)
-                                    <option value="{{ $uk->no_rs }}" {{ request('unit_kerja_id') == $uk->no_rs ? 'selected' : '' }}>{{ $uk->nama_rumahsakit }}</option>
+                                    <option value="{{ $uk->id }}" {{ request('unit_kerja_id') == $uk->id ? 'selected' : '' }}>{{ $uk->nama_unit_kerja }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -133,7 +133,7 @@
                                         {{ $item->jalur_label }}
                                     </span>
                                 </td>
-                                <td>{{ $item->unitKerja->nama_rumahsakit }}</td>
+                                <td>{{ $item->unitKerja->nama_unit_kerja }}</td>
                                 <td>{{ $item->tanggal_permohonan->format('d/m/Y') }}</td>
                                 <td class="text-center">
                                     <span class="badge badge-info">{{ $item->peserta->count() }}</span>

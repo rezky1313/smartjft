@@ -32,14 +32,14 @@
             <label>Unit Kerja <span class="text-danger">*</span></label>
             @if (isset($unitKerja) && $unitKerja)
               {{-- Admin unit: auto-fill --}}
-              <input type="hidden" name="unit_kerja_id" value="{{ $unitKerja->no_rs }}">
-              <input type="text" class="form-control" value="{{ $unitKerja->nama_rumahsakit }}" readonly>
+              <input type="hidden" name="unit_kerja_id" value="{{ $unitKerja->id }}">
+              <input type="text" class="form-control" value="{{ $unitKerja->nama_unit_kerja }}" readonly>
             @else
               <select name="unit_kerja_id" class="form-control select2 @error('unit_kerja_id') is-invalid @enderror" required>
                 <option value="">-- Pilih Unit Kerja --</option>
                 @foreach ($unitKerjaList as $uk)
-                  <option value="{{ $uk->no_rs }}" @selected(old('unit_kerja_id', $permohonan->unit_kerja_id ?? '') == $uk->no_rs)>
-                    {{ $uk->nama_rumahsakit }}
+                  <option value="{{ $uk->id }}" @selected(old('unit_kerja_id', $permohonan->unit_kerja_id ?? '') == $uk->id)>
+                    {{ $uk->nama_unit_kerja }}
                   </option>
                 @endforeach
               </select>

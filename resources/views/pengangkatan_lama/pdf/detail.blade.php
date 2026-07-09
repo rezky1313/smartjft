@@ -162,7 +162,7 @@
             <div class="info-box">
                 <p><strong>Nomor Permohonan:</strong> {{ $permohonan->nomor_permohonan }}</p>
                 <p><strong>Jalur:</strong> {{ $permohonan->jalur_label }}</p>
-                <p><strong>Unit Kerja:</strong> {{ $permohonan->unitKerja->nama_rumahsakit }}</p>
+                <p><strong>Unit Kerja:</strong> {{ $permohonan->unitKerja->nama_unit_kerja }}</p>
                 <p><strong>Provinsi:</strong> {{ $permohonan->unitKerja->regency->province->nama_provinsi ?? '-' }}</p>
                 <p><strong>Kabupaten/Kota:</strong> {{ $permohonan->unitKerja->regency->nama_kabupaten ?? '-' }}</p>
                 <p><strong>Tanggal Permohonan:</strong> {{ $permohonan->tanggal_permohonan->format('d F Y') }}</p>
@@ -203,7 +203,7 @@
                         <td>{{ $peserta->jenjang_asal ?? '-' }}</td>
                         <td>{{ $peserta->jabatanTujuan?->nama_formasi ?? '-' }}</td>
                         <td>{{ $peserta->jenjang_tujuan ?? '-' }}</td>
-                        <td>{{ $peserta->unitKerjaTujuan?->nama_rumahsakit ?? '-' }}</td>
+                        <td>{{ $peserta->unitKerjaTujuan?->nama_unit_kerja ?? '-' }}</td>
                         <td class="center">
                             @if($peserta->status_validasi_formasi === 'tersedia')
                                 <span class="badge-tersedia">Tersedia</span>

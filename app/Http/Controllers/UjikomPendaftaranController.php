@@ -10,7 +10,7 @@ use App\Models\UjikomJadwal;
 use App\Models\UjikomPersyaratan;
 use App\Models\Sdmmodels;
 use App\Models\Formasijabatan;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -267,7 +267,7 @@ class UjikomPendaftaranController extends Controller
     {
         $jadwals    = UjikomJadwal::where('status', 'published')
                         ->orderBy('tanggal_mulai', 'desc')->get();
-        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        $unitKerjas = UnitKerja::orderBy('nama_unit_kerja')->get();
 
         $sdmPemangku = null;
         if (Auth::user()->hasRole('pemangku')) {
@@ -285,7 +285,7 @@ class UjikomPendaftaranController extends Controller
     {
         $request->validate([
             'ujikom_jadwal_id'         => 'required|exists:ujikom_jadwal,id',
-            'unit_kerja_id'            => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id'            => 'required|exists:unit_kerja,id',
             'jenis_pendaftaran'        => 'required|in:mandiri,batch',
             'peserta'                  => 'required|array|min:1',
             'peserta.*.pegawai_id'     => 'required|exists:sumber_daya_manusia,id',
@@ -374,7 +374,7 @@ class UjikomPendaftaranController extends Controller
         $this->authorizeEdit($pendaftaran);
 
         $jadwals    = UjikomJadwal::where('status', 'published')->orderBy('tanggal_mulai', 'desc')->get();
-        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        $unitKerjas = UnitKerja::orderBy('nama_unit_kerja')->get();
 
         return view('ujikom.pendaftaran.edit', compact('pendaftaran', 'jadwals', 'unitKerjas'));
     }
@@ -386,7 +386,7 @@ class UjikomPendaftaranController extends Controller
 
         $request->validate([
             'ujikom_jadwal_id'         => 'required|exists:ujikom_jadwal,id',
-            'unit_kerja_id'            => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id'            => 'required|exists:unit_kerja,id',
             'jenis_pendaftaran'        => 'required|in:mandiri,batch',
             'peserta'                  => 'required|array|min:1',
             'peserta.*.pegawai_id'     => 'required|exists:sumber_daya_manusia,id',

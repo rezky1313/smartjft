@@ -33,8 +33,8 @@
             <select name="unit_kerja_id" id="unitKerja" class="form-control select2" required onchange="filterPegawaiByUnitKerja()">
               <option value="">Pilih Unit Kerja</option>
               @foreach($unitKerja as $uk)
-                <option value="{{ $uk->no_rs }}" {{ $permohonan->unit_kerja_id == $uk->no_rs ? 'selected' : '' }}>
-                  {{ $uk->nama_rumahsakit }}
+                <option value="{{ $uk->id }}" {{ $permohonan->unit_kerja_id == $uk->id ? 'selected' : '' }}>
+                  {{ $uk->nama_unit_kerja }}
                 </option>
               @endforeach
             </select>
@@ -92,9 +92,9 @@
 
                   $namaUnitKerja = '';
                   if ($p->unitKerja) {
-                    $namaUnitKerja = $p->unitKerja->nama_rumahsakit;
+                    $namaUnitKerja = $p->unitKerja->nama_unit_kerja;
                   } elseif ($p->formasi && $p->formasi->unit_kerja) {
-                    $namaUnitKerja = $p->formasi->unit_kerja->nama_rumahsakit;
+                    $namaUnitKerja = $p->formasi->unit_kerja->nama_unit_kerja;
                   }
 
                   $namaJabatan = $p->formasi ? $p->formasi->nama_formasi : '-';

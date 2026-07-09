@@ -63,7 +63,7 @@
                                 <select name="unit_kerja_id" id="unit_kerja_id" class="form-control select2" required>
                                     <option value="">-- Pilih Unit Kerja --</option>
                                     @foreach($unitKerja as $uk)
-                                        <option value="{{ $uk->no_rs }}" {{ old('unit_kerja_id', $permohonan->unit_kerja_id) == $uk->no_rs ? 'selected' : '' }}>{{ $uk->nama_rumahsakit }}</option>
+                                        <option value="{{ $uk->id }}" {{ old('unit_kerja_id', $permohonan->unit_kerja_id) == $uk->id ? 'selected' : '' }}>{{ $uk->nama_unit_kerja }}</option>
                                     @endforeach
                                 </select>
                                 @error('unit_kerja_id') <span class="text-danger">{{ $message }}</span> @enderror
@@ -162,7 +162,7 @@
                                                         data-index="{{ $index }}" required>
                                                     <option value="">-- Pilih Unit Kerja --</option>
                                                     @foreach($unitKerja as $uk)
-                                                        <option value="{{ $uk->no_rs }}" {{ $peserta->unit_kerja_tujuan_id == $uk->no_rs ? 'selected' : '' }}>{{ $uk->nama_rumahsakit }}</option>
+                                                        <option value="{{ $uk->id }}" {{ $peserta->unit_kerja_tujuan_id == $uk->id ? 'selected' : '' }}>{{ $uk->nama_unit_kerja }}</option>
                                                     @endforeach
                                                 </select>
                                             </td>
@@ -245,7 +245,7 @@
                     data-index="{index}" required>
                 <option value="">-- Pilih Unit Kerja --</option>
                 @foreach($unitKerja as $uk)
-                    <option value="{{ $uk->no_rs }}">{{ $uk->nama_rumahsakit }}</option>
+                    <option value="{{ $uk->id }}">{{ $uk->nama_unit_kerja }}</option>
                 @endforeach
             </select>
         </td>

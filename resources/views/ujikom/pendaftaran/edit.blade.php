@@ -44,8 +44,8 @@
                 <select name="unit_kerja_id" id="unitKerjaSelect" class="form-control" required>
                   <option value="">-- Pilih Unit Kerja --</option>
                   @foreach ($unitKerjas as $u)
-                  <option value="{{ $u->no_rs }}" {{ $pendaftaran->unit_kerja_id == $u->no_rs ? 'selected' : '' }}>
-                    {{ $u->nama_rumahsakit }}
+                  <option value="{{ $u->id }}" {{ $pendaftaran->unit_kerja_id == $u->id ? 'selected' : '' }}>
+                    {{ $u->nama_unit_kerja }}
                   </option>
                   @endforeach
                 </select>

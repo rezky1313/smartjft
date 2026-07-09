@@ -45,7 +45,7 @@
             <div class="col-md-4">
               <div class="form-group">
                 <label>Unit Kerja</label>
-                <input type="text" class="form-control" value="{{ $sdmPemangku->unitKerja?->nama_rumahsakit ?? '-' }}" readonly>
+                <input type="text" class="form-control" value="{{ $sdmPemangku->unitKerja?->nama_unit_kerja ?? '-' }}" readonly>
               </div>
             </div>
             @else
@@ -56,8 +56,8 @@
                 <select name="unit_kerja_id" id="unitKerjaSelect" class="form-control @error('unit_kerja_id') is-invalid @enderror" required>
                   <option value="">-- Pilih Unit Kerja --</option>
                   @foreach ($unitKerjas as $u)
-                  <option value="{{ $u->no_rs }}" {{ old('unit_kerja_id') == $u->no_rs ? 'selected' : '' }}>
-                    {{ $u->nama_rumahsakit }}
+                  <option value="{{ $u->id }}" {{ old('unit_kerja_id') == $u->id ? 'selected' : '' }}>
+                    {{ $u->nama_unit_kerja }}
                   </option>
                   @endforeach
                 </select>

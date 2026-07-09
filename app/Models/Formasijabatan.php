@@ -29,7 +29,7 @@ class Formasijabatan extends Model
 
     public function unitkerja()
     {
-        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+        return $this->belongsTo(UnitKerja::class, 'unit_kerja_id');
     }
 
        public function jenjang()

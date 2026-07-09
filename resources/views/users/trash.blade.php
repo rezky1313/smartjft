@@ -14,19 +14,19 @@
       </tr>
     </thead>
     <tbody>
-      @foreach($rumahsakits as $i => $rs)
-        @php $kab = $rs->regency; $prov = $kab?->province; @endphp
+      @foreach($unitKerjas as $i => $unitKerja)
+        @php $kab = $unitKerja->regency; $prov = $kab?->province; @endphp
         <tr>
           <td>{{ $i+1 }}</td>
-          <td>{{ $rs->no_rs }}</td>
-          <td>{{ $rs->nama_rumahsakit }}</td>
+          <td>{{ $unitKerja->id }}</td>
+          <td>{{ $unitKerja->nama_unit_kerja }}</td>
           <td>{{ $prov->name ?? '-' }}</td>
           <td>{{ $kab ? ($kab->type.' '.$kab->name) : '-' }}</td>
           <td class="d-flex gap-1">
-            <form action="{{ route('user.unitkerja.restore',$rs->no_rs) }}" method="POST">@csrf @method('PATCH')
+            <form action="{{ route('user.unitkerja.restore',$unitKerja->id) }}" method="POST">@csrf @method('PATCH')
               <button class="btn btn-sm btn-success">Restore</button>
             </form>
-            <form action="{{ route('user.unitkerja.force-delete',$rs->no_rs) }}" method="POST"
+            <form action="{{ route('user.unitkerja.force-delete',$unitKerja->id) }}" method="POST"
                   onsubmit="return confirm('Hapus permanen? Tidak bisa dibatalkan!')">
               @csrf @method('DELETE')
               <button class="btn btn-sm btn-danger">Hapus Permanen</button>

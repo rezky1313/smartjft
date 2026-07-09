@@ -38,30 +38,30 @@
       </tr>
     </thead>
     <tbody>
-      @foreach ($rumahsakits as $i => $rumahsakit)
+      @foreach ($unitKerjas as $i => $unitKerja)
         @php
-          $kab = $rumahsakit->regency;
+          $kab = $unitKerja->regency;
           $prov = $kab?->province;
         @endphp
         <tr>
           <td>{{ $i+1 }}</td>
-          {{-- <td>{{ $rumahsakit->no_rs }}</td> --}}
-          <td>{{ $rumahsakit->nama_rumahsakit }}</td>
-          {{-- <td>{{ $rumahsakit->alamat }}</td>
-          <td>{{ $rumahsakit->no_telp }}</td> --}}
+          {{-- <td>{{ $unitKerja->id }}</td> --}}
+          <td>{{ $unitKerja->nama_unit_kerja }}</td>
+          {{-- <td>{{ $unitKerja->alamat }}</td>
+          <td>{{ $unitKerja->no_telp }}</td> --}}
           <td>{{ $prov->name ?? '-' }}</td>
           <td>{{ $kab ? ($kab->type.' '.$kab->name) : '-' }}</td>
-          <td>{{ $rumahsakit->matra ?? '-' }}</td>
-          <td>{{ $rumahsakit->instansi ?? '-' }}</td>
-          <td>{{ $rumahsakit->latitude }}</td>
-          <td>{{ $rumahsakit->longitude }}</td>
+          <td>{{ $unitKerja->matra ?? '-' }}</td>
+          <td>{{ $unitKerja->instansi ?? '-' }}</td>
+          <td>{{ $unitKerja->latitude }}</td>
+          <td>{{ $unitKerja->longitude }}</td>
           <td>
-            {{-- <a class="btn btn-primary btn-sm" href="{{ route('user.rumahsakit.show', $rumahsakit) }}" onclick="pindah(event)">Show</a> --}}
+            {{-- <a class="btn btn-primary btn-sm" href="{{ route('user.rumahsakit.show', $unitKerja) }}" onclick="pindah(event)">Show</a> --}}
             @can('edit unit kerja')
-            <a class="btn btn-warning btn-sm" href="{{ route('user.unitkerja.edit', $rumahsakit) }}" onclick="pindah(event)">Edit</a>
+            <a class="btn btn-warning btn-sm" href="{{ route('user.unitkerja.edit', $unitKerja) }}" onclick="pindah(event)">Edit</a>
             @endcan
             @can('delete unit kerja')
-            <form action="{{ route('user.unitkerja.destroy', $rumahsakit) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Hapus data ini?')">
+            <form action="{{ route('user.unitkerja.destroy', $unitKerja) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Hapus data ini?')">
               @csrf @method('DELETE')
               <button type="submit" class="btn btn-danger btn-sm">Delete</button>
             </form>

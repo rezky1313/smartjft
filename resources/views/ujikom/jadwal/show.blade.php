@@ -183,7 +183,7 @@
           @foreach ($pendaftaranList as $daftar)
           <div class="mb-3">
             <div class="d-flex align-items-center mb-2">
-              <strong class="mr-2">{{ $daftar->unitKerja?->nama_rumahsakit ?? '-' }}</strong>
+              <strong class="mr-2">{{ $daftar->unitKerja?->nama_unit_kerja ?? '-' }}</strong>
               <span class="badge badge-{{ $daftar->badge_status }} mr-2">{{ $daftar->label_status }}</span>
               <small class="text-muted">{{ $daftar->kode_pendaftaran }}</small>
               <a href="{{ route('ujikom.permohonan.show', $daftar->id) }}" class="btn btn-xs btn-outline-info ml-auto">

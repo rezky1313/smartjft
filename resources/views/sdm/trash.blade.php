@@ -20,7 +20,7 @@
           <td>{{ $i+1 }}</td>
           <td>{{ $row->nip }}</td>
           <td>{{ $row->nama_lengkap }}</td>
-          <td>{{ $uk->nama_rumahsakit ?? '-' }}</td>
+          <td>{{ $uk->nama_unit_kerja ?? '-' }}</td>
           <td class="d-flex gap-1">
             <form action="{{ route('user.sdm.restore',$row->id) }}" method="POST">
               @csrf @method('PATCH')

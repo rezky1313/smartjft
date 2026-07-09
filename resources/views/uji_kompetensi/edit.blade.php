@@ -51,7 +51,7 @@
       </div>
       <div class="col-md-4">
         <label class="form-label">Nama Unit Kerja</label>
-        <input type="text" id="f_unit" class="form-control" value="{{ $uk->nama_rumahsakit ?? '' }}" readonly>
+        <input type="text" id="f_unit" class="form-control" value="{{ $uk->nama_unit_kerja ?? '' }}" readonly>
       </div>
       <div class="col-md-4">
         <label class="form-label">Kab/Kota</label>

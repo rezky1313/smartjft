@@ -193,7 +193,7 @@
         <div class="isi-surat">
             <p class="salam">Yang terhormat,</p>
 
-            <p>Kepala {{ $permohonan->unitKerja->nama_rumahsakit }}</p>
+            <p>Kepala {{ $permohonan->unitKerja->nama_unit_kerja }}</p>
 
             <p>Di Tempat</p>
 
@@ -201,7 +201,7 @@
 
             <p>&nbsp;</p>
 
-            <p>Sebagai tindak lanjut dari permohonan Nomor: {{ $permohonan->nomor_permohonan }} tanggal {{ $permohonan->tanggal_permohonan->format('d F Y') }}, dengan ini disampaikan pertimbangan pengangkatan Jabatan Fungsional Transportasi di lingkungan {{ $permohonan->unitKerja->nama_rumahsakit }} dengan rincian sebagai berikut:</p>
+            <p>Sebagai tindak lanjut dari permohonan Nomor: {{ $permohonan->nomor_permohonan }} tanggal {{ $permohonan->tanggal_permohonan->format('d F Y') }}, dengan ini disampaikan pertimbangan pengangkatan Jabatan Fungsional Transportasi di lingkungan {{ $permohonan->unitKerja->nama_unit_kerja }} dengan rincian sebagai berikut:</p>
 
             <p><strong>Jalur Pengangkatan:</strong> {{ $permohonan->jalur_label }}</p>
 
@@ -230,7 +230,7 @@
                         <td>{{ $peserta->jenjang_asal ?? '-' }}</td>
                         <td>{{ $peserta->jabatanTujuan?->nama_formasi ?? '-' }}</td>
                         <td>{{ $peserta->jenjang_tujuan ?? '-' }}</td>
-                        <td>{{ $peserta->unitKerjaTujuan?->nama_rumahsakit ?? '-' }}</td>
+                        <td>{{ $peserta->unitKerjaTujuan?->nama_unit_kerja ?? '-' }}</td>
                         <td>
                             @if($peserta->ujikomPeserta)
                                 {{ strtoupper($peserta->ujikomPeserta->hasil) }}

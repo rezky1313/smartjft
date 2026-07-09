@@ -29,11 +29,11 @@ class PengangkatanPermohonan extends Model
     ];
 
     /**
-     * Relasi ke Unit Kerja (Rumahsakit)
+     * Relasi ke Unit Kerja (UnitKerja)
      */
     public function unitKerja(): BelongsTo
     {
-        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+        return $this->belongsTo(UnitKerja::class, 'unit_kerja_id');
     }
 
     /**

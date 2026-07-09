@@ -19,7 +19,7 @@
           <td>{{ $i+1 }}</td>
           <td>{{ $f->nama_formasi }}</td>
           <td>{{ $f->jenjang->nama_jenjang ?? '-' }}</td>
-          <td>{{ $f->unitKerja->nama_rumahsakit ?? '-' }}</td>
+          <td>{{ $f->unitKerja->nama_unit_kerja ?? '-' }}</td>
           <td>{{ $f->tahun_formasi }}</td>
           <td class="d-flex gap-1">
             <form action="{{ route('user.formasi.restore',$f->id) }}" method="POST">@csrf @method('PATCH')

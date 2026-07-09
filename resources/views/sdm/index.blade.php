@@ -56,7 +56,7 @@
           <td>{{ $row->status_kepegawaian }}</td>
           <td>{{ $row->pangkat_golongan }}</td>
           <td>{{ $row->formasi?->jenjang?->nama_jenjang ?? '-' }}</td>
-          <td>{{ $uk->nama_rumahsakit ?? '-' }}</td>
+          <td>{{ $uk->nama_unit_kerja ?? '-' }}</td>
           <td>{{ $prov->name ?? '-' }}</td>
           <td>{{ $row->tmt_pengangkatan?->format('d-m-Y') ?? '-' }}</td>
           <td>{{ $row->masa_jabatan ?? '-' }}</td>

@@ -49,7 +49,7 @@
                                 <div class="row">
                                     <div class="col-6">
                                         <strong>Unit Kerja:</strong><br>
-                                        {{ $permohonan->unitKerja->nama_rumahsakit }}
+                                        {{ $permohonan->unitKerja->nama_unit_kerja }}
                                     </div>
                                     <div class="col-6">
                                         <strong>Tanggal:</strong><br>

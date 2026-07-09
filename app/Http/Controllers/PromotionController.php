@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Promotion, PromotionFile, PromotionLog, Sdmmodels, SdmRiwayat, JenjangJabatan, Formasijabatan, Rumahsakit};
+use App\Models\{Promotion, PromotionFile, PromotionLog, Sdmmodels, SdmRiwayat, JenjangJabatan, Formasijabatan, UnitKerja};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +32,7 @@ class PromotionController extends Controller
         ->get();
 
     $results = $rows->map(function ($s) {
-        $unit   = $s->unitKerja->nama_rumahsakit ?? $s->unitKerja->nama_rumahsakit ?? '-';
+        $unit   = $s->unitKerja->nama_unit_kerja ?? $s->unitKerja->nama_unit_kerja ?? '-';
         $jenjangNama = optional(optional($s->formasi)->jabatan)->nama_jenjang ?? '-';
 
         return [

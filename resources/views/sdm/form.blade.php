@@ -157,7 +157,7 @@
 
     @foreach($grouped as $unitId => $items)
       @php
-        $unitName = optional($items->first()->unitKerja)->nama_rumahsakit ?? 'Unit Kerja tidak diketahui';
+        $unitName = optional($items->first()->unitKerja)->nama_unit_kerja ?? 'Unit Kerja tidak diketahui';
       @endphp
       <optgroup label="{{ $unitName }}">
         @foreach($items as $f)
@@ -186,9 +186,9 @@
   <select name="unit_kerja_id" id="unitKerjaSelect" class="form-select">
     <option value="">-- Pilih Unit Kerja --</option>
     @foreach($unitkerja as $u)
-      <option value="{{ $u->no_rs }}"
-        @selected(old('unit_kerja_id', $item->unit_kerja_id ?? null) == $u->no_rs)>
-        {{ $u->nama_rumahsakit }}
+      <option value="{{ $u->id }}"
+        @selected(old('unit_kerja_id', $item->unit_kerja_id ?? null) == $u->id)>
+        {{ $u->nama_unit_kerja }}
       </option>
     @endforeach
   </select>

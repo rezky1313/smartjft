@@ -50,7 +50,7 @@
             </tr>
             <tr>
               <td><strong>Unit Kerja</strong></td>
-              <td>: {{ $permohonan->unitKerja->nama_rumahsakit ?? '-' }}</td>
+              <td>: {{ $permohonan->unitKerja->nama_unit_kerja ?? '-' }}</td>
             </tr>
             <tr>
               <td><strong>Provinsi</strong></td>

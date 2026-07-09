@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\PengangkatanPermohonan;
 use App\Models\PengangkatanKandidat;
 use App\Models\PengangkatanSurat;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PengangkatanController extends Controller
@@ -54,7 +54,7 @@ class PengangkatanController extends Controller
             'selesai'  => (clone $baseStats)->where('status', 'selesai')->count(),
         ];
 
-        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerjaList = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         return view('pengangkatan.index', compact('permohonan', 'stats', 'unitKerjaList'));
     }
@@ -66,10 +66,10 @@ class PengangkatanController extends Controller
     {
         $user = auth()->user();
         $unitKerja = $user->hasRole('admin_unit')
-            ? Rumahsakit::where('no_rs', $user->unit_kerja_id)->first()
+            ? UnitKerja::where('id', $user->unit_kerja_id)->first()
             : null;
 
-        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerjaList = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         return view('pengangkatan.create', compact('unitKerja', 'unitKerjaList'));
     }
@@ -136,7 +136,7 @@ class PengangkatanController extends Controller
         $permohonan = PengangkatanPermohonan::findOrFail($id);
         abort_unless($permohonan->status === 'draft', 403, 'Hanya permohonan draft yang bisa diedit.');
 
-        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerjaList = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         return view('pengangkatan.create', compact('permohonan', 'unitKerjaList'));
     }

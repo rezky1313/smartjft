@@ -132,9 +132,9 @@
                                             id="unit_kerja_id" name="unit_kerja_id" style="width:100%;">
                                         <option value="">-- Pilih Unit Kerja --</option>
                                         @foreach($unitKerjas as $uk)
-                                            <option value="{{ $uk->no_rs }}"
-                                                {{ old('unit_kerja_id', isset($user) ? $user->unit_kerja_id : '') == $uk->no_rs ? 'selected' : '' }}>
-                                                {{ $uk->nama_rumahsakit }}
+                                            <option value="{{ $uk->id }}"
+                                                {{ old('unit_kerja_id', isset($user) ? $user->unit_kerja_id : '') == $uk->id ? 'selected' : '' }}>
+                                                {{ $uk->nama_unit_kerja }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -159,9 +159,9 @@
                                     <select class="form-control select2" id="unit_kerja_filter_pemangku" style="width:100%;">
                                         <option value="">-- Pilih Unit Kerja --</option>
                                         @foreach($unitKerjas as $uk)
-                                            <option value="{{ $uk->no_rs }}"
-                                                {{ (isset($user) && $user->sdm?->unit_kerja_id == $uk->no_rs) ? 'selected' : '' }}>
-                                                {{ $uk->nama_rumahsakit }}
+                                            <option value="{{ $uk->id }}"
+                                                {{ (isset($user) && $user->sdm?->unit_kerja_id == $uk->id) ? 'selected' : '' }}>
+                                                {{ $uk->nama_unit_kerja }}
                                             </option>
                                         @endforeach
                                     </select>

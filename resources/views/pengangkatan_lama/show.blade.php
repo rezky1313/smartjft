@@ -53,7 +53,7 @@
                     </div>
                     <div class="col-md-3">
                         <label>Unit Kerja</label>
-                        <p>{{ $permohonan->unitKerja->nama_rumahsakit }}</p>
+                        <p>{{ $permohonan->unitKerja->nama_unit_kerja }}</p>
                     </div>
                     <div class="col-md-3">
                         <label>Tanggal Permohonan</label>
@@ -152,7 +152,7 @@
                                     {{ $peserta->jenjang_asal ?? '-' }} →<br>
                                     <strong>{{ $peserta->jenjang_tujuan ?? '-' }}</strong>
                                 </td>
-                                <td>{{ $peserta->unitKerjaTujuan?->nama_rumahsakit ?? '-' }}</td>
+                                <td>{{ $peserta->unitKerjaTujuan?->nama_unit_kerja ?? '-' }}</td>
                                 <td>
                                     <span class="badge badge-{{ $peserta->formasi_badge_color }}">
                                         {{ $peserta->formasi_label }}

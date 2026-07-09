@@ -40,8 +40,8 @@
   <select name="unit_kerja_id" id="unitFilter" class="form-select">
     <option value="">Semua Unit Kerja</option>
     @foreach($units as $u)
-      <option value="{{ $u->no_rs }}" data-regency="{{ $u->regency_id ?? '' }}" @selected(($filter['unit_kerja_id']??'')==$u->no_rs)>
-        {{ $u->nama_rumahsakit }}
+      <option value="{{ $u->id }}" data-regency="{{ $u->regency_id ?? '' }}" @selected(($filter['unit_kerja_id']??'')==$u->id)>
+        {{ $u->nama_unit_kerja }}
       </option>
     @endforeach
   </select>

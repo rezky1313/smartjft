@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Formasijabatan;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use App\Models\Jenjangjabatan;   // <- nama class kamu memang ini
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -78,7 +78,7 @@ class FormasiJabatanController extends Controller
     $q = \App\Models\Formasijabatan::query()
         ->with([
             'jenjang:id,nama_jenjang',
-            'unitkerja:no_rs,nama_rumahsakit,regency_id',
+            'unitkerja:id,nama_unit_kerja,regency_id',
             'unitkerja.regency:id,name,type,province_id',
             'unitkerja.regency.province:id,name',
         ])
@@ -100,7 +100,7 @@ class FormasiJabatanController extends Controller
     // ========= BANGUN PIVOT =========
     $table = []; // [unitName => [ '_meta' => [...], key => [jabatan, kuota[], terisi[], sisa[]] ]]
     foreach ($rows as $f) {
-        $unitName = optional($f->unitkerja)->nama_rumahsakit ?? ('Unit #'.$f->unit_kerja_id);
+        $unitName = optional($f->unitkerja)->nama_unit_kerja ?? ('Unit #'.$f->unit_kerja_id);
         $jabatan  = $f->nama_formasi ?? '-';
         $lvlName  = $this->normLevel(optional($f->jenjang)->nama_jenjang);
         if (!$lvlName) continue;
@@ -152,9 +152,9 @@ class FormasiJabatanController extends Controller
     }
 
     // Units, ikut filter province/regency bila diisi
-    $unitsQ = \App\Models\Rumahsakit::query()
-        ->select('no_rs','nama_rumahsakit','regency_id')
-        ->orderBy('nama_rumahsakit');
+    $unitsQ = \App\Models\UnitKerja::query()
+        ->select('id','nama_unit_kerja','regency_id')
+        ->orderBy('nama_unit_kerja');
 
     if ($regencyId) {
         $unitsQ->where('regency_id', $regencyId);
@@ -192,8 +192,8 @@ class FormasiJabatanController extends Controller
 public function create()
 {
     // HARUS: $unitkerja, $jenjang, $daftarFormasi (bukan $units / $jenjangs)
-    $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
-        ->get(['no_rs','nama_rumahsakit']);
+    $unitkerja = \App\Models\UnitKerja::orderBy('nama_unit_kerja')
+        ->get(['id','nama_unit_kerja']);
 
     $jenjang = \App\Models\Jenjangjabatan::orderBy('kategori')
         ->orderBy('nama_jenjang')
@@ -212,7 +212,7 @@ public function create()
 
         if ($isMulti) {
             $data = $request->validate([
-                'unit_kerja_id'            => ['required','integer','exists:rumahsakits,no_rs'],
+                'unit_kerja_id'            => ['required','integer','exists:unit_kerja,id'],
                 'tahun_formasi'            => ['required','string','max:50'],
                 'items'                    => ['required','array','min:1'],
                 'items.*.nama_formasi'     => ['required', Rule::in($this->DAFTAR_FORMASI_JFT)],
@@ -237,7 +237,7 @@ public function create()
             $request->validate([
                 'nama_formasi'  => ['required', Rule::in($this->DAFTAR_FORMASI_JFT)],
                 'jenjang_id'    => 'required|exists:jenjang_jabatan,id',
-                'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+                'unit_kerja_id' => 'required|exists:unit_kerja,id',
                 'kuota'         => 'required|integer|min:0',
                 'tahun_formasi' => 'required|string|max:50',
             ]);
@@ -261,7 +261,7 @@ public function create()
 //     abort_if(!$unitId || !$tahun, 404);
 
 //     $mode = 'edit';
-//     $unit = \App\Models\Rumahsakit::findOrFail($unitId, ['no_rs','nama_rumahsakit']);
+//     $unit = \App\Models\UnitKerja::findOrFail($unitId, ['id','nama_unit_kerja']);
 //     $rows = \App\Models\Formasijabatan::where('unit_kerja_id',$unitId)
 //             ->where('tahun_formasi',$tahun)
 //             ->orderBy('nama_formasi')
@@ -290,8 +290,8 @@ public function create()
 //     $jenjang = \App\Models\Jenjangjabatan::orderBy('kategori')->orderBy('nama_jenjang')->get();
 
 //     // dropdown unit kerja (supaya $unitkerja tidak undefined)
-//     $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
-//         ->get(['no_rs','nama_rumahsakit']);
+//     $unitkerja = \App\Models\UnitKerja::orderBy('nama_unit_kerja')
+//         ->get(['id','nama_unit_kerja']);
 
 //     return view('formasi_jabatan.edit-group', compact('formasi','jenjang','unitkerja','unitId','tahun'));
 // }
@@ -316,10 +316,10 @@ public function editGroup(Request $request, $unit = null, $tahun = null)
     $jenjang = \App\Models\Jenjangjabatan::orderBy('kategori')
         ->orderBy('nama_jenjang')->get();
 
-    $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
-        ->get(['no_rs','nama_rumahsakit']);
+    $unitkerja = \App\Models\UnitKerja::orderBy('nama_unit_kerja')
+        ->get(['id','nama_unit_kerja']);
 
-    $unitRow = \App\Models\Rumahsakit::where('no_rs', $unit)->first();
+    $unitRow = \App\Models\UnitKerja::where('id', $unit)->first();
 
     return view('formasi_jabatan.edit-group', [
         'rows'          => $rows,                  // <<< pakai 'rows' agar cocok dengan blade
@@ -339,7 +339,7 @@ public function editGroup(Request $request, $unit = null, $tahun = null)
 //    public function updateGroup(Request $request)
 // {
 //     $data = $request->validate([
-//         'unit_kerja_id'              => ['required','integer','exists:rumahsakits,no_rs'],
+//         'unit_kerja_id'              => ['required','integer','exists:unit_kerja,id'],
 //         'tahun_formasi'              => ['required','string','max:50'],
 //         'items'                      => ['required','array','min:1'],
 //         'items.*.id'                 => ['nullable','integer','exists:formasi_jabatan,id'],
@@ -383,7 +383,7 @@ public function editGroup(Request $request, $unit = null, $tahun = null)
 public function updateGroup(Request $request)
 {
     $data = $request->validate([
-        'unit_kerja_id'        => ['required','integer','exists:rumahsakits,no_rs'],
+        'unit_kerja_id'        => ['required','integer','exists:unit_kerja,id'],
         'tahun_formasi'        => ['required','string','max:50'],
         'items'                => ['required','array','min:1'],
         'items.*.nama_formasi' => ['required', Rule::in($this->DAFTAR_FORMASI_JFT)],
@@ -478,7 +478,7 @@ public function deleteGroup(Request $request)
     public function edit($id)
     {
         $formasi   = Formasijabatan::with('jenjang')->withCount(['sdmAktif as terisi'])->findOrFail($id);
-        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+        $unitkerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id','nama_unit_kerja']);
         $jenjang   = Jenjangjabatan::orderBy('kategori')->orderBy('nama_jenjang')->get(['id','nama_jenjang','kategori']);
         $daftarFormasi = $this->DAFTAR_FORMASI_JFT;
 
@@ -490,7 +490,7 @@ public function deleteGroup(Request $request)
         $request->validate([
             'nama_formasi'  => ['required', Rule::in($this->DAFTAR_FORMASI_JFT)],
             'jenjang_id'    => 'required|exists:jenjang_jabatan,id',
-            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id' => 'required|exists:unit_kerja,id',
             'kuota'         => 'required|integer|min:0',
             'tahun_formasi' => 'required|string|max:50',
         ]);
@@ -616,18 +616,18 @@ public function importPivotStore(Request $request)
             if ($jabatan === '' || \Illuminate\Support\Str::contains(\Illuminate\Support\Str::lower($jabatan),'nama jabatan')) continue;
 
             // resolve unit
-            $unit = \App\Models\Rumahsakit::where('nama_rumahsakit',$currentUnit)->first(['no_rs','nama_rumahsakit']);
+            $unit = \App\Models\UnitKerja::where('nama_unit_kerja',$currentUnit)->first(['id','nama_unit_kerja']);
             if (!$unit) { $unitNotFound[$currentUnit] = true; continue; }
 
             // Siapkan context per unit (sekali di awal saat unit pertama kali ditemui)
-            if (!isset($ctx[$unit->no_rs])) {
-                $lastYear = \App\Models\Formasijabatan::where('unit_kerja_id',$unit->no_rs)->max('tahun_formasi');
+            if (!isset($ctx[$unit->id])) {
+                $lastYear = \App\Models\Formasijabatan::where('unit_kerja_id',$unit->id)->max('tahun_formasi');
 
                 // 1) Selalu snapshot set lama (jika ada)
                 if ($lastYear) {
                     // jika lastYear == $tahun, snapshot kondisi sebelum replace (same-year)
                     // jika lastYear != $tahun, snapshot tahun lama (cross-year)
-                    $this->snapshotFormasiSet($unit->no_rs, $lastYear);
+                    $this->snapshotFormasiSet($unit->id, $lastYear);
                 }
 
                 // 2) Tentukan mode
@@ -636,12 +636,12 @@ public function importPivotStore(Request $request)
                 // 3) Jangan hapus set tahun saat ini (same-year) sebelum upsert — biar SDM tidak hilang ID formasinya.
                 //    Untuk cross-year: boleh kosongkan dulu set target tahun agar benar2 replace.
                 if ($mode === 'cross') {
-                    \App\Models\Formasijabatan::where('unit_kerja_id',$unit->no_rs)
+                    \App\Models\Formasijabatan::where('unit_kerja_id',$unit->id)
                         ->where('tahun_formasi',$tahun)
                         ->delete();
                 }
 
-                $ctx[$unit->no_rs] = [
+                $ctx[$unit->id] = [
                     'mode'     => $mode,
                     'fromYear' => $lastYear ?? null, // bisa sama/tidak sama dg $tahun
                     'touched'  => [],
@@ -665,10 +665,10 @@ public function importPivotStore(Request $request)
                 );
 
                 $key = $jabatan.'|'.$jenjang->id;
-                $ctx[$unit->no_rs]['touched'][$key] = true;
+                $ctx[$unit->id]['touched'][$key] = true;
 
                 // Upsert untuk tahun yang diimport
-                $existing = \App\Models\Formasijabatan::where('unit_kerja_id', $unit->no_rs)
+                $existing = \App\Models\Formasijabatan::where('unit_kerja_id', $unit->id)
                     ->where('tahun_formasi', $tahun)
                     ->where('nama_formasi', $jabatan)
                     ->where('jenjang_id', $jenjang->id)
@@ -680,7 +680,7 @@ public function importPivotStore(Request $request)
                     $updated++;
                 } else {
                     \App\Models\Formasijabatan::create([
-                        'unit_kerja_id' => $unit->no_rs,
+                        'unit_kerja_id' => $unit->id,
                         'tahun_formasi' => $tahun,
                         'nama_formasi'  => $jabatan,
                         'jenjang_id'    => $jenjang->id,
@@ -866,8 +866,8 @@ public function history(Request $req)
 
     $hist = $q->paginate(20);
 
-    $units  = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
-                ->get(['no_rs','nama_rumahsakit']);
+    $units  = \App\Models\UnitKerja::orderBy('nama_unit_kerja')
+                ->get(['id','nama_unit_kerja']);
     $tahuns = \App\Models\Formasijabatan::select('tahun_formasi')
                 ->distinct()->orderBy('tahun_formasi')->pluck('tahun_formasi');
 

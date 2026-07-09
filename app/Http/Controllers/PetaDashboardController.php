@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use App\Models\Province;
 use App\Models\Regency;
 use App\Models\UjikomJadwal;
@@ -55,7 +55,7 @@ class PetaDashboardController extends Controller
     $q = DB::table('sumber_daya_manusia as sdm')
         ->join('formasi_jabatan as f','f.id','=','sdm.formasi_jabatan_id')
         ->join('jenjang_jabatan as j','j.id','=','f.jenjang_id')
-        ->leftJoin('rumahsakits as rs','rs.no_rs','=','f.unit_kerja_id')
+        ->leftJoin('unit_kerja as rs','rs.id','=','f.unit_kerja_id')
         ->leftJoin('regencies as rg','rg.id','=','rs.regency_id')
         ->leftJoin('provinces as pr','pr.id','=','rg.province_id')
         ->where('sdm.aktif', 1);
@@ -274,7 +274,7 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
     $q = DB::table('sumber_daya_manusia as sdm')
         ->join('formasi_jabatan as f','f.id','=','sdm.formasi_jabatan_id')
         ->join('jenjang_jabatan as j','j.id','=','f.jenjang_id')
-        ->join('rumahsakits as rs','rs.no_rs','=','f.unit_kerja_id')
+        ->join('unit_kerja as rs','rs.id','=','f.unit_kerja_id')
         ->join('regencies as rg','rg.id','=','rs.regency_id')
         ->join('provinces as pr','pr.id','=','rg.province_id')
         ->where('sdm.aktif',1);
@@ -428,7 +428,7 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
         // ================== FILTER INPUT ==================
         $matras = ['Darat','Laut','Udara','Kereta'];
 
-        $unitPerMatra = Rumahsakit::select('matra')
+        $unitPerMatra = UnitKerja::select('matra')
         ->selectRaw('COUNT(*) as total')
         ->groupBy('matra')
         ->pluck('total','matra')
@@ -513,7 +513,7 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
         $base = DB::table('sumber_daya_manusia as sdm')
             ->join('formasi_jabatan as f', 'f.id', '=', 'sdm.formasi_jabatan_id')
             ->join('jenjang_jabatan as j', 'j.id', '=', 'f.jenjang_id')
-            ->join('rumahsakits as rs', 'rs.no_rs', '=', 'f.unit_kerja_id')
+            ->join('unit_kerja as rs', 'rs.id', '=', 'f.unit_kerja_id')
             ->join('regencies as rg', 'rg.id', '=', 'rs.regency_id')
             ->join('provinces as pr', 'pr.id', '=', 'rg.province_id')
             ->where('sdm.aktif', 1);
@@ -584,14 +584,14 @@ $pyramidValues = array_column($pyramidPairs, 'value');
 
 
         // ================== MARKERS PETA (ikut filter) ==================
-        $rumahsakitsQ = Rumahsakit::with(['regency.province','formasis.jenjang'])
+        $rumahsakitsQ = UnitKerja::with(['regency.province','formasis.jenjang'])
             ->whereNotNull('latitude')->whereNotNull('longitude');
 
         if ($fMatra)     { $rumahsakitsQ->where('matra', $fMatra); }
         if ($fProvinceId){ $rumahsakitsQ->whereHas('regency', fn($q)=>$q->where('province_id', $fProvinceId)); }
         if ($fRegencyId) { $rumahsakitsQ->where('regency_id', $fRegencyId); }
 
-        $markers = $rumahsakitsQ->get(['no_rs','nama_rumahsakit','regency_id','latitude','longitude','matra','instansi'])
+        $markers = $rumahsakitsQ->get(['id','nama_unit_kerja','regency_id','latitude','longitude','matra','instansi'])
             ->map(function ($rs) {
                 $formasiList = $rs->formasis->map(function ($f) {
                     $kuota  = (int)($f->kuota ?? 0);
@@ -607,7 +607,7 @@ $pyramidValues = array_column($pyramidPairs, 'value');
                 return [
                     'lat'          => (float)$rs->latitude,
                     'lng'          => (float)$rs->longitude,
-                    'unit'         => $rs->nama_rumahsakit,
+                    'unit'         => $rs->nama_unit_kerja,
                     'prov'         => optional(optional($rs->regency)->province)->name,
                     'kab'          => $rs->regency ? ($rs->regency->type.' '.$rs->regency->name) : null,
                     'matra'        => $rs->matra,
@@ -684,7 +684,7 @@ foreach ($levels as $lvl) {
                 ->get(['id','name','type']);
         }
 
-        $jumlahrs = Rumahsakit::count();
+        $jumlahrs = UnitKerja::count();
 
 
         // Perlu Tindakan untuk admin/super_admin

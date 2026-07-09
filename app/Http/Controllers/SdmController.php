@@ -6,7 +6,7 @@ use App\Models\Sdmmodels;
 use App\Models\Formasijabatan;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -48,7 +48,7 @@ class SdmController extends Controller
         ->orderBy('unit_kerja_id')
         ->orderBy('jenjang_id')
         ->get();
-        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+        $unitkerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id','nama_unit_kerja']);
         return view('sdm.create', compact('formasi','unitkerja'));
     }
 
@@ -66,7 +66,7 @@ class SdmController extends Controller
 
             // salah satu wajib terisi
             'formasi_jabatan_id'  => 'nullable|exists:formasi_jabatan,id',
-            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
+            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:unit_kerja,id',
 
             'aktif'               => 'nullable|boolean',
         ]);
@@ -135,7 +135,7 @@ class SdmController extends Controller
         ->orderBy('unit_kerja_id')
         ->orderBy('jenjang_id')
         ->get();
-        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+        $unitkerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id','nama_unit_kerja']);
         return view('sdm.edit', compact('sdm','formasi','unitkerja'));
     }
 
@@ -150,7 +150,7 @@ class SdmController extends Controller
             'status_kepegawaian'  => 'required|in:PNS,PPPK,CPNS,Non ASN',
             'tmt_pengangkatan'    => 'nullable|date',
             'formasi_jabatan_id'  => 'nullable|exists:formasi_jabatan,id',
-            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
+            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:unit_kerja,id',
             'aktif'               => 'nullable|boolean',
         ]);
 
@@ -313,21 +313,21 @@ private function normalizeStatusKepeg(?string $raw): string
     return 'PNS';
 }
 
-// Pencocokan nama unit kerja → row rumahsakits (boleh null)
-private function resolveUnitByName(string $name): ?\App\Models\Rumahsakit
+// Pencocokan nama unit kerja → row unit_kerja (boleh null)
+private function resolveUnitByName(string $name): ?\App\Models\UnitKerja
 {
     $norm = fn($s)=> \Illuminate\Support\Str::of((string)$s)->lower()->replaceMatches('/\s+/', ' ')->trim()->toString();
     $target = $norm($name);
 
     // exact normalize match
-    $row = \App\Models\Rumahsakit::get(['no_rs','nama_rumahsakit'])->first(function($u) use ($norm,$target) {
-        return $norm($u->nama_rumahsakit) === $target;
+    $row = \App\Models\UnitKerja::get(['id','nama_unit_kerja'])->first(function($u) use ($norm,$target) {
+        return $norm($u->nama_unit_kerja) === $target;
     });
     if ($row) return $row;
 
     // contains match (fallback)
-    return \App\Models\Rumahsakit::get(['no_rs','nama_rumahsakit'])->first(function($u) use ($norm,$target) {
-        return \Illuminate\Support\Str::contains($norm($u->nama_rumahsakit), $target);
+    return \App\Models\UnitKerja::get(['id','nama_unit_kerja'])->first(function($u) use ($norm,$target) {
+        return \Illuminate\Support\Str::contains($norm($u->nama_unit_kerja), $target);
     });
 }
 
@@ -479,7 +479,7 @@ $jk    = $this->normalizeJK($jkRaw); // hasilnya 'L', 'P', atau null
 
             // 3) Cari formasi:
             $q = \App\Models\Formasijabatan::query()
-                ->when($unitRow, fn($qq)=>$qq->where('unit_kerja_id', $unitRow->no_rs))
+                ->when($unitRow, fn($qq)=>$qq->where('unit_kerja_id', $unitRow->id))
                 ->where(function($qq) use ($baseNama, $formasiNm) {
                     $qq->whereRaw('LOWER(nama_formasi) = ?', [mb_strtolower($baseNama)])
                        ->orWhereRaw('LOWER(nama_formasi) = ?', [mb_strtolower($formasiNm)])
@@ -508,7 +508,7 @@ $jk    = $this->normalizeJK($jkRaw); // hasilnya 'L', 'P', atau null
             }
 
             // 4) Tentukan unit final
-            $finalUnitId = $formasi ? $formasi->unit_kerja_id : ($unitRow ? $unitRow->no_rs : null);
+            $finalUnitId = $formasi ? $formasi->unit_kerja_id : ($unitRow ? $unitRow->id : null);
             if (!$formasi) {
                 // formasi belum tersedia meski unit ada
                 $missForm[ ($unitName ?: '-') .'|'. $formasiNm ] = true;

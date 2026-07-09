@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RumahsakitController;
+use App\Http\Controllers\UnitKerjaController;
 use App\Http\Controllers\CentralController;
 use App\Http\Controllers\PetaDashboardController;
 use App\Http\Controllers\FormasiJabatanController;
@@ -115,9 +115,9 @@ Route::get('laporan/pemangku-simple',
         Route::delete('sdm/{id}/force',  [SdmController::class, 'forceDelete'])->name('sdm.force-delete');
 
 
-        Route::get   ('unitkerja/trash',            [RumahsakitController::class,'trash'])->name('unitkerja.trash');
-        Route::patch ('unitkerja/{id}/restore',     [RumahsakitController::class,'restore'])->name('unitkerja.restore');
-        Route::delete('unitkerja/{id}/force',       [RumahsakitController::class,'forceDelete'])->name('unitkerja.force-delete');
+        Route::get   ('unitkerja/trash',            [UnitKerjaController::class,'trash'])->name('unitkerja.trash');
+        Route::patch ('unitkerja/{id}/restore',     [UnitKerjaController::class,'restore'])->name('unitkerja.restore');
+        Route::delete('unitkerja/{id}/force',       [UnitKerjaController::class,'forceDelete'])->name('unitkerja.force-delete');
 
         Route::get   ('formasi/trash',               [FormasiJabatanController::class,'trash'])->name('formasi.trash');
         Route::patch ('formasi/{id}/restore',        [FormasiJabatanController::class,'restore'])->name('formasi.restore');
@@ -135,7 +135,7 @@ Route::get('laporan/pemangku-simple',
 
              
         Route::resource('formasi', \App\Http\Controllers\FormasiJabatanController::class) -> except(['show']);
-        Route::resource('unitkerja', \App\Http\Controllers\RumahsakitController::class);
+        Route::resource('unitkerja', \App\Http\Controllers\UnitKerjaController::class);
         Route::resource('sdm', \App\Http\Controllers\SdmController::class);
 
         // Manajemen User - Hanya untuk super_admin

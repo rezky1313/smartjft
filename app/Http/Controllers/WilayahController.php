@@ -31,11 +31,11 @@ class WilayahController extends Controller
 
 // public function units(\Illuminate\Http\Request $r)
 // {
-//     $q = DB::table('rumahsakits as u')
-//         ->selectRaw('u.no_rs as id, u.nama_rumahsakit as text')
+//     $q = DB::table('unit_kerja as u')
+//         ->selectRaw('u.id as id, u.nama_unit_kerja as text')
 //         ->when($r->filled('regency_id'), fn($x)=>$x->where('u.regency_id',$r->regency_id))
-//         ->when($r->filled('q'), fn($x)=>$x->where('u.nama_rumahsakit','like','%'.$r->q.'%'))
-//         ->orderBy('u.nama_rumahsakit')->limit(30)->get();
+//         ->when($r->filled('q'), fn($x)=>$x->where('u.nama_unit_kerja','like','%'.$r->q.'%'))
+//         ->orderBy('u.nama_unit_kerja')->limit(30)->get();
 
 //     return response()->json(['results'=>$q]); // format Select2
 // }
@@ -51,11 +51,11 @@ public function regencies($provinceId)
 
 public function units(\Illuminate\Http\Request $r)
 {
-    $q = DB::table('rumahsakits as u')
-        ->selectRaw('u.no_rs as id, u.nama_rumahsakit as text')
+    $q = DB::table('unit_kerja as u')
+        ->selectRaw('u.id as id, u.nama_unit_kerja as text')
         ->when($r->filled('regency_id'), fn($x)=>$x->where('u.regency_id',$r->regency_id))
-        ->when($r->filled('q'), fn($x)=>$x->where('u.nama_rumahsakit','like','%'.$r->q.'%'))
-        ->orderBy('u.nama_rumahsakit')->limit(30)->get();
+        ->when($r->filled('q'), fn($x)=>$x->where('u.nama_unit_kerja','like','%'.$r->q.'%'))
+        ->orderBy('u.nama_unit_kerja')->limit(30)->get();
     return response()->json(['results'=>$q]);     // ← format Select2
 }
 

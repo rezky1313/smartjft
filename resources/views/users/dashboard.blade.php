@@ -29,7 +29,7 @@
         <div class="col-md-6">
           <table class="table table-sm table-borderless mb-0">
             <tr><td width="140" class="text-muted">Pangkat/Gol.</td><td>: {{ $sdm->pangkat_golongan ?? '-' }}</td></tr>
-            <tr><td class="text-muted">Unit Kerja</td><td>: {{ $sdm->unitKerja->nama_rumahsakit ?? '-' }}</td></tr>
+            <tr><td class="text-muted">Unit Kerja</td><td>: {{ $sdm->unitKerja->nama_unit_kerja ?? '-' }}</td></tr>
             <tr><td class="text-muted">Status</td><td>: <span class="badge badge-success">Aktif</span></td></tr>
           </table>
         </div>
@@ -174,7 +174,7 @@
   @if ($unitKerja)
   <div class="alert alert-info mb-3 py-2">
     <i class="fas fa-building mr-2"></i>
-    <strong>{{ $unitKerja->nama_rumahsakit }}</strong>
+    <strong>{{ $unitKerja->nama_unit_kerja }}</strong>
     — {{ optional($unitKerja->regency)->type }} {{ optional($unitKerja->regency)->name }},
     {{ optional(optional($unitKerja->regency)->province)->name }}
   </div>

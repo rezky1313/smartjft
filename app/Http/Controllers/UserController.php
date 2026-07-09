@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Sdmmodels;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -20,7 +20,7 @@ class UserController extends Controller
     public function create()
     {
         $roles      = Role::orderBy('name')->get();
-        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        $unitKerjas = UnitKerja::orderBy('nama_unit_kerja')->get();
         return view('users.manajemen-user.form', compact('roles', 'unitKerjas'));
     }
 
@@ -53,7 +53,7 @@ class UserController extends Controller
                 'name'         => 'required|string|max:255',
                 'email'        => 'required|string|email|max:255|unique:users',
                 'password'     => 'required|string|min:6|confirmed',
-                'unit_kerja_id'=> 'required|exists:rumahsakits,no_rs',
+                'unit_kerja_id'=> 'required|exists:unit_kerja,id',
                 'role'         => 'required|exists:roles,name',
                 'status'       => 'required|in:active,inactive',
             ], [
@@ -94,7 +94,7 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles      = Role::orderBy('name')->get();
-        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+        $unitKerjas = UnitKerja::orderBy('nama_unit_kerja')->get();
         $user->load('roles', 'sdm', 'unitKerja');
         return view('users.manajemen-user.form', compact('user', 'roles', 'unitKerjas'));
     }
@@ -127,7 +127,7 @@ class UserController extends Controller
             $request->validate([
                 'name'         => 'required|string|max:255',
                 'email'        => 'required|string|email|max:255|unique:users,email,' . $user->id,
-                'unit_kerja_id'=> 'required|exists:rumahsakits,no_rs',
+                'unit_kerja_id'=> 'required|exists:unit_kerja,id',
                 'role'         => 'required|exists:roles,name',
                 'status'       => 'required|in:active,inactive',
             ], [

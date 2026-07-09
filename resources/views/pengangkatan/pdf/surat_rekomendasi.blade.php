@@ -45,7 +45,7 @@
   <p>
     Yang bertanda tangan di bawah ini, Kepala Pusat Pembinaan Jabatan Fungsional Transportasi,
     dengan ini menerangkan bahwa berdasarkan hasil Uji Kompetensi Jabatan Fungsional Transportasi
-    dan ketersediaan formasi jabatan pada <strong>{{ $permohonan->unitKerja?->nama_rumahsakit ?? '-' }}</strong>,
+    dan ketersediaan formasi jabatan pada <strong>{{ $permohonan->unitKerja?->nama_unit_kerja ?? '-' }}</strong>,
     merekomendasikan pengangkatan nama-nama berikut ke dalam jabatan fungsional yang tertera di bawah ini:
   </p>
 

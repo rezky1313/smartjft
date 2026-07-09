@@ -32,8 +32,8 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group ms-2">
-                        <label for="nama_rumahsakit" class="form-label">Nama Unit Kerja:</label>
-                        <input type="text" name="nama_rumahsakit" id="nama_rumahsakit" class="form-control" required>
+                        <label for="nama_unit_kerja" class="form-label">Nama Unit Kerja:</label>
+                        <input type="text" name="nama_unit_kerja" id="nama_unit_kerja" class="form-control" required>
                     </div>
 
                     <div class="form-group ms-2">
@@ -49,7 +49,7 @@
 @php
   $provinces = $provinces ?? collect();
   $regencies = $regencies ?? collect();
-  $rumahsakit = $rumahsakit ?? null;
+  $unitKerja = $unitKerja ?? null;
 @endphp
 
 <div class="mb-3">
@@ -58,7 +58,7 @@
     <option value="">-- Pilih Provinsi --</option>
     @foreach($provinces as $p)
       <option value="{{ $p->id }}"
-        @selected(optional($rumahsakit->regency->province ?? null)->id == $p->id)>{{ $p->name }}</option>
+        @selected(optional($unitKerja->regency->province ?? null)->id == $p->id)>{{ $p->name }}</option>
     @endforeach
   </select>
 </div>
@@ -68,7 +68,7 @@
   <select name="regency_id" id="regencySelect" class="form-select" required>
     @if($regencies->count())
       @foreach($regencies as $r)
-        <option value="{{ $r->id }}" @selected(old('regency_id', $rumahsakit->regency_id ?? '') == $r->id)>
+        <option value="{{ $r->id }}" @selected(old('regency_id', $unitKerja->regency_id ?? '') == $r->id)>
           {{ $r->type }} {{ $r->name }}
         </option>
       @endforeach

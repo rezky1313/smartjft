@@ -37,7 +37,7 @@ class User extends Authenticatable
 
     public function unitKerja()
     {
-        return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+        return $this->belongsTo(\App\Models\UnitKerja::class, 'unit_kerja_id');
     }
 
     /**

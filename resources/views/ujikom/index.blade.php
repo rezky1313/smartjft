@@ -38,8 +38,8 @@
             <select name="unit_kerja_id" class="form-select">
               <option value="">Semua Unit Kerja</option>
               @foreach($unitKerja as $uk)
-                <option value="{{ $uk->no_rs }}" {{ request('unit_kerja_id') == $uk->no_rs ? 'selected' : '' }}>
-                  {{ $uk->nama_rumahsakit }}
+                <option value="{{ $uk->id }}" {{ request('unit_kerja_id') == $uk->id ? 'selected' : '' }}>
+                  {{ $uk->nama_unit_kerja }}
                 </option>
               @endforeach
             </select>
@@ -91,7 +91,7 @@
               <tr>
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $row->nomor_permohonan }}</td>
-                <td>{{ $row->unitKerja->nama_rumahsakit ?? '-' }}</td>
+                <td>{{ $row->unitKerja->nama_unit_kerja ?? '-' }}</td>
                 <td>{{ $row->tanggal_permohonan->format('d/m/Y') }}</td>
                 <td>{{ $row->peserta->count() }}</td>
                 <td>

@@ -56,9 +56,9 @@
                             </td>
                             <td>
                                 @if($user->unitKerja)
-                                    <small>{{ $user->unitKerja->nama_rumahsakit }}</small>
+                                    <small>{{ $user->unitKerja->nama_unit_kerja }}</small>
                                 @elseif($user->sdm?->unitKerja)
-                                    <small class="text-muted">{{ $user->sdm->unitKerja->nama_rumahsakit ?? '-' }}</small>
+                                    <small class="text-muted">{{ $user->sdm->unitKerja->nama_unit_kerja ?? '-' }}</small>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif

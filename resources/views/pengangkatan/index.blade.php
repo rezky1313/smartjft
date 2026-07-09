@@ -61,7 +61,7 @@
             <select name="unit_kerja_id" class="form-control form-control-sm select2">
               <option value="">Semua Unit Kerja</option>
               @foreach ($unitKerjaList as $uk)
-                <option value="{{ $uk->no_rs }}" @selected(request('unit_kerja_id') == $uk->no_rs)>{{ $uk->nama_rumahsakit }}</option>
+                <option value="{{ $uk->id }}" @selected(request('unit_kerja_id') == $uk->id)>{{ $uk->nama_unit_kerja }}</option>
               @endforeach
             </select>
           </div>
@@ -100,7 +100,7 @@
               <tr>
                 <td class="text-center">{{ $i + 1 }}</td>
                 <td><strong>{{ $p->kode_permohonan }}</strong></td>
-                <td>{{ $p->unitKerja?->nama_rumahsakit ?? '-' }}</td>
+                <td>{{ $p->unitKerja?->nama_unit_kerja ?? '-' }}</td>
                 <td class="text-center">{{ $p->tanggal_permohonan?->format('d M Y') }}</td>
                 <td class="text-center">{{ $p->kandidat_count }}</td>
                 <td class="text-center">

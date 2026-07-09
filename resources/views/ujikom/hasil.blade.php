@@ -14,7 +14,7 @@
     <div class="card-body">
       <div class="alert alert-info">
         <strong>Nomor Permohonan:</strong> {{ $permohonan->nomor_permohonan }}<br>
-        <strong>Unit Kerja:</strong> {{ $permohonan->unitKerja->nama_rumahsakit }}<br>
+        <strong>Unit Kerja:</strong> {{ $permohonan->unitKerja->nama_unit_kerja }}<br>
         <strong>Jadwal:</strong> {{ $permohonan->tanggal_jadwal?->format('d/m/Y') }} @ {{ $permohonan->tempat_ujikom }}
       </div>
 

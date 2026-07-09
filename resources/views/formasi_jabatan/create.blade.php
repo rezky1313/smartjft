@@ -23,7 +23,7 @@
 
    {{-- saat edit, kirimkan hidden --}}
   {{-- @if($mode==='edit')
-    <input type="hidden" name="unit_kerja_id" value="{{ $unit->no_rs }}">
+    <input type="hidden" name="unit_kerja_id" value="{{ $unit->id }}">
     <input type="hidden" name="tahun_formasi" value="{{ $tahun }}">
   @endif --}}
 
@@ -39,8 +39,8 @@
             <select name="unit_kerja_id" id="unit_kerja_id" class="form-select select2" required>
               <option value="">-- Pilih Unit Kerja --</option>
               @foreach ($unitkerja as $unit)
-                <option value="{{ $unit->no_rs }}" @selected(old('unit_kerja_id')==$unit->no_rs)>
-                  {{ $unit->nama_rumahsakit }}
+                <option value="{{ $unit->id }}" @selected(old('unit_kerja_id')==$unit->id)>
+                  {{ $unit->nama_unit_kerja }}
                 </option>
               @endforeach
             </select>

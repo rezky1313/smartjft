@@ -84,7 +84,7 @@
                   <small>{{ $p->jadwal?->judul ?? '-' }}</small><br>
                   <small class="text-muted">{{ $p->jadwal?->tanggal_mulai?->format('d/m/Y') ?? '' }}</small>
                 </td>
-                <td><small>{{ $p->unitKerja?->nama_rumahsakit ?? '-' }}</small></td>
+                <td><small>{{ $p->unitKerja?->nama_unit_kerja ?? '-' }}</small></td>
                 <td class="text-center">
                   <span class="badge badge-{{ $p->jenis_pendaftaran === 'batch' ? 'primary' : 'secondary' }}">
                     {{ $p->jenis_pendaftaran === 'batch' ? 'Batch' : 'Mandiri' }}

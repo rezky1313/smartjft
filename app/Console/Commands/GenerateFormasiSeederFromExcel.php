@@ -9,7 +9,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 // Model
 use App\Models\Formasijabatan;
-use App\Models\Rumahsakit;       // unit kerja (no_rs)
+use App\Models\UnitKerja;        // unit kerja (id)
 use App\Models\Jenjangjabatan;   // jenjang
 
 class GenerateFormasiSeederFromExcel extends Command
@@ -120,28 +120,28 @@ class GenerateFormasiSeederFromExcel extends Command
                 $row[$key] = isset($r[$col]) ? trim((string)$r[$col]) : null;
             }
 
-            // --- Resolve Unit Kerja (no_rs) ---
-            $unitKerjaId = null; // no_rs
+            // --- Resolve Unit Kerja (id) ---
+            $unitKerjaId = null; // id
             if (!empty($row['unit_kerja_id'])) {
                 $unitKerjaId = (int) $row['unit_kerja_id'];
                 // validasi eksistensi (opsional)
-                if (!Rumahsakit::where('no_rs', $unitKerjaId)->exists()) {
+                if (!UnitKerja::where('id', $unitKerjaId)->exists()) {
                     $warnings[] = "unit_kerja_id {$unitKerjaId} tidak ditemukan (baris ".($idx+2).")";
                     $unitKerjaId = null;
                 }
             } elseif (!empty($row['unit_kerja_kode'])) {
-                $unitKerjaId = Rumahsakit::where('no_rs', (int)$row['unit_kerja_kode'])->value('no_rs');
+                $unitKerjaId = UnitKerja::where('id', (int)$row['unit_kerja_kode'])->value('id');
                 if (!$unitKerjaId) {
                     $warnings[] = "unit_kerja_kode/no_rs {$row['unit_kerja_kode']} tidak ditemukan (baris ".($idx+2).")";
                 }
             } elseif (!empty($row['unit_kerja_nama'])) {
                 // Ambil yang pertama bila ada duplikat nama (beri warning)
-                $list = Rumahsakit::where('nama_rumahsakit', $row['unit_kerja_nama'])->limit(2)->get(['no_rs','nama_rumahsakit']);
+                $list = UnitKerja::where('nama_unit_kerja', $row['unit_kerja_nama'])->limit(2)->get(['id','nama_unit_kerja']);
                 if ($list->count() === 1) {
-                    $unitKerjaId = $list[0]->no_rs;
+                    $unitKerjaId = $list[0]->id;
                 } elseif ($list->count() > 1) {
-                    $unitKerjaId = $list[0]->no_rs;
-                    $warnings[]  = "Nama unit kerja '{$row['unit_kerja_nama']}' ambigu (baris ".($idx+2)."), ambil no_rs={$unitKerjaId}. Disarankan pakai kolom unit_kerja_id/no_rs.";
+                    $unitKerjaId = $list[0]->id;
+                    $warnings[]  = "Nama unit kerja '{$row['unit_kerja_nama']}' ambigu (baris ".($idx+2)."), ambil id={$unitKerjaId}. Disarankan pakai kolom unit_kerja_id/no_rs.";
                 } else {
                     $warnings[]  = "Nama unit kerja '{$row['unit_kerja_nama']}' tidak ditemukan (baris ".($idx+2).").";
                 }

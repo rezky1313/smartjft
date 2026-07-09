@@ -7,7 +7,7 @@ use App\Models\Formasijabatan;
 use App\Models\Jenjangjabatan;
 use App\Models\Province;
 use App\Models\Regency;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use App\Models\Sdmmodels;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,15 +33,15 @@ class LaporanController extends Controller
         }
 
         if ($request->has('regency_id') && $request->regency_id) {
-            $unitKerja = Rumahsakit::where('regency_id', $request->regency_id)
-                ->orderBy('nama_rumahsakit')
-                ->get(['no_rs', 'nama_rumahsakit']);
+            $unitKerja = UnitKerja::where('regency_id', $request->regency_id)
+                ->orderBy('nama_unit_kerja')
+                ->get(['id', 'nama_unit_kerja']);
         }
 
         // Get all unit kerja for filter (if no regency filter)
         if (empty($request->regency_id)) {
-            $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')
-                ->get(['no_rs', 'nama_rumahsakit']);
+            $unitKerja = UnitKerja::orderBy('nama_unit_kerja')
+                ->get(['id', 'nama_unit_kerja']);
         }
 
         // Data for Tab 1: Dashboard
@@ -102,7 +102,7 @@ class LaporanController extends Controller
         // Query formasi
         $q = Formasijabatan::with([
             'jenjang:id,nama_jenjang',
-            'unitkerja:no_rs,nama_rumahsakit,regency_id',
+            'unitkerja:id,nama_unit_kerja,regency_id',
             'unitkerja.regency:id,name,type,province_id',
         ])->withCount(['sdmAktif as terisi']);
 
@@ -215,7 +215,7 @@ class LaporanController extends Controller
      */
     private function getUnitKerjaData($provinceId = null, $regencyId = null)
     {
-        $query = Rumahsakit::with([
+        $query = UnitKerja::with([
             'regency:id,name,type,province_id',
             'regency.province:id,name',
         ])->withCount('formasis');
@@ -226,19 +226,19 @@ class LaporanController extends Controller
             $query->whereHas('regency', fn($q) => $q->where('province_id', $provinceId));
         }
 
-        $units = $query->orderBy('nama_rumahsakit')->get();
+        $units = $query->orderBy('nama_unit_kerja')->get();
 
         $data = [];
         foreach ($units as $unit) {
             $jumlahPegawai = Sdmmodels::where('aktif', true)
                 ->where(function($q) use ($unit) {
-                    $q->where('unit_kerja_id', $unit->no_rs)
-                        ->orWhereHas('formasi', fn($f) => $f->where('unit_kerja_id', $unit->no_rs));
+                    $q->where('unit_kerja_id', $unit->id)
+                        ->orWhereHas('formasi', fn($f) => $f->where('unit_kerja_id', $unit->id));
                 })
                 ->count();
 
             $data[] = [
-                'nama_unit_kerja' => $unit->nama_rumahsakit,
+                'nama_unit_kerja' => $unit->nama_unit_kerja,
                 'jenis_upt' => $unit->jenis_upt ?? '-',
                 'provinsi' => optional($unit->regency)->province->name ?? '-',
                 'kab_kota' => optional($unit->regency)->type . ' ' . optional($unit->regency)->name,
@@ -259,7 +259,7 @@ class LaporanController extends Controller
 
         $q = Formasijabatan::with([
             'jenjang:id,nama_jenjang',
-            'unitkerja:no_rs,nama_rumahsakit,regency_id',
+            'unitkerja:id,nama_unit_kerja,regency_id',
             'unitkerja.regency:id,name,type,province_id',
         ])->withCount(['sdmAktif as terisi']);
 
@@ -286,7 +286,7 @@ class LaporanController extends Controller
         // Build table data grouped by unit + jabatan
         $table = [];
         foreach ($rows as $f) {
-            $unitName = optional($f->unitkerja)->nama_rumahsakit ?? ('Unit #'.$f->unit_kerja_id);
+            $unitName = optional($f->unitkerja)->nama_unit_kerja ?? ('Unit #'.$f->unit_kerja_id);
             $jabatanName = $f->nama_formasi ?? '-';
 
             $key = md5($unitName.'|'.$jabatanName);
@@ -328,9 +328,9 @@ class LaporanController extends Controller
         $query = Sdmmodels::with([
             'formasi:id,nama_formasi,unit_kerja_id,tahun_formasi',
             'formasi.jenjang:id,nama_jenjang',
-            'formasi.unitkerja:no_rs,nama_rumahsakit,regency_id',
+            'formasi.unitkerja:id,nama_unit_kerja,regency_id',
             'formasi.unitkerja.regency:id,name,type,province_id',
-            'unitKerja:no_rs,nama_rumahsakit,regency_id',
+            'unitKerja:id,nama_unit_kerja,regency_id',
             'unitKerja.regency:id,name,type,province_id',
         ])->where('aktif', true);
 
@@ -378,7 +378,7 @@ class LaporanController extends Controller
                 'nip' => $p->nip ?? '-',
                 'jabatan' => $formasi?->nama_formasi ?? '-',
                 'jenjang' => $formasi?->jenjang?->nama_jenjang ?? '-',
-                'unit_kerja' => $unitKerja?->nama_rumahsakit ?? '-',
+                'unit_kerja' => $unitKerja?->nama_unit_kerja ?? '-',
                 'provinsi' => $province?->name ?? '-',
                 'kab_kota' => $regency ? $regency->type . ' ' . $regency->name : '-',
                 'tmt_jabatan' => $p->tmt_pengangkatan?->format('d-m-Y') ?? '-',
@@ -530,8 +530,8 @@ class LaporanController extends Controller
         }
 
         if ($request->get('unit_kerja_id')) {
-            $unit = Rumahsakit::find($request->get('unit_kerja_id'));
-            $params['Unit Kerja'] = $unit?->nama_rumahsakit ?? $request->get('unit_kerja_id');
+            $unit = UnitKerja::find($request->get('unit_kerja_id'));
+            $params['Unit Kerja'] = $unit?->nama_unit_kerja ?? $request->get('unit_kerja_id');
         }
 
         if ($request->get('jabatan')) {

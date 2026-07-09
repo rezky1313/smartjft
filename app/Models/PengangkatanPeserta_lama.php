@@ -56,7 +56,7 @@ class PengangkatanPeserta extends Model
      */
     public function unitKerjaTujuan(): BelongsTo
     {
-        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_tujuan_id', 'no_rs');
+        return $this->belongsTo(UnitKerja::class, 'unit_kerja_tujuan_id');
     }
 
     /**

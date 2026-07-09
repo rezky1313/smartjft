@@ -43,7 +43,7 @@
             <td>{{ $i + 1 }}</td>
             <td>{{ $sdm->nama_lengkap ?? '-' }}</td>
             <td>{{ $sdm->nip ?? '-' }}</td>
-            <td>{{ $uk->nama_rumahsakit ?? '-' }}</td>
+            <td>{{ $uk->nama_unit_kerja ?? '-' }}</td>
             <td>{{ $sdm?->formasi?->jenjang?->nama_jenjang ?? '-' }}</td>
             <td>{{ $kab ? ($kab->type.' '.$kab->name) : '-' }}</td>
             <td>{{ $uk->instansi ?? '-' }}</td>

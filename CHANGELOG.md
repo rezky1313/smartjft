@@ -5,6 +5,58 @@
 
 ---
 
+## Versi 1.13.0 - Rename Total "Rumah Sakit" → "Unit Kerja"
+**Tanggal:** 9 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Rename menyeluruh istilah "Rumah Sakit" (peninggalan project awal yang di-fork dari aplikasi rumah sakit) menjadi "Unit Kerja" di seluruh lapisan aplikasi: tabel database, primary key, kolom data, model, controller, dan variabel Blade. Dieksekusi 5 tahap bertahap dari paling aman ke paling berisiko (audit dulu → file mati → kolom data → tabel/PK/model → controller → variabel Blade), masing-masing diverifikasi penuh sebelum lanjut ke tahap berikutnya. Detail lengkap tiap tahap (termasuk hasil audit mentah, temuan di luar cakupan awal, dan alasan tiap keputusan) ada di `AUDIT_RUMAHSAKIT_2026-07-09.txt` di root project.
+
+---
+
+## Perubahan
+
+### Tahap 1 — Audit
+- Audit read-only menyeluruh: nama file/folder, semua occurrence di `app/`/`database/`/`routes/`/`resources/views/`, struktur tabel, foreign key, potensi konflik nama dengan modul "UnitKerja" yang sudah ada sebagian (ternyata tidak ada konflik — proses rename memang sudah pernah dimulai sebagian di masa lalu lewat nama route dan nama file generator, lalu berhenti)
+
+### Tahap 2A — Bersih-bersih file mati (zero risk)
+- Dipindahkan ke `_archive/` (bukan dihapus): `routes/web copy.php`, `resources/views/formasi_jabatan/Rumahsakit.php` (class duplikat mati), `resources/views/formasi_jabatan/bkp/` (4 file), folder `backup/` (~90 file), `rumahsakits.sql`
+
+### Tahap 2B — Rename kolom data `nama_rumahsakit` → `nama_unit_kerja`
+- **BARU** `database/migrations/2026_07_09_000001_rename_nama_rumahsakit_to_nama_unit_kerja.php` — raw SQL `RENAME COLUMN` (`doctrine/dbal` tidak terinstall)
+- 16 file inti diubah (model, 13 controller, 2 command Excel generator — mapping alias header Excel sengaja dipertahankan)
+- **Di luar cakupan awal, ikut diperbaiki:** `GenerateUnitKerjaSeederFromExcel.php` (akan diam-diam kehilangan data kalau tidak diperbaiki), `users/edit.blade.php`, dan 44 file blade lain yang menampilkan nama unit kerja dari relasi
+
+### Tahap 2C — Rename tabel, primary key, dan model class (paling berisiko)
+- **BARU** `database/migrations/2026_07_09_000002_rename_rumahsakits_to_unit_kerja.php` — `Schema::rename()` + raw SQL `CHANGE no_rs id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT`, PK & auto-increment terjaga
+- `app/Models/Rumahsakit.php` → **dihapus**, jadi `app/Models/UnitKerja.php`
+- 9 model dengan relasi `belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs')` → `belongsTo(UnitKerja::class, 'unit_kerja_id')`
+- 13 controller + 3 command Excel generator disesuaikan (`no_rs`→`id`, `exists:rumahsakits,no_rs`→`exists:unit_kerja,id`, eager-load column list)
+- **Di luar cakupan awal, ikut diperbaiki:** 20 file blade yang memakai `$u->no_rs` sebagai value dropdown "pilih unit kerja" — kalau dibiarkan, hampir semua form input di aplikasi akan mengirim value kosong
+- 4 foreign key level database sungguhan (`sumber_daya_manusia`, `ujikom_pendaftaran`, `ujikom_permohonan`, `users` → `unit_kerja_id`) diverifikasi otomatis mengikuti rename tanpa putus (perilaku standar InnoDB)
+
+### Tahap 2D — Rename controller
+- `app/Http/Controllers/RumahsakitController.php` → **dihapus**, jadi `app/Http/Controllers/UnitKerjaController.php`
+- `routes/web.php` disesuaikan — route name `unitkerja.*` tidak berubah (sudah benar dari sebelumnya)
+
+### Tahap 2E — Rename variabel Blade
+- 4 file CRUD inti (`users/index.blade.php`, `create.blade.php`, `show.blade.php`, `trash.blade.php`): `$rumahsakit(s)` → `$unitKerja(s)`, `$rs` → `$unitKerja`
+- `UnitKerjaController.php`: `compact()` disesuaikan agar cocok dengan nama variabel baru di blade
+
+---
+
+## Catatan Teknis
+
+- `doctrine/dbal` tidak terinstall — **semua** migration yang mengubah/rename kolom di rename ini pakai raw SQL (`DB::statement`), bukan `Schema::table(...)->renameColumn()`/`->change()`
+- Sisa referensi "rumahsakit" yang **sengaja dipertahankan** (dilaporkan ke user, belum ditindaklanjuti): mapping alias header Excel di 2 command generator (`'nama_rumahsakit'`/`'no_rs'` sebagai kemungkinan nama kolom di file Excel yang diupload user — bukan referensi ke database), nama variabel lokal kosmetik (`$rumahsakitsQ` di `PetaDashboardController`), dan satu baris komentar mati di `users/index.blade.php`
+- Data tidak hilang — jumlah unit kerja tetap **537** dari awal sampai akhir seluruh proses rename
+- Setiap tahap diverifikasi lewat `php artisan route:list` (206 route, 0 error), `optimize:clear`, dan query fungsional langsung lewat tinker (relasi, validasi, raw join, route model binding, FK integrity)
+
+---
+
 ## Versi 1.12.2 - Bug Fix: Card "Perlu Tindakan" Dashboard Kosong
 **Tanggal:** 8 Juli 2026
 **Status:** Selesai ✅

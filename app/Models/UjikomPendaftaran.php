@@ -33,7 +33,7 @@ class UjikomPendaftaran extends Model
 
     public function unitKerja()
     {
-        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+        return $this->belongsTo(UnitKerja::class, 'unit_kerja_id');
     }
 
     public function pembuat()

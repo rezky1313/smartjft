@@ -14,7 +14,7 @@
     <div class="card-body">
       <div class="alert alert-info">
         <strong>Nomor Permohonan:</strong> {{ $permohonan->nomor_permohonan }}<br>
-        <strong>Unit Kerja:</strong> {{ $permohonan->unitKerja->nama_rumahsakit }}
+        <strong>Unit Kerja:</strong> {{ $permohonan->unitKerja->nama_unit_kerja }}
       </div>
 
       <form method="POST" action="{{ route('ujikom.simpan-jadwal', $permohonan->id) }}">

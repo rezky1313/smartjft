@@ -106,7 +106,7 @@
       <table>
         <tr>
           <td width="200">Unit Kerja</td>
-          <td>: {{ $permohonan->unitKerja->nama_rumahsakit }}</td>
+          <td>: {{ $permohonan->unitKerja->nama_unit_kerja }}</td>
         </tr>
         <tr>
           <td>Alamat</td>

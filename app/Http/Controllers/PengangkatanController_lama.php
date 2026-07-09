@@ -7,7 +7,7 @@ use App\Models\PengangkatanPeserta;
 use App\Models\PengangkatanSurat;
 use App\Models\Sdmmodels;
 use App\Models\Formasijabatan;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use App\Models\UjikomPeserta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +51,7 @@ class PengangkatanController extends Controller
         }
 
         $permohonan = $query->latest()->get();
-        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         // Get available years
         $tahuns = PengangkatanPermohonan::selectRaw('YEAR(tanggal_permohonan) as tahun')
@@ -79,7 +79,7 @@ class PengangkatanController extends Controller
     {
         $this->authorize('create pengangkatan');
 
-        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
         $formasi = Formasijabatan::with(['jenjang', 'unitkerja'])->get();
         $jalurs = [
             'pengangkatan_pertama'  => 'Pengangkatan Pertama',
@@ -103,14 +103,14 @@ class PengangkatanController extends Controller
 
         $validated = $request->validate([
             'jalur' => 'required|in:pengangkatan_pertama,inpasing,kenaikan_jenjang,promosi,perpindahan_kategori,perpindahan_jabatan,pengangkatan_kembali',
-            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id' => 'required|exists:unit_kerja,id',
             'tanggal_permohonan' => 'required|date',
             'file_surat_permohonan' => 'required|file|mimes:pdf|max:2048',
             'peserta' => 'required|array|min:1',
             'peserta.*.pegawai_id' => 'required|exists:sumber_daya_manusia,id',
             'peserta.*.jabatan_tujuan_id' => 'required|exists:formasi_jabatan,id',
             'peserta.*.jenjang_tujuan' => 'required|string',
-            'peserta.*.unit_kerja_tujuan_id' => 'required|exists:rumahsakits,no_rs',
+            'peserta.*.unit_kerja_tujuan_id' => 'required|exists:unit_kerja,id',
             'ajukan_sekarang' => 'nullable|boolean',
         ]);
 
@@ -228,7 +228,7 @@ class PengangkatanController extends Controller
                 ->with('error', 'Hanya permohonan dengan status draft yang bisa diedit.');
         }
 
-        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
         $formasi = Formasijabatan::with(['jenjang', 'unitkerja'])->get();
         $jalurs = [
             'pengangkatan_pertama'  => 'Pengangkatan Pertama',
@@ -260,14 +260,14 @@ class PengangkatanController extends Controller
 
         $validated = $request->validate([
             'jalur' => 'required|in:pengangkatan_pertama,inpasing,kenaikan_jenjang,promosi,perpindahan_kategori,perpindahan_jabatan,pengangkatan_kembali',
-            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id' => 'required|exists:unit_kerja,id',
             'tanggal_permohonan' => 'required|date',
             'file_surat_permohonan' => 'nullable|file|mimes:pdf|max:2048',
             'peserta' => 'required|array|min:1',
             'peserta.*.pegawai_id' => 'required|exists:sumber_daya_manusia,id',
             'peserta.*.jabatan_tujuan_id' => 'required|exists:formasi_jabatan,id',
             'peserta.*.jenjang_tujuan' => 'required|string',
-            'peserta.*.unit_kerja_tujuan_id' => 'required|exists:rumahsakits,no_rs',
+            'peserta.*.unit_kerja_tujuan_id' => 'required|exists:unit_kerja,id',
         ]);
 
         DB::beginTransaction();
@@ -707,7 +707,7 @@ class PengangkatanController extends Controller
         $validated = $request->validate([
             'pegawai_id' => 'required|exists:sumber_daya_manusia,id',
             'jabatan_tujuan_id' => 'required|exists:formasi_jabatan,id',
-            'unit_kerja_tujuan_id' => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_tujuan_id' => 'required|exists:unit_kerja,id',
         ]);
 
         $tahunSekarang = now()->year;

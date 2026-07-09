@@ -6,7 +6,7 @@ use App\Models\UjikomPermohonan;
 use App\Models\UjikomPeserta;
 use App\Models\UjikomBeritaAcara;
 use App\Models\Sdmmodels;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +43,7 @@ class UjikomController extends Controller
         }
 
         $permohonan = $query->latest()->get();
-        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         // Get available years
         $tahuns = UjikomPermohonan::selectRaw('YEAR(tanggal_permohonan) as tahun')
@@ -61,7 +61,7 @@ class UjikomController extends Controller
     {
         $this->authorize('create ujikom');
 
-        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         // Load semua pegawai aktif untuk dropdown
         $pegawai = Sdmmodels::where('aktif', true)
@@ -80,7 +80,7 @@ class UjikomController extends Controller
         $this->authorize('create ujikom');
 
         $validated = $request->validate([
-            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id' => 'required|exists:unit_kerja,id',
             'tanggal_permohonan' => 'required|date',
             'file_surat_permohonan' => 'required|file|mimes:pdf|max:2048',
             'peserta' => 'required|array|min:1',
@@ -163,7 +163,7 @@ class UjikomController extends Controller
                 ->with('error', 'Hanya permohonan dengan status draft yang bisa diedit.');
         }
 
-        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+        $unitKerja = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
 
         // Load semua pegawai aktif untuk dropdown
         $pegawai = Sdmmodels::where('aktif', true)
@@ -190,7 +190,7 @@ class UjikomController extends Controller
         }
 
         $validated = $request->validate([
-            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+            'unit_kerja_id' => 'required|exists:unit_kerja,id',
             'tanggal_permohonan' => 'required|date',
             'file_surat_permohonan' => 'nullable|file|mimes:pdf|max:2048',
             'peserta' => 'required|array|min:1',

@@ -1,0 +1,892 @@
+================================================================================
+AUDIT PENAMAAN "RUMAH SAKIT" (SEMUA VARIASI) - SMART JFT
+Tanggal audit: 9 Juli 2026
+Sifat: READ-ONLY. Tidak ada file yang diubah/dihapus/dimodifikasi pada tahap ini.
+================================================================================
+
+
+================================================================================
+=== 1. NAMA FILE & FOLDER (semua variasi) ===
+================================================================================
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php
+/c/laragon/www/smartjft/app/Models/Rumahsakit.php
+/c/laragon/www/smartjft/backup/app/Http/Controllers/RumahsakitController.php
+/c/laragon/www/smartjft/backup/app/Models/Rumahsakit.php
+/c/laragon/www/smartjft/backup/database/migrations/2023_05_20_133139_create_rumahsakits_table.php
+/c/laragon/www/smartjft/backup/database/seeders/RumahsakitSeeder.php
+/c/laragon/www/smartjft/database/migrations/2023_05_20_133139_create_rumahsakits_table.php
+/c/laragon/www/smartjft/database/migrations/2025_08_12_154543_add_regency_id_to_rumahsakits.php
+/c/laragon/www/smartjft/database/migrations/2025_08_12_162844_drop_jamkerja_fasilitas_from_rumahsakits.php
+/c/laragon/www/smartjft/database/migrations/2025_08_18_154715_add_matra_instansi_to_rumahsakits.php
+/c/laragon/www/smartjft/database/migrations/2025_08_20_024428_add_soft_deletes_to_rumahsakits.php
+/c/laragon/www/smartjft/database/seeders/RumahsakitSeeder.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/Rumahsakit.php
+/c/laragon/www/smartjft/rumahsakits.sql
+
+CATATAN: ada folder "backup/" utuh yang menduplikasi struktur app/+database/ versi lama
+(Model, Controller, migration, seeder Rumahsakit) - bukan bagian aplikasi aktif.
+
+
+================================================================================
+=== 2. SEMUA OCCURRENCE DI app/ (termasuk bentuk jamak $rumahsakits, RumahSakits, dll) ===
+================================================================================
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:12:use App\Models\Rumahsakit;       // unit kerja (no_rs)
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:36:        'nama_rumahsakit'    => 'unit_kerja_nama',
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:100:            $this->error('Header unit kerja tidak ditemukan. Gunakan salah satu: unit_kerja_id / unit_kerja_kode / no_rs / unit_kerja / unit_kerja_nama / nama_unit_kerja / nama_rumahsakit');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:128:                if (!Rumahsakit::where('no_rs', $unitKerjaId)->exists()) {
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:133:                $unitKerjaId = Rumahsakit::where('no_rs', (int)$row['unit_kerja_kode'])->value('no_rs');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:139:                $list = Rumahsakit::where('nama_rumahsakit', $row['unit_kerja_nama'])->limit(2)->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Console/Commands/GenerateSdmSeederFromExcel.php:14:use App\Models\Rumahsakit;       // unit kerja (no_rs)
+/c/laragon/www/smartjft/app/Console/Commands/GenerateSdmSeederFromExcel.php:107:                $unitKerjaId = Rumahsakit::where('no_rs', (int) $row['unit_kerja_kode'])->value('no_rs');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateSdmSeederFromExcel.php:109:                $unitKerjaId = Rumahsakit::where('nama_rumahsakit', $row['unit_kerja_nama'])->value('no_rs');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:11:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:27:        'nama_unit'         => 'nama_rumahsakit',
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:28:        'nama_unit_kerja'   => 'nama_rumahsakit',
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:29:        'nama_rumahsakit'   => 'nama_rumahsakit',
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:30:        'unit_kerja'        => 'nama_rumahsakit',
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:118:        $headers   = []; // ex: 'A' => 'nama_rumahsakit'
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:131:        if (!in_array('nama_rumahsakit', $headers, true)) {
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:132:            $this->error('Header "Nama Unit Kerja" tidak ditemukan. Gunakan salah satu: nama_unit / nama_unit_kerja / nama_rumahsakit / unit_kerja.');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:148:            if (!($row['nama_rumahsakit'] ?? null)) continue;
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:201:                'nama_rumahsakit' => $row['nama_rumahsakit'] ?? null,
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:236:use App\\Models\\Rumahsakit;
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:244:        // Upsert idempotent berdasarkan kombinasi (nama_rumahsakit, regency_id)
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:247:                Rumahsakit::updateOrCreate(
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:249:                        'nama_rumahsakit' => \$row['nama_rumahsakit'],
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:9:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:81:            'unitkerja:no_rs,nama_rumahsakit,regency_id',
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:103:        $unitName = optional($f->unitkerja)->nama_rumahsakit ?? ('Unit #'.$f->unit_kerja_id);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:155:    $unitsQ = \App\Models\Rumahsakit::query()
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:156:        ->select('no_rs','nama_rumahsakit','regency_id')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:157:        ->orderBy('nama_rumahsakit');
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:195:    $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:196:        ->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:215:                'unit_kerja_id'            => ['required','integer','exists:rumahsakits,no_rs'],
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:240:                'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:264://     $unit = \App\Models\Rumahsakit::findOrFail($unitId, ['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:293://     $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:294://         ->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:319:    $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:320:        ->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:322:    $unitRow = \App\Models\Rumahsakit::where('no_rs', $unit)->first();
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:342://         'unit_kerja_id'              => ['required','integer','exists:rumahsakits,no_rs'],
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:386:        'unit_kerja_id'        => ['required','integer','exists:rumahsakits,no_rs'],
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:481:        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:493:            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:619:            $unit = \App\Models\Rumahsakit::where('nama_rumahsakit',$currentUnit)->first(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:869:    $units  = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:870:                ->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:10:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:36:            $unitKerja = Rumahsakit::where('regency_id', $request->regency_id)
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:37:                ->orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:38:                ->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:43:            $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:44:                ->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:105:            'unitkerja:no_rs,nama_rumahsakit,regency_id',
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:218:        $query = Rumahsakit::with([
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:229:        $units = $query->orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:241:                'nama_unit_kerja' => $unit->nama_rumahsakit,
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:262:            'unitkerja:no_rs,nama_rumahsakit,regency_id',
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:289:            $unitName = optional($f->unitkerja)->nama_rumahsakit ?? ('Unit #'.$f->unit_kerja_id);
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:331:            'formasi.unitkerja:no_rs,nama_rumahsakit,regency_id',
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:333:            'unitKerja:no_rs,nama_rumahsakit,regency_id',
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:381:                'unit_kerja' => $unitKerja?->nama_rumahsakit ?? '-',
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:533:            $unit = Rumahsakit::find($request->get('unit_kerja_id'));
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:534:            $params['Unit Kerja'] = $unit?->nama_rumahsakit ?? $request->get('unit_kerja_id');
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:9:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:57:        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:69:            ? Rumahsakit::where('no_rs', $user->unit_kerja_id)->first()
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:72:        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:139:        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:10:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:54:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:82:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:106:            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:113:            'peserta.*.unit_kerja_tujuan_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:231:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:263:            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:270:            'peserta.*.unit_kerja_tujuan_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:710:            'unit_kerja_tujuan_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:7:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:58:        ->leftJoin('rumahsakits as rs','rs.no_rs','=','f.unit_kerja_id')
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:277:        ->join('rumahsakits as rs','rs.no_rs','=','f.unit_kerja_id')
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:431:        $unitPerMatra = Rumahsakit::select('matra')
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:516:            ->join('rumahsakits as rs', 'rs.no_rs', '=', 'f.unit_kerja_id')
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:587:        $rumahsakitsQ = Rumahsakit::with(['regency.province','formasis.jenjang'])
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:590:        if ($fMatra)     { $rumahsakitsQ->where('matra', $fMatra); }
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:591:        if ($fProvinceId){ $rumahsakitsQ->whereHas('regency', fn($q)=>$q->where('province_id', $fProvinceId)); }
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:592:        if ($fRegencyId) { $rumahsakitsQ->where('regency_id', $fRegencyId); }
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:594:        $markers = $rumahsakitsQ->get(['no_rs','nama_rumahsakit','regency_id','latitude','longitude','matra','instansi'])
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:610:                    'unit'         => $rs->nama_rumahsakit,
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:687:        $jumlahrs = Rumahsakit::count();
+/c/laragon/www/smartjft/app/Http/Controllers/PromotionController.php:5:use App\Models\{Promotion, PromotionFile, PromotionLog, Sdmmodels, SdmRiwayat, JenjangJabatan, Formasijabatan, Rumahsakit};
+/c/laragon/www/smartjft/app/Http/Controllers/PromotionController.php:35:        $unit   = $s->unitKerja->nama_rumahsakit ?? $s->unitKerja->nama_rumahsakit ?? '-';
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:5:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:13:class RumahsakitController extends Controller
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:20:        // $rumahsakits = Rumahsakit::all();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:21:        $rumahsakits = Rumahsakit::with(['regency.province'])
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:22:        ->orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:24:        $trashed = \App\Models\Rumahsakit::onlyTrashed()->count();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:25:    return view('users.index', compact('rumahsakits','trashed'));
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:35:    $rumahsakit = new Rumahsakit();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:36:        return view('users.create' , compact('provinces','regencies', 'rumahsakit'));
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:49:            'nama_rumahsakit' => 'required',
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:61:        Rumahsakit::create($validated);
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:70:    public function show(Rumahsakit $rumahsakit)
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:72:        return view('users.show', compact('rumahsakit'));
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:78:    public function edit(Rumahsakit $unitkerja)
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:91:    public function update(Request $request, Rumahsakit $unitkerja)
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:94:            'nama_rumahsakit' => 'required',
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:116:    public function destroy(Rumahsakit $rumahsakit)
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:118:        $rumahsakit->delete();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:125:    $rumahsakits = \App\Models\Rumahsakit::onlyTrashed()
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:126:        ->with(['regency.province'])->orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:128:    return view('users.trash', compact('rumahsakits'));
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:133:    $rs = \App\Models\Rumahsakit::withTrashed()->whereKey($id)->firstOrFail();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:140:    $rs = \App\Models\Rumahsakit::withTrashed()->whereKey($id)->firstOrFail();
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:9:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:51:        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:69:            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:138:        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:153:            'unit_kerja_id'       => 'required_without:formasi_jabatan_id|nullable|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:316:// Pencocokan nama unit kerja -> row rumahsakits (boleh null)
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:317:private function resolveUnitByName(string $name): ?\App\Models\Rumahsakit
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:323:    $row = \App\Models\Rumahsakit::get(['no_rs','nama_rumahsakit'])->first(function($u) use ($norm,$target) {
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:324:        return $norm($u->nama_rumahsakit) === $target;
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:329:    return \App\Models\Rumahsakit::get(['no_rs','nama_rumahsakit'])->first(function($u) use ($norm,$target) {
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:330:        return \Illuminate\Support\Str::contains($norm($u->nama_rumahsakit), $target);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:9:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:46:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:64:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:83:            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:166:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:193:            'unit_kerja_id' => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:13:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:270:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:288:            'unit_kerja_id'            => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:377:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:389:            'unit_kerja_id'            => 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/UjiKompetensiController.php:106:                                      $uk->nama_rumahsakit ?? '-',
+/c/laragon/www/smartjft/app/Http/Controllers/UjiKompetensiController.php:110:                'unit'     => $uk->nama_rumahsakit ?? null,
+/c/laragon/www/smartjft/app/Http/Controllers/UjiKompetensiController.php:135:            'unit'     => $uk->nama_rumahsakit ?? null,
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:7:use App\Models\Rumahsakit;
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:23:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:56:                'unit_kerja_id'=> 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:97:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:130:                'unit_kerja_id'=> 'required|exists:rumahsakits,no_rs',
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:34://     $q = DB::table('rumahsakits as u')
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:35://         ->selectRaw('u.no_rs as id, u.nama_rumahsakit as text')
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:37://         ->when($r->filled('q'), fn($x)=>$x->where('u.nama_rumahsakit','like','%'.$r->q.'%'))
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:38://         ->orderBy('u.nama_rumahsakit')->limit(30)->get();
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:54:    $q = DB::table('rumahsakits as u')
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:55:        ->selectRaw('u.no_rs as id, u.nama_rumahsakit as text')
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:57:        ->when($r->filled('q'), fn($x)=>$x->where('u.nama_rumahsakit','like','%'.$r->q.'%'))
+/c/laragon/www/smartjft/app/Http/Controllers/WilayahController.php:58:        ->orderBy('u.nama_rumahsakit')->limit(30)->get();
+/c/laragon/www/smartjft/app/Models/Formasijabatan.php:32:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/FormasiJabatanHistori.php:19:        return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/PengangkatanPermohonan.php:37:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/PengangkatanPermohonan_lama.php:32:     * Relasi ke Unit Kerja (Rumahsakit)
+/c/laragon/www/smartjft/app/Models/PengangkatanPermohonan_lama.php:36:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/PengangkatanPeserta_lama.php:59:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_tujuan_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/Rumahsakit.php:11:class Rumahsakit extends Model
+/c/laragon/www/smartjft/app/Models/Rumahsakit.php:20:        'nama_rumahsakit',
+/c/laragon/www/smartjft/app/Models/Rumahsakit.php:32:    // unit_kerja_id di formasi mengacu ke no_rs di rumahsakits
+/c/laragon/www/smartjft/app/Models/Sdmmodels.php:48:  return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/UjikomPendaftaran.php:36:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/UjikomPermohonan.php:34:     * Relasi ke Unit Kerja (Rumahsakit)
+/c/laragon/www/smartjft/app/Models/UjikomPermohonan.php:38:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/User.php:40:        return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+
+(Total: 166 baris di app/)
+
+
+================================================================================
+=== 3. KHUSUS VARIABEL & RELASI (pola $rumahsakit, ->rumahSakit, ::rumahsakit, dll) ===
+================================================================================
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:128:                if (!Rumahsakit::where('no_rs', $unitKerjaId)->exists()) {
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:133:                $unitKerjaId = Rumahsakit::where('no_rs', (int)$row['unit_kerja_kode'])->value('no_rs');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateFormasiSeederFromExcel.php:139:                $list = Rumahsakit::where('nama_rumahsakit', $row['unit_kerja_nama'])->limit(2)->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Console/Commands/GenerateSdmSeederFromExcel.php:107:                $unitKerjaId = Rumahsakit::where('no_rs', (int) $row['unit_kerja_kode'])->value('no_rs');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateSdmSeederFromExcel.php:109:                $unitKerjaId = Rumahsakit::where('nama_rumahsakit', $row['unit_kerja_nama'])->value('no_rs');
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php:247:                Rumahsakit::updateOrCreate(
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:155:    $unitsQ = \App\Models\Rumahsakit::query()
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:195:    $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:264://     $unit = \App\Models\Rumahsakit::findOrFail($unitId, ['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:293://     $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:319:    $unitkerja = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:322:    $unitRow = \App\Models\Rumahsakit::where('no_rs', $unit)->first();
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:481:        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:619:            $unit = \App\Models\Rumahsakit::where('nama_rumahsakit',$currentUnit)->first(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/FormasiJabatanController.php:869:    $units  = \App\Models\Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:36:            $unitKerja = Rumahsakit::where('regency_id', $request->regency_id)
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:43:            $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:218:        $query = Rumahsakit::with([
+/c/laragon/www/smartjft/app/Http/Controllers/LaporanController.php:533:            $unit = Rumahsakit::find($request->get('unit_kerja_id'));
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:57:        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:69:            ? Rumahsakit::where('no_rs', $user->unit_kerja_id)->first()
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:72:        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php:139:        $unitKerjaList = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:54:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:82:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController_lama.php:231:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:431:        $unitPerMatra = Rumahsakit::select('matra')
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:587:        $rumahsakitsQ = Rumahsakit::with(['regency.province','formasis.jenjang'])
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:590:        if ($fMatra)     { $rumahsakitsQ->where('matra', $fMatra); }
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:591:        if ($fProvinceId){ $rumahsakitsQ->whereHas('regency', fn($q)=>$q->where('province_id', $fProvinceId)); }
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:592:        if ($fRegencyId) { $rumahsakitsQ->where('regency_id', $fRegencyId); }
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:594:        $markers = $rumahsakitsQ->get(['no_rs','nama_rumahsakit','regency_id','latitude','longitude','matra','instansi'])
+/c/laragon/www/smartjft/app/Http/Controllers/PetaDashboardController.php:687:        $jumlahrs = Rumahsakit::count();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:20:        // $rumahsakits = Rumahsakit::all();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:21:        $rumahsakits = Rumahsakit::with(['regency.province'])
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:24:        $trashed = \App\Models\Rumahsakit::onlyTrashed()->count();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:35:    $rumahsakit = new Rumahsakit();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:61:        Rumahsakit::create($validated);
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:70:    public function show(Rumahsakit $rumahsakit)
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:116:    public function destroy(Rumahsakit $rumahsakit)
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:118:        $rumahsakit->delete();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:125:    $rumahsakits = \App\Models\Rumahsakit::onlyTrashed()
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:133:    $rs = \App\Models\Rumahsakit::withTrashed()->whereKey($id)->firstOrFail();
+/c/laragon/www/smartjft/app/Http/Controllers/RumahsakitController.php:140:    $rs = \App\Models\Rumahsakit::withTrashed()->whereKey($id)->firstOrFail();
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:51:        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:138:        $unitkerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs','nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:323:    $row = \App\Models\Rumahsakit::get(['no_rs','nama_rumahsakit'])->first(function($u) use ($norm,$target) {
+/c/laragon/www/smartjft/app/Http/Controllers/SdmController.php:329:    return \App\Models\Rumahsakit::get(['no_rs','nama_rumahsakit'])->first(function($u) use ($norm,$target) {
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:46:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:64:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomController.php:166:        $unitKerja = Rumahsakit::orderBy('nama_rumahsakit')->get(['no_rs', 'nama_rumahsakit']);
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:270:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UjikomPendaftaranController.php:377:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:23:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Http/Controllers/UserController.php:97:        $unitKerjas = Rumahsakit::orderBy('nama_rumahsakit')->get();
+/c/laragon/www/smartjft/app/Models/Formasijabatan.php:32:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/FormasiJabatanHistori.php:19:        return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/PengangkatanPermohonan.php:37:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/PengangkatanPermohonan_lama.php:36:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/PengangkatanPeserta_lama.php:59:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_tujuan_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/Sdmmodels.php:48:  return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/UjikomPendaftaran.php:36:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/UjikomPermohonan.php:38:        return $this->belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+/c/laragon/www/smartjft/app/Models/User.php:40:        return $this->belongsTo(\App\Models\Rumahsakit::class, 'unit_kerja_id', 'no_rs');
+
+CATATAN: tidak ditemukan satupun pola camelCase "$rumahSakit" atau "->rumahSakit" -
+semua konsisten pakai PascalCase "Rumahsakit::" untuk class dan lowercase "$rumahsakit"/
+"$unitkerja"/"$unitKerja" untuk variabel.
+
+
+================================================================================
+=== 4. SEMUA OCCURRENCE DI database/ (migration, seeder, factory) ===
+================================================================================
+Total: 4400 baris. Breakdown per file (jumlah baris match per file):
+
+485  database/seeders/UnitKerjaFromExcelSeeder20250826015230.php
+298  database/seeders/UnitKerjaFromExcelSeeder20251102093611.php
+297  database/seeders/UnitKerjaFromExcelSeeder20251102093254.php
+291  database/seeders/UnitKerjaFromExcelSeeder20251102085935.php
+181  database/seeders/UnitKerjaFromExcelSeeder20251106081510.php
+181  database/seeders/UnitKerjaFromExcelSeeder20251102220221.php
+180  database/seeders/UnitKerjaFromExcelSeeder20251106081258.php
+177  database/seeders/UnitKerjaFromExcelSeeder20251102215739.php
+176  database/seeders/UnitKerjaFromExcelSeeder20251106073931.php
+176  database/seeders/UnitKerjaFromExcelSeeder20251106073352.php
+175  database/seeders/UnitKerjaFromExcelSeeder20251106134524.php
+175  database/seeders/UnitKerjaFromExcelSeeder20251106073103.php
+175  database/seeders/UnitKerjaFromExcelSeeder20251103034751.php
+175  database/seeders/UnitKerjaFromExcelSeeder20251103024033.php
+175  database/seeders/UnitKerjaFromExcelSeeder20251103010235.php
+173  database/seeders/UnitKerjaFromExcelSeeder20251106134340.php
+142  database/seeders/UnitKerjaFromExcelSeeder20251106072747.php
+127  database/seeders/UnitKerjaFromExcelSeeder20260406003736.php
+119  database/seeders/UnitKerjaFromExcelSeeder20260406003239.php
+ 89  database/seeders/UnitKerjaFromExcelSeeder20251106072139.php
+ 51  database/seeders/RumahsakitSeeder.php
+ 40  database/seeders/UnitKerjaFromExcelSeeder20251216092204.php
+ 39  database/seeders/UnitKerjaFromExcelSeeder20251216091307.php
+ 34  database/seeders/UnitKerjaFromExcelSeeder20251107155653.php
+ 34  database/seeders/UnitKerjaFromExcelSeeder20251107155638.php
+ 31  database/seeders/UnitKerjaFromExcelSeeder20251105033132.php
+ 27  database/seeders/UnitKerjaFromExcelSeeder20250826014202.php
+ 26  database/seeders/UnitKerjaFromExcelSeeder20251102144008.php
+ 25  database/seeders/UnitKerjaFromExcelSeeder20251102143914.php
+ 25  database/seeders/UnitKerjaFromExcelSeeder20251102143837.php
+ 19  database/seeders/UnitKerjaFromExcelSeeder20251219070319.php
+ 19  database/seeders/UnitKerjaFromExcelSeeder20251106084950.php
+ 19  database/seeders/UnitKerjaFromExcelSeeder20250910042457.php
+ 17  database/seeders/UnitKerjaFromExcelSeeder20251219065804.php
+  5  database/seeders/UnitKerjaFromExcelSeeder20251105040554.php
+  4  database/migrations/2025_08_12_162844_drop_jamkerja_fasilitas_from_rumahsakits.php
+  3  database/migrations/2023_05_20_133139_create_rumahsakits_table.php
+  2  database/migrations/2026_06_22_000002_create_ujikom_pendaftaran_tables.php
+  2  database/migrations/2026_03_13_create_pengangkatan_tables.php
+  2  database/migrations/2025_08_20_024428_add_soft_deletes_to_rumahsakits.php
+  2  database/migrations/2025_08_18_154715_add_matra_instansi_to_rumahsakits.php
+  2  database/migrations/2025_08_12_154543_add_regency_id_to_rumahsakits.php
+  1  database/seeders/DatabaseSeeder.php
+  1  database/migrations/2026_06_24_000001_add_unit_kerja_id_to_users_table.php
+  1  database/migrations/2026_03_12_create_ujikom_tables.php
+  1  database/migrations/2025_09_19_064645_create_formasi_jabatan_histori_table.php
+  1  database/migrations/2025_08_15_032512_add_unit_kerja_id_to_sumber_daya_manusia.php
+
+CATATAN: 33 file "UnitKerjaFromExcelSeeder<timestamp>.php" mendominasi (hampir 4380 dari
+4400 baris) - ini adalah hasil generate berulang dari import Excel (Agustus 2025 s.d. Juli
+2026), isinya array literal data 'nama_rumahsakit' => '...' berulang per baris data, BUKAN
+logika kode. Dump baris-per-baris penuh tidak disertakan di sini karena isinya murni data
+(nama unit kerja aktual) berulang ratusan/ribuan kali, bukan informasi struktural baru -
+beri tahu jika tetap dibutuhkan dump mentah lengkapnya per file.
+
+
+================================================================================
+=== 5. SEMUA OCCURRENCE DI routes/ ===
+================================================================================
+/c/laragon/www/smartjft/routes/web copy.php:4:use App\Http\Controllers\RumahsakitController;
+/c/laragon/www/smartjft/routes/web copy.php:129:        Route::get   ('rumahsakit/trash',            [RumahsakitController::class,'trash'])->name('rumahsakit.trash');
+/c/laragon/www/smartjft/routes/web copy.php:130:        Route::patch ('rumahsakit/{id}/restore',     [RumahsakitController::class,'restore'])->name('rumahsakit.restore');
+/c/laragon/www/smartjft/routes/web copy.php:131:        Route::delete('rumahsakit/{id}/force',       [RumahsakitController::class,'forceDelete'])->name('rumahsakit.force-delete');
+/c/laragon/www/smartjft/routes/web copy.php:152:        Route::resource('rumahsakit', \App\Http\Controllers\RumahsakitController::class);
+/c/laragon/www/smartjft/routes/web.php:4:use App\Http\Controllers\RumahsakitController;
+/c/laragon/www/smartjft/routes/web.php:118:        Route::get   ('unitkerja/trash',            [RumahsakitController::class,'trash'])->name('unitkerja.trash');
+/c/laragon/www/smartjft/routes/web.php:119:        Route::patch ('unitkerja/{id}/restore',     [RumahsakitController::class,'restore'])->name('unitkerja.restore');
+/c/laragon/www/smartjft/routes/web.php:120:        Route::delete('unitkerja/{id}/force',       [RumahsakitController::class,'forceDelete'])->name('unitkerja.force-delete');
+/c/laragon/www/smartjft/routes/web.php:138:        Route::resource('unitkerja', \App\Http\Controllers\RumahsakitController::class);
+
+CATATAN PENTING: routes/web.php (file AKTIF, di-load RouteServiceProvider) SUDAH memakai
+nama route "unitkerja.*", BUKAN "rumahsakit.*". routes/web copy.php adalah backup TIDAK
+AKTIF (dikonfirmasi tidak di-load di RouteServiceProvider - hanya web.php dan api.php yang
+di-load) yang masih memakai penamaan lama "rumahsakit.*".
+
+
+================================================================================
+=== 6. SEMUA OCCURRENCE DI resources/views/ (nama file yang mengandung istilah) ===
+================================================================================
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/bkp/create.blade copy.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/bkp/edit.blade copy.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/bkp/index.blade copy.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/bkp/trash.blade copy.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/create.blade.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/edit-group.blade.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/history.blade.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/index.blade.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/Rumahsakit.php
+/c/laragon/www/smartjft/resources/views/formasi_jabatan/trash.blade.php
+/c/laragon/www/smartjft/resources/views/laporan/index.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan/create.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan/index.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan/pdf/surat_rekomendasi.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan/show.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/create.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/edit.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/index.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/nomor.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/pdf/detail.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/pdf/surat_pertimbangan.blade.php
+/c/laragon/www/smartjft/resources/views/pengangkatan_lama/show.blade.php
+/c/laragon/www/smartjft/resources/views/sdm/form.blade.php
+/c/laragon/www/smartjft/resources/views/sdm/index.blade.php
+/c/laragon/www/smartjft/resources/views/sdm/trash.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/create.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/edit.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/hasil.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/index.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/jadwal/show.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/jadwal.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pdf/berita_acara_hasil.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pdf/berita_acara_verifikasi.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pdf/detail.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pendaftaran/create.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pendaftaran/edit.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pendaftaran/index.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/pendaftaran/show.blade.php
+/c/laragon/www/smartjft/resources/views/ujikom/show.blade.php
+/c/laragon/www/smartjft/resources/views/uji_kompetensi/edit.blade.php
+/c/laragon/www/smartjft/resources/views/uji_kompetensi/index.blade.php
+/c/laragon/www/smartjft/resources/views/users/create.blade.php
+/c/laragon/www/smartjft/resources/views/users/dashboard.blade.php
+/c/laragon/www/smartjft/resources/views/users/edit.blade.php
+/c/laragon/www/smartjft/resources/views/users/index.blade.php
+/c/laragon/www/smartjft/resources/views/users/manajemen-user/form.blade.php
+/c/laragon/www/smartjft/resources/views/users/manajemen-user/index.blade.php
+/c/laragon/www/smartjft/resources/views/users/show.blade.php
+/c/laragon/www/smartjft/resources/views/users/trash.blade.php
+
+(Total: 49 file)
+
+
+================================================================================
+=== 7. DETAIL PENGGUNAAN VARIABEL DI VIEWS (dengan konteks baris) ===
+================================================================================
+/c/laragon/www/smartjft/resources/views/users/create.blade.php:52:  $rumahsakit = $rumahsakit ?? null;
+/c/laragon/www/smartjft/resources/views/users/create.blade.php:61:        @selected(optional($rumahsakit->regency->province ?? null)->id == $p->id)>{{ $p->name }}</option>
+/c/laragon/www/smartjft/resources/views/users/create.blade.php:71:        <option value="{{ $r->id }}" @selected(old('regency_id', $rumahsakit->regency_id ?? '') == $r->id)>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:41:      @foreach ($rumahsakits as $i => $rumahsakit)
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:43:          $kab = $rumahsakit->regency;
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:48:          {{-- <td>{{ $rumahsakit->no_rs }}</td> --}}
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:49:          <td>{{ $rumahsakit->nama_rumahsakit }}</td>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:50:          {{-- <td>{{ $rumahsakit->alamat }}</td>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:51:          <td>{{ $rumahsakit->no_telp }}</td> --}}
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:54:          <td>{{ $rumahsakit->matra ?? '-' }}</td>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:55:          <td>{{ $rumahsakit->instansi ?? '-' }}</td>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:56:          <td>{{ $rumahsakit->latitude }}</td>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:57:          <td>{{ $rumahsakit->longitude }}</td>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:59:            {{-- <a class="btn btn-primary btn-sm" href="{{ route('user.rumahsakit.show', $rumahsakit) }}" onclick="pindah(event)">Show</a> --}}
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:61:            <a class="btn btn-warning btn-sm" href="{{ route('user.unitkerja.edit', $rumahsakit) }}" onclick="pindah(event)">Edit</a>
+/c/laragon/www/smartjft/resources/views/users/index.blade.php:64:            <form action="{{ route('user.unitkerja.destroy', $rumahsakit) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Hapus data ini?')">
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:18:                        <td>{{ $rumahsakit->no_rs }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:22:                        <td>{{ $rumahsakit->nama_rumahsakit }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:26:                        <td>{{ $rumahsakit->alamat }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:30:                        <td>{{ $rumahsakit->no_telp }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:34:                        <td>{{ $rumahsakit->jam_kerja }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:38:                        <td>{{ $rumahsakit->fasilitas }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:42:                        <td>{{ $rumahsakit->latitude }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:46:                        <td>{{ $rumahsakit->longitude }}</td>
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:58:        var map = L.map('map').setView([{{ $rumahsakit->latitude }}, {{ $rumahsakit->longitude }}], 13);
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:78:        var marker = L.marker([{{ $rumahsakit->latitude }}, {{ $rumahsakit->longitude }}]).addTo(map);
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:80:        marker.bindPopup("<b>{{ $rumahsakit->nama_rumahsakit }}</b><br>"+
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:81:        "<br> Alamat : {{ $rumahsakit->alamat }} <br>" +
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:82:        "<br> No Telp : {{ $rumahsakit->no_telp }} <br> " +
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:83:        "<br> Jam Kerja : {{ $rumahsakit->jam_kerja }} <br> " +
+/c/laragon/www/smartjft/resources/views/users/show.blade.php:84:        "<br> Fasilitas : {{ $rumahsakit->fasilitas }} <br> "
+/c/laragon/www/smartjft/resources/views/users/trash.blade.php:17:      @foreach($rumahsakits as $i => $rs)
+
+BUG TERPISAH DITEMUKAN (di luar topik rename, dicatat sebagai info tambahan):
+users/show.blade.php baris 34, 38, 83, 84 masih memanggil $rumahsakit->jam_kerja dan
+$rumahsakit->fasilitas - DUA KOLOM INI SUDAH DI-DROP dari tabel rumahsakits sejak migration
+"2025_08_12_162844_drop_jamkerja_fasilitas_from_rumahsakits.php" (lihat item 4). Akan
+tampil kosong/null, bukan error fatal, tapi tetap bug tampilan yang belum dibersihkan.
+
+
+================================================================================
+=== 8. CEK SINGKATAN (RS_, rs_id, dll yang mungkin merujuk rumah sakit) ===
+================================================================================
+(Kosong - tidak ada match persis untuk pola \brs_id\b, \bRS_ID\b, 'rs' literal ter-quote,
+atau "rs" literal ter-quote)
+
+CATATAN: pola grep di atas terlalu sempit (hanya mencari string ter-quote persis). Secara
+manual ditemukan di item 2/3 pemakaian alias pendek "rs" sebagai:
+- SQL join alias: ->leftJoin('rumahsakits as rs', ...) dan ->join('rumahsakits as rs', ...)
+  di app/Http/Controllers/PetaDashboardController.php (baris 58, 277, 516)
+- Variabel: $rs->nama_rumahsakit di PetaDashboardController.php (baris 610)
+- Variabel: $rs = \App\Models\Rumahsakit::withTrashed()... di RumahsakitController.php
+  (baris 133, 140, method restore() & forceDelete())
+- Variabel: $jumlahrs di PetaDashboardController.php (baris 687)
+Tidak ditemukan kolom database bernama rs_id yang sesungguhnya.
+
+
+================================================================================
+=== 9. SEMUA OCCURRENCE DI JavaScript/AJAX (public/js atau resources/js) ===
+================================================================================
+public/js       : folder TIDAK ADA
+resources/js    : folder ADA, tapi TIDAK ADA match untuk rumahsakit/RumahSakit/rumah_sakit
+
+
+================================================================================
+=== 10. STRUKTUR TABEL DATABASE TERKAIT ===
+================================================================================
+Tabel rumah_sakit    TIDAK ADA
+Tabel rumahsakit     TIDAK ADA
+Tabel rumah_sakits   TIDAK ADA
+Tabel rumahsakits    ADA   <- satu-satunya varian yang eksis di database
+
+
+================================================================================
+=== 11. JIKA TABEL DITEMUKAN, TAMPILKAN STRUKTUR KOLOMNYA ===
+================================================================================
+Kolom tabel rumahsakits:
+Array
+(
+    [0] => alamat
+    [1] => created_at
+    [2] => deleted_at
+    [3] => instansi
+    [4] => latitude
+    [5] => longitude
+    [6] => matra
+    [7] => nama_rumahsakit
+    [8] => no_rs
+    [9] => no_telp
+    [10] => regency_id
+    [11] => updated_at
+)
+
+
+================================================================================
+=== 12. CARI SEMUA KOLOM FOREIGN KEY DI SELURUH TABEL YANG MENGARAH KE RUMAH SAKIT ===
+================================================================================
+rumahsakits -> nama_rumahsakit
+
+KESIMPULAN: hanya SATU hasil, dan itu adalah kolom DATA di tabel rumahsakits itu sendiri
+(bukan foreign key di tabel lain). Artinya TIDAK ADA satupun kolom FK di tabel lain yang
+literal mengandung kata "rumahsakit" - semua FK yang menunjuk ke rumahsakits SUDAH
+konsisten memakai nama unit_kerja_id (atau unit_kerja_tujuan_id) di seluruh project
+(sumber_daya_manusia, formasi_jabatan, ujikom_pendaftaran, pengangkatan_permohonan, users,
+dll).
+
+
+================================================================================
+=== 13. CEK APAKAH SUDAH ADA MODEL/CONTROLLER 'UnitKerja' TERPISAH (potensi konflik) ===
+================================================================================
+/c/laragon/www/smartjft/app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php
+
+CATATAN: cuma satu hasil, dan itu Artisan Command generator (bukan Model atau Controller).
+Tidak ada app/Models/UnitKerja.php atau app/Http/Controllers/UnitKerjaController.php.
+
+
+================================================================================
+=== 14. CEK TABEL unit_kerja YANG SUDAH ADA (jika ada, cek strukturnya) ===
+================================================================================
+Tabel unit_kerja BELUM ADA
+
+
+================================================================================
+=== 15. HITUNG TOTAL BARIS/FILE YANG MENGANDUNG TERM INI DI SELURUH PROJECT ===
+================================================================================
+(grep -rli, file *.php/*.blade.php/*.js, exclude vendor & node_modules)
+
+160 file
+
+
+################################################################################
+#
+#   LAPORAN AUDIT PENAMAAN "RUMAH SAKIT" (SEMUA VARIASI)
+#
+################################################################################
+
+A. FILE YANG PERLU DI-RENAME:
+   - app/Models/Rumahsakit.php
+   - app/Http/Controllers/RumahsakitController.php
+   - database/migrations/2023_05_20_133139_create_rumahsakits_table.php
+   - database/migrations/2025_08_12_154543_add_regency_id_to_rumahsakits.php
+   - database/migrations/2025_08_12_162844_drop_jamkerja_fasilitas_from_rumahsakits.php
+   - database/migrations/2025_08_18_154715_add_matra_instansi_to_rumahsakits.php
+   - database/migrations/2025_08_20_024428_add_soft_deletes_to_rumahsakits.php
+   - database/seeders/RumahsakitSeeder.php
+
+   BUKAN untuk di-rename, tapi untuk dibersihkan/diabaikan (dead files):
+   - resources/views/formasi_jabatan/Rumahsakit.php (file .php, bukan .blade.php, nyasar
+     di folder views - isinya DUPLIKAT class App\Models\Rumahsakit lengkap dengan
+     "namespace App\Models;". Tidak ter-autoload karena path di luar PSR-4 app/, jadi mati
+     - tapi berbahaya kalau suatu saat ter-require manual, bisa bentrok "Cannot redeclare
+     class")
+   - routes/web copy.php (backup tidak aktif, masih penamaan lama, tidak di-load
+     RouteServiceProvider)
+   - resources/views/formasi_jabatan/bkp/*.blade copy.php (4 file, backup blade lama)
+   - Folder backup/ (utuh) - duplikat RumahsakitController.php, Rumahsakit.php, migration,
+     seeder versi lama
+   - rumahsakits.sql di root - dump SQL lepas, bukan bagian source aplikasi
+   - 33 file database/seeders/UnitKerjaFromExcelSeeder<timestamp>.php - namanya SENDIRI
+     sudah "UnitKerja", isinya yang masih panggil Rumahsakit:: & kolom nama_rumahsakit
+     (lihat rekomendasi K)
+
+B. NAMA CLASS YANG PERLU DIGANTI:
+   - App\Models\Rumahsakit -> (usul) App\Models\UnitKerja
+   - App\Http\Controllers\RumahsakitController -> (usul) App\Http\Controllers\UnitKerjaController
+   - Tidak ditemukan bentuk jamak class (RumahSakits, RumahsakitsController, dst) - aman,
+     Eloquent selalu singular di project ini.
+
+C. TABEL DATABASE YANG PERLU DI-RENAME:
+   - rumahsakits -> (usul) unit_kerja - PERLU KONFIRMASI USER karena project ini tidak
+     konsisten soal plural/singular tabel (formasi_jabatan singular, rumahsakits plural,
+     pengangkatan_permohonan singular).
+   - Tidak ada tabel varian lain (rumah_sakit, rumahsakit, rumah_sakits) - cuma satu tabel
+     real: rumahsakits.
+
+D. KOLOM FOREIGN KEY YANG PERLU DIGANTI (per tabel):
+   - TIDAK ADA. Semua FK ke rumahsakits sudah konsisten unit_kerja_id / unit_kerja_tujuan_id
+     di semua tabel terkait (sumber_daya_manusia, formasi_jabatan, ujikom_pendaftaran,
+     pengangkatan_permohonan, users, dll).
+   - Satu-satunya kolom relevan: rumahsakits.nama_rumahsakit sendiri (kolom data, bukan FK)
+     -> kandidat rename ke nama_unit_kerja jika mau tuntas.
+
+E. VARIABEL & RELASI YANG PERLU DIGANTI (termasuk bentuk jamak seperti $rumahsakits):
+   ~166 baris di ~20 file app/ (daftar lengkap di item 2 & 3 di atas). Pola dominan:
+   - use App\Models\Rumahsakit; -> 15+ file controller
+   - Rumahsakit::orderBy(...)->get(...), ::where(...), ::count() -> tersebar di
+     FormasiJabatanController, LaporanController, PengangkatanController(+_lama),
+     PetaDashboardController, PromotionController, SdmController, UjikomController,
+     UjikomPendaftaranController, UjiKompetensiController, UserController, WilayahController
+   - belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs') -> 9 Model (Formasijabatan,
+     FormasiJabatanHistori, PengangkatanPermohonan(+_lama), PengangkatanPeserta_lama,
+     Sdmmodels, UjikomPendaftaran, UjikomPermohonan, User)
+   - String validasi 'exists:rumahsakits,no_rs' -> tersebar di 8+ file
+     (FormasiJabatanController x3, SdmController x2, UjikomController x2,
+     UjikomPendaftaranController x2, UserController x2, PengangkatanController_lama x3)
+   - Variabel lokal campur istilah: $rumahsakit, $rumahsakits, $rs - tapi JUGA banyak yang
+     sudah $unitKerja/$unitkerja/$unitKerjaList/$unitKerjas (istilah baru sudah dipakai di
+     banyak tempat meski model-nya masih Rumahsakit)
+
+F. REFERENSI DI VIEWS (BLADE), termasuk variabel loop seperti @foreach($rumahsakits as ...):
+   - 49 file menyentuh istilah ini, tapi cuma 4 file (modul CRUD Unit Kerja sendiri) yang
+     pakai variabel $rumahsakit/$rumahsakits secara langsung dengan @foreach:
+     * resources/views/users/create.blade.php  - $rumahsakit (form edit)
+     * resources/views/users/index.blade.php   - @foreach ($rumahsakits as $i => $rumahsakit)
+     * resources/views/users/show.blade.php    - $rumahsakit->... (detail + peta Leaflet)
+     * resources/views/users/trash.blade.php   - @foreach($rumahsakits as $i => $rs)
+   - 45 file sisanya cuma menyentuh secara tidak langsung: dropdown "Unit Kerja" yang
+     variabelnya sudah $unitKerja/$unitKerjaList (aman), atau komentar/istilah dalam teks.
+
+G. REFERENSI DI ROUTES:
+   - routes/web.php (AKTIF): route SUDAH bernama unitkerja.* (unitkerja.trash,
+     unitkerja.restore, unitkerja.force-delete, resource unitkerja) - TIDAK PERLU DIGANTI,
+     cuma "use App\Http\Controllers\RumahsakitController;" yang ikut berubah kalau
+     Controller di-rename.
+   - routes/web copy.php (backup mati, TIDAK di-load): masih pakai rumahsakit.* - aman
+     diabaikan/dihapus.
+
+H. SINGKATAN/POLA LAIN YANG DITEMUKAN (rs_id, RS_, dll):
+   - Alias SQL singkat "as rs" + variabel $rs di PetaDashboardController.php (3 join) dan
+     RumahsakitController.php (2 method: restore, forceDelete).
+   - Tidak ada pola rs_id atau RS_ID sungguhan sebagai nama kolom database.
+
+I. POTENSI KONFLIK:
+   TIDAK ADA konflik serius. Tidak ditemukan Model atau Controller UnitKerja yang sudah
+   berdiri sendiri, dan tabel unit_kerja juga belum ada. Satu-satunya jejak istilah
+   "UnitKerja" adalah:
+   1. Command generator GenerateUnitKerjaSeederFromExcel.php (bukan model/controller)
+   2. 33 file seeder hasil generate-nya, yang NAMANYA sudah "UnitKerja" walau ISINYA masih
+      manggil Rumahsakit::
+   3. Route unitkerja.* di routes/web.php yang aktif
+
+   -> Ini indikasi kuat bahwa proses rename SEBAGIAN sudah pernah dimulai di masa lalu
+   (routes, nama file generator/seeder, banyak nama variabel controller) tapi berhenti di
+   tengah jalan sebelum menyentuh Model, Controller class, nama tabel, dan variabel Blade
+   inti. Aman untuk dilanjutkan, tidak perlu "menyelesaikan konflik" dulu.
+
+J. ESTIMASI JUMLAH FILE & BARIS TERDAMPAK:
+   - 160 file total mengandung istilah (php/blade/js, exclude vendor/node_modules)
+   - ~4400 baris di database/, tapi ~4380 di antaranya ada di 33 file seeder auto-generate
+     (data literal, bukan logika) - kalau seeder-seeder itu sudah final/historis (sudah
+     pernah dijalankan, datanya sudah masuk DB), tidak perlu disentuh sama sekali
+   - 166 baris di app/ (~20 file) - ini kerja inti
+   - 4 file blade dengan variabel langsung (kerja inti) + 45 file blade dengan referensi
+     ringan (perlu cek satu-satu tapi sebagian besar tidak berubah)
+   - 2 file routes (1 sudah selesai, 1 mati)
+   - 5 migration + 1 seeder struktural
+   -> Estimasi kerja nyata: ~70-75 file (di luar 33 seeder generate dan file-file
+      mati/backup)
+
+K. REKOMENDASI URUTAN RENAME (dari yang paling aman ke paling berisiko):
+   1. Bersih-bersih dulu (zero risk): hapus/pindahkan routes/web copy.php,
+      resources/views/formasi_jabatan/Rumahsakit.php (class duplikat mati), folder
+      backup/, resources/views/formasi_jabatan/bkp/*copy.php, dan pertimbangkan
+      rumahsakits.sql - supaya tidak ikut ke-grep atau ter-refactor tanpa sengaja nanti.
+   2. Putuskan nasib 33 seeder Excel: kalau sudah final/historis -> biarkan, exclude dari
+      rename. Kalau masih akan dipakai ulang -> perlu strategi terpisah (bukan bagian dari
+      rename kode).
+   3. Rename kolom data rumahsakits.nama_rumahsakit -> nama_unit_kerja (via migration) -
+      dampaknya lokal ke Model + ~15 controller + 4 view CRUD.
+   4. Rename Model class Rumahsakit -> UnitKerja + rename tabel rumahsakits -> nama baru -
+      PALING BERISIKO karena disentuh 9+ model lain via belongsTo(Rumahsakit::class, ...)
+      dan 8+ string validasi exists:rumahsakits,no_rs.
+   5. Rename Controller RumahsakitController -> UnitKerjaController, update use di
+      routes/web.php (route name-nya unitkerja.* sudah benar, tidak perlu diubah).
+   6. Rename variabel Blade $rumahsakit/$rumahsakits -> $unitKerja/$unitKerjas di 4 file
+      CRUD inti - paling mudah divalidasi visual karena langsung terlihat di halaman.
+   7. Terakhir & paling gampang kelewat: sapu ulang semua string exists:rumahsakits,no_rs
+      (validasi form) yang tersebar di 8+ file berbeda - ini yang paling sering luput
+      karena bentuknya string literal, bukan pemanggilan class yang bisa dideteksi IDE
+      "Find Usages".
+
+CATATAN TAMBAHAN DI LUAR TOPIK (ditemukan saat audit, dicatat untuk referensi):
+   users/show.blade.php masih memanggil $rumahsakit->jam_kerja dan ->fasilitas - dua kolom
+   yang sudah di-drop dari tabel sejak migration drop_jamkerja_fasilitas_from_rumahsakits.
+   Bug tampilan terpisah, beri tahu kalau mau sekalian diperbaiki.
+
+================================================================================
+CATATAN AKHIR TAHAP 1: Tidak ada perubahan kode yang dilakukan pada tahap audit ini. Murni
+pencarian dan pelaporan, sesuai instruksi.
+================================================================================
+
+
+################################################################################
+#
+#   RIWAYAT EKSEKUSI RENAME — TAHAP 2A s.d. 2E (9 Juli 2026)
+#   Rumah Sakit -> Unit Kerja, dieksekusi bertahap dari paling aman ke paling
+#   berisiko, sesuai rekomendasi K di atas.
+#
+################################################################################
+
+--------------------------------------------------------------------------------
+TAHAP 2A — Bersih-bersih File Mati (Zero Risk)
+--------------------------------------------------------------------------------
+Dipindahkan (bukan dihapus) ke folder _archive/ di root project:
+  - routes/web copy.php                              -> _archive/routes/
+  - resources/views/formasi_jabatan/Rumahsakit.php    -> _archive/views/formasi_jabatan/
+    (class duplikat App\Models\Rumahsakit yang nyasar di folder views, tidak ter-autoload)
+  - resources/views/formasi_jabatan/bkp/ (4 file)     -> _archive/views/formasi_jabatan_bkp_folder/
+  - backup/ (seluruh folder, ~90 file)                -> _archive/backup_folder_content/
+  - rumahsakits.sql                                   -> _archive/sql/
+
+Verifikasi: routes/web.php (aktif) tidak terpengaruh, route:list tetap normal.
+Ada 2 folder kosong sisa dari mkdir -p yang tidak terpakai (tidak masalah, kosmetik).
+
+--------------------------------------------------------------------------------
+TAHAP 2B — Rename Kolom Data nama_rumahsakit -> nama_unit_kerja
+--------------------------------------------------------------------------------
+Migration baru: database/migrations/2026_07_09_000001_rename_nama_rumahsakit_to_nama_unit_kerja.php
+  - Raw SQL "ALTER TABLE rumahsakits RENAME COLUMN nama_rumahsakit TO nama_unit_kerja"
+    (doctrine/dbal tidak terinstall, tidak bisa pakai Schema::renameColumn())
+
+File diubah (16 file inti):
+  app/Models/Rumahsakit.php
+  app/Http/Controllers/RumahsakitController.php, FormasiJabatanController.php,
+    LaporanController.php, PengangkatanController.php, PengangkatanController_lama.php,
+    PetaDashboardController.php, PromotionController.php, SdmController.php,
+    UjikomController.php, UjikomPendaftaranController.php, UjiKompetensiController.php,
+    UserController.php, WilayahController.php
+  app/Console/Commands/GenerateFormasiSeederFromExcel.php, GenerateSdmSeederFromExcel.php
+    (HANYA query Eloquent yang diganti, mapping alias header Excel dibiarkan)
+
+TEMUAN DI LUAR INSTRUKSI AWAL (grep membuktikan cakupan lebih luas dari daftar user):
+  - app/Console/Commands/GenerateUnitKerjaSeederFromExcel.php — TIDAK ada di daftar,
+    tapi melakukan Rumahsakit::updateOrCreate(['nama_rumahsakit'=>...]) langsung ke
+    kolom DB. Kalau dibiarkan, command ini akan diam-diam kehilangan data (Eloquent
+    membuang key yang tak ada di $fillable). Ikut diperbaiki.
+  - resources/views/users/edit.blade.php — TIDAK ada di daftar 3 file yang diminta
+    (create/index/show), tapi form field name="nama_rumahsakit" di sini submit ke
+    RumahsakitController@update yang validasinya sudah diganti. Ikut diperbaiki.
+  - 44 file blade lain menampilkan $x->nama_rumahsakit dari relasi unit kerja
+    (dropdown, tabel, PDF) — semua ikut diperbaiki, kalau tidak akan tampil kosong.
+
+Verifikasi: migrate sukses, optimize:clear OK, tinker
+  UnitKerja(Rumahsakit)::first()->nama_unit_kerja -> "Seksi Sarana Bantu Navigasi
+  Pelayaran" (537 total, sebelum rename model masih bernama Rumahsakit).
+
+--------------------------------------------------------------------------------
+TAHAP 2C — Rename Tabel, Primary Key, dan Model Class (PALING BERISIKO)
+--------------------------------------------------------------------------------
+Migration baru: database/migrations/2026_07_09_000002_rename_rumahsakits_to_unit_kerja.php
+  - Schema::rename('rumahsakits','unit_kerja')
+  - Raw SQL "ALTER TABLE unit_kerja CHANGE no_rs id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT"
+    (doctrine/dbal absen; PRIMARY KEY + AUTO_INCREMENT dipastikan tetap terjaga)
+
+Model: app/Models/Rumahsakit.php DIHAPUS, isinya pindah ke app/Models/UnitKerja.php
+  - class UnitKerja extends Model, $table='unit_kerja' eksplisit, primaryKey default 'id'
+  - method formasis() disederhanakan (parameter localKey 'no_rs' dihapus, default 'id')
+
+9 Model relasi belongsTo(Rumahsakit::class, 'unit_kerja_id', 'no_rs') diubah jadi
+belongsTo(UnitKerja::class, 'unit_kerja_id') — parameter localKey dihapus (default 'id'):
+  Formasijabatan.php, FormasiJabatanHistori.php, PengangkatanPermohonan.php,
+  PengangkatanPermohonan_lama.php, PengangkatanPeserta_lama.php, Sdmmodels.php,
+  UjikomPendaftaran.php, UjikomPermohonan.php, User.php
+
+13 Controller: referensi class Rumahsakit::->UnitKerja::, kolom no_rs->id,
+exists:rumahsakits,no_rs -> exists:unit_kerja,id, eager-load column list disesuaikan.
+(RumahsakitController.php: HANYA referensi model yang diganti, class controller-nya
+sendiri belum, sesuai cakupan 2C.)
+
+3 Console Command (GenerateFormasiSeederFromExcel, GenerateSdmSeederFromExcel,
+GenerateUnitKerjaSeederFromExcel): class + query Eloquent diganti, mapping alias
+header Excel ('no_rs' sebagai kemungkinan nama kolom Excel) dipertahankan.
+
+TEMUAN DI LUAR INSTRUKSI AWAL (blast radius jauh lebih besar dari 9 model + 13
+controller yang disebutkan):
+  - 20 FILE BLADE memakai $u->no_rs sebagai value dropdown "pilih unit kerja",
+    hidden input, dan parameter route (route('user.unitkerja.restore', $rs->no_rs)):
+    formasi_jabatan/{create,edit-group,history,index}.blade.php, laporan/index.blade.php,
+    pengangkatan/{create,index}.blade.php, pengangkatan_lama/{create,edit,index}.blade.php,
+    sdm/form.blade.php, ujikom/{create,edit,index}.blade.php,
+    ujikom/pendaftaran/{create,edit}.blade.php, users/{index,show,trash}.blade.php,
+    users/manajemen-user/form.blade.php.
+    Kalau dibiarkan: HAMPIR SEMUA form "pilih unit kerja" di aplikasi akan mengirim
+    value kosong ke server begitu kolom no_rs berganti nama jadi id. Semua diperbaiki
+    (->no_rs -> ->id).
+  - 4 FOREIGN KEY level database sungguhan mengarah ke rumahsakits.no_rs (dicek via
+    information_schema sebelum migrate): sumber_daya_manusia.unit_kerja_id,
+    ujikom_pendaftaran.unit_kerja_id, ujikom_permohonan.unit_kerja_id,
+    users.unit_kerja_id. Diverifikasi ULANG setelah migrate — InnoDB otomatis
+    mengikuti rename tabel & kolom, tidak ada FK yang putus.
+
+Verifikasi menyeluruh setelah migrate:
+  - SHOW CREATE TABLE unit_kerja -> PRIMARY KEY (id), AUTO_INCREMENT=1838 terjaga
+  - 4 FK di atas -> semua terkonfirmasi mengarah ke unit_kerja.id
+  - UnitKerja::count() -> 537 (identik sebelum & sesudah)
+  - Relasi 4 model berbeda diuji lewat tinker (Sdmmodels, Formasijabatan, User,
+    PengangkatanPermohonan) -> semua OK
+  - Validasi exists:unit_kerja,id -> lolos
+  - Raw join gaya PetaDashboardController -> OK
+  - Route model binding pakai id lama (1080) -> masih resolve dengan benar
+  - php artisan route:list -> 206 route termuat tanpa error
+
+--------------------------------------------------------------------------------
+TAHAP 2D — Rename Controller
+--------------------------------------------------------------------------------
+app/Http/Controllers/RumahsakitController.php DIHAPUS, isinya pindah ke
+app/Http/Controllers/UnitKerjaController.php (class RumahsakitController -> UnitKerjaController)
+
+routes/web.php: use RumahsakitController -> UnitKerjaController, 4 referensi
+[RumahsakitController::class, ...] -> [UnitKerjaController::class, ...].
+Route name (unitkerja.*) TIDAK diubah, sudah benar sejak sebelumnya.
+
+PENYESUAIAN DARI INSTRUKSI: instruksi minta rename parameter signature
+(show(Rumahsakit $rumahsakit) -> show(UnitKerja $unitKerja)) dengan body method
+"lanjut ke Tahap 2E". Kalau diikuti persis, show()/destroy() akan error "Undefined
+variable $rumahsakit" dan edit()/update() error serupa (PHP variable case-sensitive,
+$unitKerja != $unitkerja) - 4 dari 10 route Unit Kerja akan 500 SEJAK TAHAP INI.
+Diputuskan: signature persis sesuai permintaan, body ikut disesuaikan supaya tidak
+crash, TAPI data ke view tetap dikirim dengan nama variabel LAMA (['rumahsakit' =>
+$unitKerja], ['unitkerja' => $unitKerja, ...]) via array eksplisit (bukan compact())
+supaya blade view yang belum disentuh (show.blade.php, edit.blade.php) tetap jalan
+tanpa perubahan.
+
+Verifikasi: route:list 10 route -> semua UnitKerjaController, optimize:clear OK,
+show()/edit() dites langsung lewat tinker -> data terkirim ke view dengan key benar.
+
+--------------------------------------------------------------------------------
+TAHAP 2E — Rename Variabel Blade & Verifikasi Akhir
+--------------------------------------------------------------------------------
+4 file CRUD inti diubah:
+  resources/views/users/index.blade.php  : $rumahsakits->$unitKerjas, $rumahsakit->$unitKerja
+  resources/views/users/create.blade.php : $rumahsakit->$unitKerja
+  resources/views/users/show.blade.php   : $rumahsakit->$unitKerja
+  resources/views/users/trash.blade.php  : $rumahsakits->$unitKerjas, $rs->$unitKerja
+
+app/Http/Controllers/UnitKerjaController.php: compact() di index()/create()/show()/
+trash() disesuaikan agar nama variabel yang dikirim ke view (unitKerjas/unitKerja)
+sekarang benar-benar cocok dengan nama di blade (sebelumnya di Tahap 2D sengaja
+dibuat "cocok dengan nama LAMA" sebagai jembatan sementara — sekarang dirapikan).
+
+HASIL SWEEP AKHIR (dilaporkan, TIDAK diperbaiki otomatis sesuai instruksi):
+
+1) Sisa "Rumahsakit"/"rumahsakit" di app/:
+   - GenerateFormasiSeederFromExcel.php:36,100 dan GenerateUnitKerjaSeederFromExcel.php:
+     29,132 -> mapping alias header Excel + teks pesan error yang menyebut kemungkinan
+     nama kolom Excel "nama_rumahsakit". Sengaja dipertahankan sejak 2B/2C (bukan
+     referensi ke DB).
+   - PetaDashboardController.php:587,590-592,594 -> nama variabel lokal $rumahsakitsQ
+     (isinya sudah UnitKerja::with(...), cuma nama variabel, tidak memengaruhi fungsi).
+
+2) Sisa "Rumahsakit"/"rumahsakit" di resources/views/:
+   - users/index.blade.php:59 -> baris KOMENTAR (kode mati) yang merujuk route name
+     'user.rumahsakit.show' yang bahkan sudah tidak pernah ada di routes/web.php.
+
+3) Sisa no_rs / nama_rumahsakit:
+   - Sama seperti (1), semua di dalam mapping alias header Excel 2 command file.
+
+Status: SEMUA temuan sweep akhir adalah kode mati/mapping Excel/nama variabel
+kosmetik — TIDAK ADA yang memengaruhi fungsi aplikasi. Dilaporkan ke user untuk
+ditinjau, belum ada tindak lanjut perbaikan (menunggu keputusan user).
+
+--------------------------------------------------------------------------------
+RINGKASAN AKHIR SELURUH RENAME (Tahap 2A-2E)
+--------------------------------------------------------------------------------
+  - Tabel      : rumahsakits            -> unit_kerja
+  - Primary Key: no_rs                  -> id
+  - Kolom data : nama_rumahsakit        -> nama_unit_kerja
+  - Model      : App\Models\Rumahsakit  -> App\Models\UnitKerja
+  - Controller : RumahsakitController   -> UnitKerjaController
+  - Route name : unitkerja.* (TIDAK berubah, sudah benar sejak sebelum rename dimulai)
+  - Variabel Blade inti: $rumahsakit(s) -> $unitKerja(s), $rs -> $unitKerja (trash only)
+
+  Total file yang disentuh (kode, di luar migration & file arsip): ~90 file
+  Total file dipindah ke _archive/ (bukan dihapus): ~96 file (termasuk isi folder backup/)
+  Migration baru: 2 (rename kolom data, rename tabel+PK)
+  File baru: app/Models/UnitKerja.php, app/Http/Controllers/UnitKerjaController.php
+
+  Semua tahap diverifikasi dengan: php artisan route:list (206 route, 0 error),
+  php artisan optimize:clear, dan query fungsional langsung lewat tinker
+  (relasi antar model, validasi, raw join, route model binding, FK integrity).
+  Data tidak hilang - jumlah unit kerja tetap 537 dari awal sampai akhir proses.
+
+================================================================================
+CATATAN AKHIR TAHAP 2: Semua perubahan di atas SUDAH DIEKSEKUSI (bukan simulasi).
+Jangan jalankan ulang migration yang sama. Kalau perlu rollback, tersedia method
+down() di kedua migration baru (2026_07_09_000001 dan 2026_07_09_000002).
+================================================================================

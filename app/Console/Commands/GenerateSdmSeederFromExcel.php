@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 // Model yang dipakai untuk resolve relasi
 use App\Models\Formasijabatan;
-use App\Models\Rumahsakit;       // unit kerja (no_rs)
+use App\Models\UnitKerja;        // unit kerja (id)
 use App\Models\Jenjangjabatan;   // jenjang
 // NOTE: Sdmmodels tidak dipakai di command ini (hanya di seeder hasil generate)
 
@@ -100,13 +100,13 @@ class GenerateSdmSeederFromExcel extends Command
             }
 
             // --- Resolve UNIT KERJA ---
-            $unitKerjaId = null; // no_rs
+            $unitKerjaId = null; // id
             if (!empty($row['unit_kerja_id'])) {
                 $unitKerjaId = (int) $row['unit_kerja_id'];
             } elseif (!empty($row['unit_kerja_kode'])) {
-                $unitKerjaId = Rumahsakit::where('no_rs', (int) $row['unit_kerja_kode'])->value('no_rs');
+                $unitKerjaId = UnitKerja::where('id', (int) $row['unit_kerja_kode'])->value('id');
             } elseif (!empty($row['unit_kerja_nama'])) {
-                $unitKerjaId = Rumahsakit::where('nama_rumahsakit', $row['unit_kerja_nama'])->value('no_rs');
+                $unitKerjaId = UnitKerja::where('nama_unit_kerja', $row['unit_kerja_nama'])->value('id');
             }
 
             // --- Resolve FORMASI ---

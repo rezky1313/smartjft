@@ -53,7 +53,7 @@
           </div>
           <div class="col-md-4">
             <p class="mb-1 text-muted small font-weight-bold">UNIT KERJA</p>
-            <p class="mb-0"><i class="fas fa-building mr-1 text-success"></i>{{ $pendaftaran->unitKerja?->nama_rumahsakit ?? '-' }}</p>
+            <p class="mb-0"><i class="fas fa-building mr-1 text-success"></i>{{ $pendaftaran->unitKerja?->nama_unit_kerja ?? '-' }}</p>
           </div>
         </div>
       </div>

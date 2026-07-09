@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Models\Province;
 use App\Models\Regency;
-use App\Models\Rumahsakit;
+use App\Models\UnitKerja;
 
 class GenerateUnitKerjaSeederFromExcel extends Command
 {
@@ -23,11 +23,11 @@ class GenerateUnitKerjaSeederFromExcel extends Command
      * Alias header Excel -> key internal
      */
     protected array $headerAlias = [
-        // nama unit
-        'nama_unit'         => 'nama_rumahsakit',
-        'nama_unit_kerja'   => 'nama_rumahsakit',
-        'nama_rumahsakit'   => 'nama_rumahsakit',
-        'unit_kerja'        => 'nama_rumahsakit',
+        // nama unit (key kiri = variasi header Excel yang diterima, jangan diubah)
+        'nama_unit'         => 'nama_unit_kerja',
+        'nama_unit_kerja'   => 'nama_unit_kerja',
+        'nama_rumahsakit'   => 'nama_unit_kerja',
+        'unit_kerja'        => 'nama_unit_kerja',
 
         // alamat & telp
         'alamat'            => 'alamat',
@@ -115,7 +115,7 @@ class GenerateUnitKerjaSeederFromExcel extends Command
 
         // --- Baca header & petakan dengan alias ---
         $rawHeader = array_shift($rows);
-        $headers   = []; // ex: 'A' => 'nama_rumahsakit'
+        $headers   = []; // ex: 'A' => 'nama_unit_kerja'
         foreach ($rawHeader as $col => $name) {
             $norm = Str::snake(Str::lower((string)$name)); // "Kab/Kota" -> "kab_kota" (slash jadi underscore oleh snake)
             // snake("kab/kota") -> "kab_kota", kita tangani juga yang persis "kab/kota"
@@ -128,7 +128,7 @@ class GenerateUnitKerjaSeederFromExcel extends Command
             }
         }
 
-        if (!in_array('nama_rumahsakit', $headers, true)) {
+        if (!in_array('nama_unit_kerja', $headers, true)) {
             $this->error('Header "Nama Unit Kerja" tidak ditemukan. Gunakan salah satu: nama_unit / nama_unit_kerja / nama_rumahsakit / unit_kerja.');
             return self::FAILURE;
         }
@@ -145,7 +145,7 @@ class GenerateUnitKerjaSeederFromExcel extends Command
             }
 
             // Skip baris kosong
-            if (!($row['nama_rumahsakit'] ?? null)) continue;
+            if (!($row['nama_unit_kerja'] ?? null)) continue;
 
             // --- Resolve Regency ---
             $regencyId = null;
@@ -198,7 +198,7 @@ class GenerateUnitKerjaSeederFromExcel extends Command
 
             // --- Build record ---
             $item = [
-                'nama_rumahsakit' => $row['nama_rumahsakit'] ?? null,
+                'nama_unit_kerja' => $row['nama_unit_kerja'] ?? null,
                 'alamat'          => $row['alamat'] ?? null,
                 'no_telp'         => $row['no_telp'] ?? null,
                 'regency_id'      => $regencyId,
@@ -233,7 +233,7 @@ class GenerateUnitKerjaSeederFromExcel extends Command
 namespace Database\\Seeders;
 
 use Illuminate\\Database\\Seeder;
-use App\\Models\\Rumahsakit;
+use App\\Models\\UnitKerja;
 
 class {$class} extends Seeder
 {
@@ -241,12 +241,12 @@ class {$class} extends Seeder
     {
         \$rows = {$phpArray};
 
-        // Upsert idempotent berdasarkan kombinasi (nama_rumahsakit, regency_id)
+        // Upsert idempotent berdasarkan kombinasi (nama_unit_kerja, regency_id)
         foreach (array_chunk(\$rows, 500) as \$chunk) {
             foreach (\$chunk as \$row) {
-                Rumahsakit::updateOrCreate(
+                UnitKerja::updateOrCreate(
                     [
-                        'nama_rumahsakit' => \$row['nama_rumahsakit'],
+                        'nama_unit_kerja' => \$row['nama_unit_kerja'],
                         'regency_id'      => \$row['regency_id'],
                     ],
                     \$row
