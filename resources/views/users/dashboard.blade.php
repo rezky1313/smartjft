@@ -364,6 +364,17 @@
             </div>
           </a>
         </div>
+        <div class="col-md-4 col-6 mb-3">
+          <a href="{{ route('pengangkatan.index', ['status' => 'diajukan']) }}" class="text-decoration-none">
+            <div class="p-3 rounded border border-danger bg-light d-flex align-items-center">
+              <div class="text-danger mr-3" style="font-size:1.8rem;"><i class="fas fa-user-check"></i></div>
+              <div>
+                <div class="h4 mb-0 font-weight-bold text-danger">{{ $perluTindakan['permohonan_pengangkatan_pending'] }}</div>
+                <small class="text-muted">Permohonan Pengangkatan Menunggu</small>
+              </div>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
   </div>

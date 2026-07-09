@@ -12,6 +12,7 @@ use App\Models\UjikomPendaftaran;
 use App\Models\UjikomHasil;
 use App\Models\UjikomSesi;
 use App\Models\Sdmmodels;
+use App\Models\PengangkatanPermohonan;
 use Illuminate\Support\Arr;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -365,7 +366,7 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
         $permohonanSelesai  = UjikomPendaftaran::where('unit_kerja_id', $unitKerjaId)
             ->whereIn('status', ['diverifikasi_pusbin', 'selesai'])->count();
 
-        $jadwalAktif = UjikomJadwal::where('status', 'dipublikasikan')
+        $jadwalAktif = UjikomJadwal::where('status', 'published')
             ->orderBy('tanggal_mulai')->take(5)->get();
 
         return view('users.dashboard', compact(
@@ -692,9 +693,10 @@ foreach ($levels as $lvl) {
             $perluTindakan = [
                 'permohonan_pending_pusbin'    => UjikomPendaftaran::where('status', 'diajukan_pusbin')->count(),
                 'permohonan_pending_admin_unit' => UjikomPendaftaran::where('status', 'diajukan_admin_unit')->count(),
-                'jadwal_aktif'                 => UjikomJadwal::where('status', 'dipublikasikan')->count(),
+                'jadwal_aktif'                 => UjikomJadwal::where('status', 'published')->count(),
                 'sesi_berlangsung'             => UjikomSesi::where('status_sesi', 'berlangsung')->count(),
                 'hasil_belum_dinilai'          => UjikomHasil::where('status_kelulusan', 'belum_dinilai')->count(),
+                'permohonan_pengangkatan_pending' => PengangkatanPermohonan::where('status', 'diajukan')->count(),
             ];
         }
 

@@ -5,6 +5,40 @@
 
 ---
 
+## Versi 1.12.2 - Bug Fix: Card "Perlu Tindakan" Dashboard Kosong
+**Tanggal:** 8 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Card "Perlu Tindakan" di dashboard Super Admin/Admin selalu menampilkan angka 0 untuk jadwal ujikom aktif, dan tidak pernah menampilkan data Pengangkatan JFT sama sekali. Dashboard Admin Unit juga terdampak bug enum yang sama di daftar jadwal aktifnya.
+
+---
+
+## Perubahan
+
+### Controller
+- **UBAH** `app/Http/Controllers/PetaDashboardController.php`
+  - Tambah `use App\Models\PengangkatanPermohonan;`
+  - `$perluTindakan['jadwal_aktif']`: query salah pakai `UjikomJadwal::where('status', 'dipublikasikan')` — enum yang benar di database adalah `'published'` (konsisten dengan sidebar, `UjikomOnlineController`, dll). Query ini **tidak pernah cocok** sehingga selalu menghasilkan 0
+  - `dashboardAdminUnit()`: bug enum yang identik pada `$jadwalAktif` (daftar jadwal aktif Admin Unit) — diperbaiki jadi `'published'`
+  - **BARU** `$perluTindakan['permohonan_pengangkatan_pending']` — `PengangkatanPermohonan::where('status', 'diajukan')->count()`, sebelumnya modul Pengangkatan JFT tidak pernah dimasukkan ke card ini sejak dibuat
+
+### View
+- **UBAH** `resources/views/users/dashboard.blade.php`
+  - Tambah card ke-6 di section "Perlu Tindakan": "Permohonan Pengangkatan Menunggu", link ke `pengangkatan.index?status=diajukan`
+
+---
+
+## Catatan Teknis
+
+- **Bukan bug:** sempat dicurigai `unit_kerja_id` tidak konsisten antar tabel (`users`, `ujikom_pendaftaran`, `pengangkatan_permohonan`) untuk dashboard Admin Unit — dicek silang dan semuanya sudah konsisten memakai `no_rs` yang sama. Angka 0 yang terlihat sebelumnya untuk sebagian metrik memang valid (data uji saat itu belum ada yang berstatus "menunggu")
+- Dashboard Admin Unit (`dashboardAdminUnit()`) **tidak** punya card setara "Perlu Tindakan" — metriknya terpisah (`permohonanMenunggu`/`Diproses`/`Selesai` + `jadwalAktif`) dan tidak menyertakan data Pengangkatan JFT sama sekali. Di luar cakupan perbaikan ini karena tidak diminta, dicatat untuk referensi jika suatu saat perlu ditambahkan
+
+---
+
 ## Versi 1.12.1 - Bug Fix: Bank Soal, Paket Ujian, Ujikom Online, Dashboard Pemangku
 **Tanggal:** 6 Juli 2026
 **Status:** Selesai ✅
