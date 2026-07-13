@@ -5,6 +5,68 @@
 
 ---
 
+## Versi 1.14.0 - Sederhanakan Pengangkatan JFT (Hapus Ranking)
+**Tanggal:** 13 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Alur Pengangkatan JFT (v1.12.0) disederhanakan total: Pusbin tidak lagi melakukan seleksi/ranking kandidat. Admin Unit sekarang memilih sendiri peserta yang diusulkan (dari pegawai yang sudah lulus ujikom), divalidasi otomatis terhadap sisa formasi saat diinput — bukan diseleksi/di-ranking setelah diajukan. Pusbin tinggal generate surat rekomendasi dan konfirmasi TTD. Alur status dipotong dari 6 langkah (`draft → diajukan → diproses → disetujui → ditolak → selesai`) menjadi 4 (`draft → diajukan → menunggu_ttd → selesai`, + cabang `ditolak`).
+
+Perubahan ini jauh lebih besar dari sekadar "hapus ranking" — form `create.blade.php` sebelumnya **sama sekali tidak punya UI pilih peserta** (kandidat 100% otomatis dari `generateKandidat()` berdasar hasil ujikom), jadi harus dibangun dari nol.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_13_000001_simplify_pengangkatan_status_and_ranking.php`
+  - Enum `pengangkatan_permohonan.status`: `['draft','diajukan','diproses','disetujui','ditolak','selesai']` → `['draft','diajukan','menunggu_ttd','selesai','ditolak']` (raw SQL, `doctrine/dbal` tidak terinstall)
+  - `pengangkatan_kandidat.ranking` diubah jadi nullable (sebelumnya NOT NULL tanpa default — instruksi asal set `ranking => null` akan gagal SQL tanpa perubahan ini, karena ranking tidak dipakai lagi)
+
+### Model
+- **UBAH** `app/Models/PengangkatanPermohonan.php`
+  - `generateKandidat()` (ranking berdasar nilai) **dihapus total**
+  - `getLabelStatusAttribute()`/`getBadgeStatusAttribute()` disesuaikan ke 5 status baru (`diproses`/`disetujui` dihapus, `menunggu_ttd` ditambah)
+
+### Controller
+- **ROMBAK** `app/Http/Controllers/PengangkatanController.php`
+  - `proses()`, `setujui()`, `updateKandidat()` **dihapus**
+  - **BARU** `getPesertaLulus(Request $request)` — AJAX, daftar pegawai lulus ujikom di suatu unit kerja yang belum pernah diusulkan di permohonan lain yang masih berjalan (dipakai picker "tambah peserta")
+  - **BARU** `validasiFormasiPeserta(Request $request)` — AJAX, cek realtime apakah sisa formasi jabatan tujuan masih cukup untuk peserta ke-N yang mau ditambahkan
+  - **BARU** `validasiPesertaGabungan()` (private) — validasi backend gabungan: sisa formasi per jabatan tujuan + tolak kalau ada peserta yang `ujikom_hasil_id`-nya sudah dipakai di permohonan lain (non-`ditolak`). Dipanggil dari `store()` dan `update()`
+  - **BARU** `simpanPeserta()` (private) — simpan baris `PengangkatanKandidat` dari array peserta hasil form, semua otomatis `status_kandidat = 'direkomendasikan'`, `ranking = null`
+  - `store()`/`update()`: kini menerima array `peserta[]` dari form (bukan cuma field permohonan dasar), validasi backend penuh sebelum simpan
+  - `generateSurat()`: sekarang merangkap peran `setujui()` lama — transisi `diajukan → menunggu_ttd` sekaligus membuat record `PengangkatanSurat` (bisa dipanggil ulang untuk re-download tanpa duplikasi/transisi ulang)
+  - `konfirmasiTtd()`: `menunggu_ttd → selesai` (sebelumnya dari `disetujui`)
+  - `tolak()`: dipertahankan tapi disederhanakan — hanya dari status `diajukan` (lihat Catatan Teknis)
+
+### Routes
+- **UBAH** `routes/web.php` — route `proses`, `setujui`, `kandidat.update` dihapus; route baru `peserta-lulus` (GET) dan `validasi-formasi-peserta` (POST), static, ditempatkan sebelum `/{id}`
+
+### View
+- **DIBANGUN ULANG** `resources/views/pengangkatan/create.blade.php`
+  - UI baru: cari & tambah peserta (select2 lokal dari hasil AJAX `peserta-lulus`), tabel peserta ditambahkan dengan status "Sesuai Formasi"/"Melebihi Formasi" per baris (AJAX `validasi-formasi-peserta` realtime), tombol hapus per baris, submit diblokir kalau ada baris tidak valid atau peserta kosong
+  - Mode edit: peserta existing (`$permohonan->kandidat`) di-preload ke tabel yang sama
+- **ROMBAK** `resources/views/pengangkatan/show.blade.php`
+  - Panel "Verifikasi Ranking oleh Admin Pusbin" + tombol override status kandidat **dihapus**
+  - Timeline stepper: 6 langkah → 4 langkah (`Draft → Diajukan → Menunggu TTD → Selesai`)
+  - Panel aksi disederhanakan: `diajukan` → tombol "Generate Surat Rekomendasi" langsung (gabung proses+setujui lama) atau "Tolak"; `menunggu_ttd` → "Konfirmasi Surat Sudah Ditandatangani"
+- **UBAH** `resources/views/pengangkatan/index.blade.php` — stat card & filter status disesuaikan 4 status baru; kolom "Direkomendasi" dihapus (di alur baru selalu identik dengan kolom "Peserta", jadi redundan)
+
+---
+
+## Catatan Teknis
+
+- **Penyesuaian dari instruksi asal:** instruksi minta hapus `setujui()` **dan** `tolak()` sekaligus, tapi enum status baru tetap menyertakan `ditolak` — kalau `tolak()` benar-benar dihapus, status itu jadi tidak pernah bisa dicapai. `tolak()` dipertahankan (hanya dari status `diajukan`, tanpa keputusan per-kandidat) supaya `ditolak` tetap punya jalur masuk yang masuk akal.
+- **Validasi anti-duplikat lintas permohonan** ditambahkan di luar permintaan eksplisit — ditemukan saat pengujian bahwa tanpa ini, satu pegawai (via `ujikom_hasil_id` yang sama) bisa diusulkan dobel di dua permohonan berbeda karena tidak ada unique constraint di level database untuk kombinasi ini.
+- Query validasi formasi lebih sederhana dari contoh di instruksi: `pengangkatan_kandidat.jabatan_tujuan_id` sudah langsung menunjuk ke `formasi_jabatan.id` (bukan perlu kolom `jabatan_id` terpisah), jadi cukup `Formasijabatan::find($jabatanTujuanId)->sisa`.
+- Diuji lewat tinker: `getPesertaLulus()` (exclude kandidat yang sudah terpakai), `validasiFormasiPeserta()` (skenario lolos & melebihi kuota), `validasiPesertaGabungan()` (tolak duplikat), dan render ketiga view (`create`/`show`/`index`) langsung tanpa error — semua pakai data dummy "Unit Kerja Dummy" dari sesi sebelumnya.
+
+---
+
 ## Versi 1.13.0 - Rename Total "Rumah Sakit" → "Unit Kerja"
 **Tanggal:** 9 Juli 2026
 **Status:** Selesai ✅

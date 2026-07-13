@@ -7,6 +7,8 @@ use App\Models\PengangkatanPermohonan;
 use App\Models\PengangkatanKandidat;
 use App\Models\PengangkatanSurat;
 use App\Models\UnitKerja;
+use App\Models\Formasijabatan;
+use App\Models\UjikomHasil;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PengangkatanController extends Controller
@@ -19,10 +21,7 @@ class PengangkatanController extends Controller
         $user = auth()->user();
 
         $q = PengangkatanPermohonan::with(['unitKerja', 'pengaju'])
-            ->withCount([
-                'kandidat',
-                'kandidat as kandidat_direkomendasikan_count' => fn($q) => $q->where('status_kandidat', 'direkomendasikan'),
-            ]);
+            ->withCount('kandidat');
 
         // Admin unit hanya lihat miliknya
         if ($user->hasRole('admin_unit')) {
@@ -48,10 +47,10 @@ class PengangkatanController extends Controller
             $baseStats->where('unit_kerja_id', $user->unit_kerja_id);
         }
         $stats = [
-            'total'    => (clone $baseStats)->count(),
-            'diajukan' => (clone $baseStats)->where('status', 'diajukan')->count(),
-            'disetujui'=> (clone $baseStats)->where('status', 'disetujui')->count(),
-            'selesai'  => (clone $baseStats)->where('status', 'selesai')->count(),
+            'total'        => (clone $baseStats)->count(),
+            'diajukan'     => (clone $baseStats)->where('status', 'diajukan')->count(),
+            'menunggu_ttd' => (clone $baseStats)->where('status', 'menunggu_ttd')->count(),
+            'selesai'      => (clone $baseStats)->where('status', 'selesai')->count(),
         ];
 
         $unitKerjaList = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
@@ -75,15 +74,96 @@ class PengangkatanController extends Controller
     }
 
     /**
-     * Simpan permohonan baru.
+     * AJAX: daftar pegawai lulus ujikom di suatu unit kerja yang belum pernah diusulkan
+     * (dipakai oleh pencarian "tambah peserta" di form create/edit).
+     */
+    public function getPesertaLulus(Request $request)
+    {
+        $request->validate(['unit_kerja_id' => 'required|integer']);
+
+        $sudahDiajukan = PengangkatanKandidat::whereHas(
+                'permohonan',
+                fn($q) => $q->where('status', '!=', 'ditolak')
+            )
+            ->when($request->filled('kecuali_permohonan_id'), function ($q) use ($request) {
+                // saat edit, jangan kecualikan kandidat milik permohonan yang sedang diedit sendiri
+                $q->where('pengangkatan_permohonan_id', '!=', $request->kecuali_permohonan_id);
+            })
+            ->pluck('ujikom_hasil_id')
+            ->filter()
+            ->all();
+
+        $hasil = UjikomHasil::with(['peserta.pegawai', 'peserta.jabatanTujuan.jenjang'])
+            ->where('status_kelulusan', 'lulus')
+            ->whereHas('peserta.pendaftaran', fn($q) => $q->where('unit_kerja_id', $request->unit_kerja_id))
+            ->whereNotIn('id', $sudahDiajukan)
+            ->get();
+
+        $data = $hasil->map(function ($h) {
+            $peserta = $h->peserta;
+            $pegawai = $peserta?->pegawai;
+            $jabatanTujuan = $peserta?->jabatanTujuan;
+
+            return [
+                'ujikom_hasil_id'   => $h->id,
+                'pegawai_id'        => $pegawai?->id,
+                'nama'              => $pegawai?->nama_lengkap,
+                'nip'               => $pegawai?->nip,
+                'jabatan_tujuan_id' => $jabatanTujuan?->id,
+                'jabatan_tujuan'    => $jabatanTujuan?->nama_formasi,
+                'jenjang_tujuan'    => $peserta?->jenjang_tujuan,
+                'nilai'             => $h->nilai,
+            ];
+        })->filter(fn($x) => $x['pegawai_id'] && $x['jabatan_tujuan_id'])->values();
+
+        return response()->json($data);
+    }
+
+    /**
+     * AJAX: validasi realtime sisa formasi untuk satu jabatan tujuan saat peserta ditambahkan di form.
+     */
+    public function validasiFormasiPeserta(Request $request)
+    {
+        $request->validate([
+            'jabatan_tujuan_id' => 'required|integer',
+        ]);
+
+        $formasi = Formasijabatan::find($request->jabatan_tujuan_id);
+        $sisaFormasi = $formasi ? $formasi->sisa : 0;
+
+        $sudahDiajukan = (int) ($request->jumlah_sudah_diajukan_jabatan_sama ?? 0);
+
+        if (($sudahDiajukan + 1) > $sisaFormasi) {
+            return response()->json([
+                'valid' => false,
+                'pesan' => "Formasi tidak mencukupi. Sisa formasi jabatan ini: {$sisaFormasi}, sudah diajukan: {$sudahDiajukan}.",
+            ]);
+        }
+
+        return response()->json(['valid' => true, 'sisa_formasi' => $sisaFormasi]);
+    }
+
+    /**
+     * Simpan permohonan baru + peserta yang diusulkan (langsung direkomendasikan, tanpa ranking).
      */
     public function store(Request $request)
     {
         $request->validate([
-            'unit_kerja_id'          => 'required|string',
-            'tanggal_permohonan'     => 'required|date',
-            'file_surat_permohonan'  => 'nullable|file|mimes:pdf|max:5120',
+            'unit_kerja_id'               => 'required|integer|exists:unit_kerja,id',
+            'tanggal_permohonan'          => 'required|date',
+            'file_surat_permohonan'       => 'nullable|file|mimes:pdf|max:5120',
+            'peserta'                     => 'required|array|min:1',
+            'peserta.*.ujikom_hasil_id'   => 'required|integer|exists:ujikom_hasil,id',
+            'peserta.*.pegawai_id'        => 'required|integer|exists:sumber_daya_manusia,id',
+            'peserta.*.jabatan_tujuan_id' => 'required|integer|exists:formasi_jabatan,id',
+            'peserta.*.jenjang_tujuan'    => 'required|string',
+        ], [
+            'peserta.required' => 'Tambahkan minimal satu peserta yang diusulkan.',
         ]);
+
+        if ($pesan = $this->validasiPesertaGabungan($request->peserta)) {
+            return back()->withInput()->withErrors(['peserta' => $pesan]);
+        }
 
         $filePath = null;
         if ($request->hasFile('file_surat_permohonan')) {
@@ -99,6 +179,8 @@ class PengangkatanController extends Controller
             'diajukan_oleh'         => auth()->id(),
         ]);
 
+        $this->simpanPeserta($permohonan, $request->peserta);
+
         // Jika klik "Simpan + Ajukan"
         if ($request->input('aksi') === 'ajukan') {
             $permohonan->update(['status' => 'diajukan']);
@@ -111,18 +193,78 @@ class PengangkatanController extends Controller
     }
 
     /**
-     * Detail permohonan + daftar kandidat.
+     * Validasi gabungan sebelum simpan: sisa formasi per jabatan tujuan + pastikan tidak ada
+     * peserta yang ujikom_hasil_id-nya sudah dipakai di permohonan lain yang masih berjalan.
+     * Kembalikan pesan error (string) jika ada pelanggaran, null jika lolos semua.
+     */
+    private function validasiPesertaGabungan(array $daftarPeserta, ?int $kecualiPermohonanId = null): ?string
+    {
+        // 1. Sisa formasi per jabatan tujuan
+        $perJabatan = collect($daftarPeserta)->groupBy('jabatan_tujuan_id');
+        foreach ($perJabatan as $jabatanTujuanId => $daftar) {
+            $formasi = Formasijabatan::find($jabatanTujuanId);
+            $sisaFormasi = $formasi ? $formasi->sisa : 0;
+
+            if ($daftar->count() > $sisaFormasi) {
+                return "Jumlah usulan untuk jabatan \"{$formasi?->nama_formasi}\" ({$daftar->count()} orang) melebihi sisa formasi yang tersedia ({$sisaFormasi}). Kurangi jumlah usulan atau ajukan formasi tambahan terlebih dahulu.";
+            }
+        }
+
+        // 2. Tidak boleh ada ujikom_hasil_id yang sudah dipakai di permohonan lain (non-ditolak)
+        $ujikomHasilIds = collect($daftarPeserta)->pluck('ujikom_hasil_id')->all();
+        $sudahDipakai = PengangkatanKandidat::whereIn('ujikom_hasil_id', $ujikomHasilIds)
+            ->whereHas('permohonan', fn($q) => $q->where('status', '!=', 'ditolak'))
+            ->when($kecualiPermohonanId, fn($q) => $q->where('pengangkatan_permohonan_id', '!=', $kecualiPermohonanId))
+            ->with('pegawai')
+            ->get();
+
+        if ($sudahDipakai->isNotEmpty()) {
+            $nama = $sudahDipakai->pluck('pegawai.nama_lengkap')->filter()->unique()->implode(', ');
+            return "Peserta berikut sudah diusulkan di permohonan lain yang masih berjalan: {$nama}.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Simpan baris PengangkatanKandidat dari array peserta hasil form (semua otomatis direkomendasikan).
+     */
+    private function simpanPeserta(PengangkatanPermohonan $permohonan, array $daftarPeserta): void
+    {
+        foreach ($daftarPeserta as $p) {
+            $hasil = UjikomHasil::with('peserta.pegawai.formasiJabatan.jenjang')->find($p['ujikom_hasil_id']);
+            $pegawai = $hasil?->peserta?->pegawai;
+            $formasi = Formasijabatan::find($p['jabatan_tujuan_id']);
+
+            PengangkatanKandidat::create([
+                'pengangkatan_permohonan_id' => $permohonan->id,
+                'pegawai_id'                 => $p['pegawai_id'],
+                'ujikom_hasil_id'            => $p['ujikom_hasil_id'],
+                'jabatan_asal'               => $pegawai?->formasiJabatan?->nama_formasi ?? '-',
+                'jenjang_asal'               => $pegawai?->formasiJabatan?->jenjang?->nama_jenjang ?? '-',
+                'jabatan_tujuan_id'          => $p['jabatan_tujuan_id'],
+                'jenjang_tujuan'             => $p['jenjang_tujuan'],
+                'nilai_ujikom'               => $hasil?->nilai,
+                'ranking'                    => null,
+                'formasi_tersedia'           => $formasi?->sisa,
+                'status_kandidat'            => 'direkomendasikan',
+            ]);
+        }
+    }
+
+    /**
+     * Detail permohonan + daftar peserta yang diusulkan.
      */
     public function show($id)
     {
         $permohonan = PengangkatanPermohonan::with([
-            'unitKerja', 'pengaju', 'pemroses', 'surat',
-            'kandidat' => fn($q) => $q->orderBy('jabatan_tujuan_id')->orderBy('ranking'),
+            'unitKerja', 'pengaju', 'surat',
+            'kandidat' => fn($q) => $q->orderBy('jabatan_tujuan_id'),
             'kandidat.pegawai',
             'kandidat.jabatanTujuan.jenjang',
         ])->findOrFail($id);
 
-        // Group kandidat per jabatan tujuan
+        // Group peserta per jabatan tujuan
         $kandidatPerJabatan = $permohonan->kandidat->groupBy('jabatan_tujuan_id');
 
         return view('pengangkatan.show', compact('permohonan', 'kandidatPerJabatan'));
@@ -133,7 +275,7 @@ class PengangkatanController extends Controller
      */
     public function edit($id)
     {
-        $permohonan = PengangkatanPermohonan::findOrFail($id);
+        $permohonan = PengangkatanPermohonan::with('kandidat.pegawai', 'kandidat.jabatanTujuan')->findOrFail($id);
         abort_unless($permohonan->status === 'draft', 403, 'Hanya permohonan draft yang bisa diedit.');
 
         $unitKerjaList = UnitKerja::orderBy('nama_unit_kerja')->get(['id', 'nama_unit_kerja']);
@@ -142,7 +284,7 @@ class PengangkatanController extends Controller
     }
 
     /**
-     * Update permohonan.
+     * Update permohonan (data dasar + sinkronisasi ulang daftar peserta).
      */
     public function update(Request $request, $id)
     {
@@ -150,10 +292,21 @@ class PengangkatanController extends Controller
         abort_unless($permohonan->status === 'draft', 403);
 
         $request->validate([
-            'unit_kerja_id'          => 'required|string',
-            'tanggal_permohonan'     => 'required|date',
-            'file_surat_permohonan'  => 'nullable|file|mimes:pdf|max:5120',
+            'unit_kerja_id'               => 'required|integer|exists:unit_kerja,id',
+            'tanggal_permohonan'          => 'required|date',
+            'file_surat_permohonan'       => 'nullable|file|mimes:pdf|max:5120',
+            'peserta'                     => 'required|array|min:1',
+            'peserta.*.ujikom_hasil_id'   => 'required|integer|exists:ujikom_hasil,id',
+            'peserta.*.pegawai_id'        => 'required|integer|exists:sumber_daya_manusia,id',
+            'peserta.*.jabatan_tujuan_id' => 'required|integer|exists:formasi_jabatan,id',
+            'peserta.*.jenjang_tujuan'    => 'required|string',
+        ], [
+            'peserta.required' => 'Tambahkan minimal satu peserta yang diusulkan.',
         ]);
+
+        if ($pesan = $this->validasiPesertaGabungan($request->peserta, $permohonan->id)) {
+            return back()->withInput()->withErrors(['peserta' => $pesan]);
+        }
 
         $data = $request->only(['unit_kerja_id', 'tanggal_permohonan']);
 
@@ -163,6 +316,10 @@ class PengangkatanController extends Controller
         }
 
         $permohonan->update($data);
+
+        // Sinkronisasi ulang daftar peserta (hapus lama, simpan yang baru dari form)
+        $permohonan->kandidat()->delete();
+        $this->simpanPeserta($permohonan, $request->peserta);
 
         return redirect()->route('pengangkatan.show', $permohonan->id)
             ->with('success', 'Permohonan berhasil diperbarui.');
@@ -197,61 +354,17 @@ class PengangkatanController extends Controller
     }
 
     /**
-     * Admin Pusbin mulai proses: diajukan → diproses + generate kandidat.
-     */
-    public function proses($id)
-    {
-        $permohonan = PengangkatanPermohonan::findOrFail($id);
-        abort_unless($permohonan->status === 'diajukan', 403);
-
-        $permohonan->update([
-            'status'       => 'diproses',
-            'diproses_oleh'=> auth()->id(),
-        ]);
-
-        $permohonan->generateKandidat();
-
-        return redirect()->route('pengangkatan.show', $id)
-            ->with('success', 'Permohonan diproses. Ranking kandidat berhasil digenerate.');
-    }
-
-    /**
-     * Admin Pusbin setujui: diproses → disetujui + generate surat.
-     */
-    public function setujui($id)
-    {
-        $permohonan = PengangkatanPermohonan::findOrFail($id);
-        abort_unless($permohonan->status === 'diproses', 403);
-
-        $permohonan->update([
-            'status'            => 'disetujui',
-            'tanggal_disetujui' => now()->toDateString(),
-        ]);
-
-        // Buat record surat jika belum ada
-        if (!$permohonan->surat) {
-            PengangkatanSurat::create([
-                'pengangkatan_permohonan_id' => $permohonan->id,
-                'tanggal_surat'              => now()->toDateString(),
-            ]);
-        }
-
-        return redirect()->route('pengangkatan.show', $id)
-            ->with('success', 'Permohonan disetujui. Surat rekomendasi siap di-generate.');
-    }
-
-    /**
-     * Admin Pusbin tolak: → ditolak.
+     * Admin Pusbin tolak permohonan (sebelum surat dibuat).
      */
     public function tolak(Request $request, $id)
     {
         $permohonan = PengangkatanPermohonan::findOrFail($id);
-        abort_unless(in_array($permohonan->status, ['diajukan', 'diproses']), 403);
+        abort_unless($permohonan->status === 'diajukan', 403);
 
         $request->validate(['catatan_pusbin' => 'required|string|max:1000']);
 
         $permohonan->update([
-            'status'        => 'ditolak',
+            'status'         => 'ditolak',
             'catatan_pusbin' => $request->catatan_pusbin,
         ]);
 
@@ -260,36 +373,30 @@ class PengangkatanController extends Controller
     }
 
     /**
-     * Konfirmasi surat sudah ditandatangani: disetujui → selesai.
-     */
-    public function konfirmasiTtd($id)
-    {
-        $permohonan = PengangkatanPermohonan::findOrFail($id);
-        abort_unless($permohonan->status === 'disetujui', 403);
-
-        // Tandai surat sebagai sudah TTD
-        if ($permohonan->surat) {
-            $permohonan->surat->update(['ditandatangani' => true]);
-        }
-
-        // Jalankan proses selesaikan (update formasi pegawai)
-        $permohonan->selesaikan();
-
-        return redirect()->route('pengangkatan.show', $id)
-            ->with('success', 'Surat dikonfirmasi dan pengangkatan diselesaikan. Data formasi pegawai telah diperbarui.');
-    }
-
-    /**
-     * Generate PDF surat rekomendasi.
+     * Admin Pusbin generate PDF surat rekomendasi: diajukan → menunggu_ttd.
+     * Berisi SEMUA peserta yang diusulkan (semua otomatis berstatus direkomendasikan).
      */
     public function generateSurat($id)
     {
         $permohonan = PengangkatanPermohonan::with([
             'unitKerja', 'surat',
-            'kandidat' => fn($q) => $q->where('status_kandidat', 'direkomendasikan')->orderBy('ranking'),
+            'kandidat' => fn($q) => $q->orderBy('jabatan_tujuan_id'),
             'kandidat.pegawai',
             'kandidat.jabatanTujuan.jenjang',
         ])->findOrFail($id);
+
+        abort_unless(in_array($permohonan->status, ['diajukan', 'menunggu_ttd']), 403);
+
+        if ($permohonan->status === 'diajukan') {
+            $permohonan->update(['status' => 'menunggu_ttd']);
+        }
+
+        if (!$permohonan->surat) {
+            PengangkatanSurat::create([
+                'pengangkatan_permohonan_id' => $permohonan->id,
+                'tanggal_surat'              => now()->toDateString(),
+            ]);
+        }
 
         $kandidatDirekomendasikan = $permohonan->kandidat;
 
@@ -307,29 +414,21 @@ class PengangkatanController extends Controller
     }
 
     /**
-     * AJAX: Update status kandidat oleh admin Pusbin.
+     * Konfirmasi surat sudah ditandatangani: menunggu_ttd → selesai.
      */
-    public function updateKandidat(Request $request, $id)
+    public function konfirmasiTtd($id)
     {
-        $request->validate([
-            'kandidat_id'     => 'required|exists:pengangkatan_kandidat,id',
-            'status_kandidat' => 'required|in:direkomendasikan,antrian,ditolak_pusbin',
-            'catatan'         => 'nullable|string|max:500',
-        ]);
+        $permohonan = PengangkatanPermohonan::findOrFail($id);
+        abort_unless($permohonan->status === 'menunggu_ttd', 403);
 
-        $kandidat = PengangkatanKandidat::where('pengangkatan_permohonan_id', $id)
-            ->findOrFail($request->kandidat_id);
+        if ($permohonan->surat) {
+            $permohonan->surat->update(['ditandatangani' => true]);
+        }
 
-        $kandidat->update([
-            'status_kandidat' => $request->status_kandidat,
-            'catatan'         => $request->catatan,
-        ]);
+        // selesaikan() lama tetap dipakai: update data formasi & TMT pegawai
+        $permohonan->selesaikan();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status kandidat berhasil diperbarui.',
-            'badge'   => $kandidat->badge_status_kandidat,
-            'label'   => $kandidat->label_status_kandidat,
-        ]);
+        return redirect()->route('pengangkatan.show', $id)
+            ->with('success', 'Surat dikonfirmasi dan pengangkatan diselesaikan. Data formasi pegawai telah diperbarui.');
     }
 }

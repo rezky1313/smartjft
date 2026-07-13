@@ -62,25 +62,23 @@ class PengangkatanPermohonan extends Model
     public function getLabelStatusAttribute(): string
     {
         return [
-            'draft'     => 'Draft',
-            'diajukan'  => 'Diajukan',
-            'diproses'  => 'Sedang Diproses',
-            'disetujui' => 'Disetujui',
-            'ditolak'   => 'Ditolak',
-            'selesai'   => 'Selesai',
+            'draft'        => 'Draft',
+            'diajukan'     => 'Diajukan',
+            'menunggu_ttd' => 'Menunggu TTD',
+            'ditolak'      => 'Ditolak',
+            'selesai'      => 'Selesai',
         ][$this->status] ?? $this->status;
     }
 
     public function getBadgeStatusAttribute(): string
     {
         return match ($this->status) {
-            'draft'     => 'secondary',
-            'diajukan'  => 'primary',
-            'diproses'  => 'warning',
-            'disetujui' => 'info',
-            'ditolak'   => 'danger',
-            'selesai'   => 'success',
-            default     => 'secondary',
+            'draft'        => 'secondary',
+            'diajukan'     => 'primary',
+            'menunggu_ttd' => 'warning',
+            'ditolak'      => 'danger',
+            'selesai'      => 'success',
+            default        => 'secondary',
         };
     }
 
@@ -94,60 +92,6 @@ class PengangkatanPermohonan extends Model
         $urut  = static::whereYear('created_at', $tahun)->count() + 1;
 
         return sprintf('ANGKAT/%s/%d/%04d', $bulan, $tahun, $urut);
-    }
-
-    /**
-     * Generate kandidat berdasarkan hasil ujikom lulus di unit kerja ini.
-     */
-    public function generateKandidat(): void
-    {
-        // 1. Hapus kandidat lama
-        $this->kandidat()->delete();
-
-        // 2. Ambil semua pegawai di unit kerja ini yang sudah lulus ujikom
-        $pegawaiLulus = UjikomHasil::whereHas('peserta.pendaftaran', function ($q) {
-                $q->where('unit_kerja_id', $this->unit_kerja_id);
-            })
-            ->where('status_kelulusan', 'lulus')
-            ->with(['peserta.pegawai.formasiJabatan.jenjang', 'peserta.jabatanTujuan.jenjang'])
-            ->get();
-
-        // 3. Group per jabatan tujuan
-        $perJabatan = $pegawaiLulus->groupBy(fn($hasil) => $hasil->peserta->jabatan_tujuan_id ?? 'unknown');
-
-        foreach ($perJabatan as $jabatanTujuanId => $kandidatList) {
-            if ($jabatanTujuanId === 'unknown') continue;
-
-            // 4. Cek formasi tersedia
-            $formasi = Formasijabatan::find($jabatanTujuanId);
-            $sisaFormasi = $formasi ? $formasi->sisa : 0;
-
-            // 5. Ranking berdasarkan nilai tertinggi
-            $ranked = $kandidatList->sortByDesc('nilai')->values();
-
-            foreach ($ranked as $index => $hasil) {
-                $ranking = $index + 1;
-                $statusKandidat = ($ranking <= $sisaFormasi && $sisaFormasi > 0)
-                    ? 'direkomendasikan'
-                    : 'antrian';
-
-                $pegawai = $hasil->peserta->pegawai ?? null;
-
-                PengangkatanKandidat::create([
-                    'pengangkatan_permohonan_id' => $this->id,
-                    'pegawai_id'                 => $hasil->peserta->pegawai_id,
-                    'ujikom_hasil_id'            => $hasil->id,
-                    'jabatan_asal'               => $pegawai?->formasiJabatan?->nama_formasi ?? '-',
-                    'jenjang_asal'               => $pegawai?->formasiJabatan?->jenjang?->nama_jenjang ?? '-',
-                    'jabatan_tujuan_id'          => $jabatanTujuanId,
-                    'jenjang_tujuan'             => $hasil->peserta->jenjang_tujuan ?? '-',
-                    'nilai_ujikom'               => $hasil->nilai,
-                    'ranking'                    => $ranking,
-                    'formasi_tersedia'           => $sisaFormasi,
-                    'status_kandidat'            => $statusKandidat,
-                ]);
-            }
-        }
     }
 
     /**

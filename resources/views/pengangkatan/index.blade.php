@@ -23,8 +23,8 @@
       </div>
       <div class="col-md-3 col-6 mb-3">
         <div class="small-box bg-teal">
-          <div class="inner"><h3>{{ $stats['disetujui'] }}</h3><p>Disetujui</p></div>
-          <div class="icon"><i class="fas fa-check-circle"></i></div>
+          <div class="inner"><h3>{{ $stats['menunggu_ttd'] }}</h3><p>Menunggu TTD</p></div>
+          <div class="icon"><i class="fas fa-signature"></i></div>
         </div>
       </div>
       <div class="col-md-3 col-6 mb-3">
@@ -51,8 +51,8 @@
           <div class="col-md-3 col-6 mb-2">
             <select name="status" class="form-control form-control-sm">
               <option value="">Semua Status</option>
-              @foreach (['draft','diajukan','diproses','disetujui','ditolak','selesai'] as $s)
-                <option value="{{ $s }}" @selected(request('status') === $s)>{{ ucfirst($s) }}</option>
+              @foreach (['draft' => 'Draft', 'diajukan' => 'Diajukan', 'menunggu_ttd' => 'Menunggu TTD', 'ditolak' => 'Ditolak', 'selesai' => 'Selesai'] as $s => $lbl)
+                <option value="{{ $s }}" @selected(request('status') === $s)>{{ $lbl }}</option>
               @endforeach
             </select>
           </div>
@@ -89,8 +89,7 @@
                 <th>Kode Permohonan</th>
                 <th>Unit Kerja</th>
                 <th width="100" class="text-center">Tanggal</th>
-                <th width="70" class="text-center">Kandidat</th>
-                <th width="70" class="text-center">Direkomendasi</th>
+                <th width="70" class="text-center">Peserta</th>
                 <th width="100" class="text-center">Status</th>
                 <th width="80" class="text-center">Aksi</th>
               </tr>
@@ -103,9 +102,6 @@
                 <td>{{ $p->unitKerja?->nama_unit_kerja ?? '-' }}</td>
                 <td class="text-center">{{ $p->tanggal_permohonan?->format('d M Y') }}</td>
                 <td class="text-center">{{ $p->kandidat_count }}</td>
-                <td class="text-center">
-                  <span class="badge badge-success">{{ $p->kandidat_direkomendasikan_count }}</span>
-                </td>
                 <td class="text-center">
                   <span class="badge badge-{{ $p->badge_status }}">{{ $p->label_status }}</span>
                 </td>
@@ -121,7 +117,7 @@
                 </td>
               </tr>
               @empty
-              <tr><td colspan="8" class="text-center text-muted py-4">Belum ada permohonan pengangkatan.</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">Belum ada permohonan pengangkatan.</td></tr>
               @endforelse
             </tbody>
           </table>

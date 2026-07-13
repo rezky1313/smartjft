@@ -325,6 +325,12 @@ Route::middleware(['auth'])->prefix('ujikom')->as('ujikom.')->group(function () 
 Route::prefix('pengangkatan')->name('pengangkatan.')->middleware('auth')->group(function () {
     Route::get('/', [PengangkatanController::class, 'index'])->name('index');
 
+    // AJAX (static, harus di atas /{id}) — Admin Unit + Admin + Super Admin
+    Route::get('/peserta-lulus', [PengangkatanController::class, 'getPesertaLulus'])->name('peserta-lulus')
+        ->middleware('role:admin_unit|admin|super_admin');
+    Route::post('/validasi-formasi-peserta', [PengangkatanController::class, 'validasiFormasiPeserta'])->name('validasi-formasi-peserta')
+        ->middleware('role:admin_unit|admin|super_admin');
+
     // Admin Unit + Admin + Super Admin
     Route::get('/create', [PengangkatanController::class, 'create'])->name('create')
         ->middleware('role:admin_unit|admin|super_admin');
@@ -340,15 +346,9 @@ Route::prefix('pengangkatan')->name('pengangkatan.')->middleware('auth')->group(
         ->middleware('role:admin_unit|admin|super_admin');
 
     // Admin Pusbin
-    Route::post('/{id}/proses', [PengangkatanController::class, 'proses'])->name('proses')
-        ->middleware('role:admin|super_admin');
-    Route::post('/{id}/setujui', [PengangkatanController::class, 'setujui'])->name('setujui')
-        ->middleware('role:admin|super_admin');
     Route::post('/{id}/tolak', [PengangkatanController::class, 'tolak'])->name('tolak')
         ->middleware('role:admin|super_admin');
     Route::post('/{id}/konfirmasi-ttd', [PengangkatanController::class, 'konfirmasiTtd'])->name('konfirmasi-ttd')
-        ->middleware('role:admin|super_admin');
-    Route::post('/{id}/kandidat/update', [PengangkatanController::class, 'updateKandidat'])->name('kandidat.update')
         ->middleware('role:admin|super_admin');
 
     // Show & Surat (semua yg punya akses)
