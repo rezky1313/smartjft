@@ -38,26 +38,31 @@ class BankSoalPetunjukSheet implements FromArray, WithTitle, WithStyles, WithCol
             ['PETUNJUK PENGISIAN'],
             [''],
             ['Kolom', 'Nama Header', 'Keterangan', 'Contoh / Nilai Valid'],
-            ['A', 'jenis', 'Jenis soal', 'umum ATAU spesifik'],
-            ['B', 'soal_kategori_id', 'ID kategori (lihat sheet Daftar Kategori). Kosongkan jika jenis = umum', '1'],
-            ['C', 'pertanyaan', 'Teks pertanyaan soal (wajib)', 'Apa yang dimaksud dengan uji emisi kendaraan?'],
-            ['D', 'pilihan_a', 'Teks pilihan jawaban A (wajib)', 'Pengujian kadar gas buang'],
-            ['E', 'pilihan_b', 'Teks pilihan jawaban B (wajib)', 'Pengujian kelaikan rem'],
-            ['F', 'pilihan_c', 'Teks pilihan jawaban C (wajib)', 'Pengujian lampu kendaraan'],
-            ['G', 'pilihan_d', 'Teks pilihan jawaban D (wajib)', 'Pengujian kemudi kendaraan'],
-            ['H', 'jawaban_benar', 'Kode jawaban yang benar', 'A ATAU B ATAU C ATAU D'],
-            ['I', 'tingkat_kesulitan', 'Tingkat kesulitan soal', 'mudah ATAU sedang ATAU sulit'],
-            ['J', 'taksonomi_bloom', 'Taksonomi Bloom', 'C1_mengingat / C2_memahami / C3_menerapkan / C4_menganalisis / C5_mengevaluasi / C6_mencipta'],
-            ['K', 'pembahasan', 'Penjelasan jawaban benar (opsional)', 'Uji emisi adalah pengujian terhadap kadar...'],
-            ['L', 'status', 'Status soal setelah diimport', 'draft ATAU aktif'],
+            ['A', 'jenis', 'Jenis soal', 'mansoskul ATAU teknis'],
+            ['B', 'soal_kategori_id', 'ID kategori (lihat sheet Daftar Kategori). Wajib diisi jika jenis = teknis, kosongkan jika jenis = mansoskul', '1'],
+            ['C', 'matra', 'Matra soal. Wajib diisi jika jenis = mansoskul, kosongkan jika jenis = teknis', 'darat / laut / udara / asdp / perkeretaapian'],
+            ['D', 'pertanyaan', 'Teks pertanyaan soal (wajib)', 'Apa yang dimaksud dengan uji emisi kendaraan?'],
+            ['E', 'pilihan_a', 'Teks pilihan jawaban A (wajib)', 'Pengujian kadar gas buang'],
+            ['F', 'pilihan_b', 'Teks pilihan jawaban B (wajib)', 'Pengujian kelaikan rem'],
+            ['G', 'pilihan_c', 'Teks pilihan jawaban C (wajib)', 'Pengujian lampu kendaraan'],
+            ['H', 'pilihan_d', 'Teks pilihan jawaban D (wajib)', 'Pengujian kemudi kendaraan'],
+            ['I', 'jawaban_benar', 'Kode jawaban yang benar. Wajib diisi jika jenis = teknis, kosongkan jika jenis = mansoskul', 'A ATAU B ATAU C ATAU D'],
+            ['J', 'nilai_pilihan_a', 'Nilai skala pilihan A (1-5). Wajib diisi jika jenis = mansoskul, kosongkan jika jenis = teknis', '1 s.d. 5'],
+            ['K', 'nilai_pilihan_b', 'Nilai skala pilihan B (1-5). Wajib diisi jika jenis = mansoskul, kosongkan jika jenis = teknis', '1 s.d. 5'],
+            ['L', 'nilai_pilihan_c', 'Nilai skala pilihan C (1-5). Wajib diisi jika jenis = mansoskul, kosongkan jika jenis = teknis', '1 s.d. 5'],
+            ['M', 'nilai_pilihan_d', 'Nilai skala pilihan D (1-5). Wajib diisi jika jenis = mansoskul, kosongkan jika jenis = teknis', '1 s.d. 5'],
+            ['N', 'taksonomi_bloom', 'Taksonomi Bloom', 'C1_mengingat / C2_memahami / C3_menerapkan / C4_menganalisis / C5_mengevaluasi / C6_mencipta'],
+            ['O', 'pembahasan', 'Penjelasan jawaban benar (opsional, hanya relevan untuk soal teknis)', 'Uji emisi adalah pengujian terhadap kadar...'],
+            ['P', 'status', 'Status soal setelah diimport', 'draft ATAU aktif'],
             [''],
             ['CATATAN PENTING'],
             ['1. Maksimal 500 soal per file'],
             ['2. Format file yang diterima: .xlsx atau .xls'],
             ['3. Jangan ubah nama kolom header di sheet Data Soal'],
             ['4. Soal dengan error akan diskip, soal valid tetap diimport'],
-            ['5. soal_kategori_id wajib diisi jika jenis = spesifik'],
-            ['6. Lihat sheet "Daftar Kategori" untuk ID kategori yang tersedia'],
+            ['5. Soal Teknis: TIDAK ADA jawaban benar/salah tunggal — setiap pilihan (A-D) diberi nilai skala 1-5 sendiri, bukan is_benar'],
+            ['6. Soal Teknis: soal_kategori_id & jawaban_benar wajib diisi. Soal Mansoskul: matra & nilai_pilihan_a/b/c/d wajib diisi'],
+            ['7. Lihat sheet "Daftar Kategori" untuk ID kategori yang tersedia (khusus soal Teknis)'],
         ];
     }
 
@@ -83,7 +88,7 @@ class BankSoalPetunjukSheet implements FromArray, WithTitle, WithStyles, WithCol
         ]);
 
         // Catatan penting
-        $sheet->getStyle('A19')->applyFromArray([
+        $sheet->getStyle('A25')->applyFromArray([
             'font' => ['bold' => true, 'size' => 11],
         ]);
 
@@ -144,32 +149,32 @@ class BankSoalDataSheet implements FromArray, WithTitle, WithStyles, WithColumnW
     {
         return [
             // Header
-            ['jenis', 'soal_kategori_id', 'pertanyaan', 'pilihan_a', 'pilihan_b', 'pilihan_c', 'pilihan_d', 'jawaban_benar', 'tingkat_kesulitan', 'taksonomi_bloom', 'pembahasan', 'status'],
-            // Contoh 1 — Soal Umum
-            ['umum', '', 'Peraturan perundang-undangan yang mengatur tugas dan fungsi Jabatan Fungsional Transportasi adalah?', 'Permenhub Nomor 4 Tahun 2025', 'Permenhub Nomor 1 Tahun 2020', 'UU No. 22 Tahun 2009', 'PP Nomor 17 Tahun 2020', 'A', 'mudah', 'C1_mengingat', 'Dasar hukum JFT diatur dalam Permenhub Nomor 4 Tahun 2025 tentang tugas dan fungsi Pusbin JFT.', 'draft'],
-            // Contoh 2 — Soal Spesifik
-            ['spesifik', '2', 'Seorang Penguji Kendaraan Bermotor menemukan kadar CO melebihi ambang batas. Tindakan yang tepat adalah?', 'Lulus uji dengan catatan', 'Tidak lulus uji dan diberikan waktu perbaikan 14 hari', 'Tidak lulus uji dan dilaporkan ke kepolisian', 'Diberikan perpanjangan masa uji', 'B', 'sedang', 'C3_menerapkan', 'Kendaraan yang tidak memenuhi ambang batas emisi dinyatakan tidak lulus uji dan diberi waktu perbaikan.', 'draft'],
-            // Contoh 3
-            ['umum', '', 'Berikut yang BUKAN termasuk jenjang Jabatan Fungsional kategori Terampil adalah?', 'Pemula', 'Terampil', 'Mahir', 'Ahli Pertama', 'D', 'mudah', 'C2_memahami', 'Ahli Pertama termasuk kategori Ahli, bukan Terampil.', 'aktif'],
+            ['jenis', 'soal_kategori_id', 'matra', 'pertanyaan', 'pilihan_a', 'pilihan_b', 'pilihan_c', 'pilihan_d', 'jawaban_benar', 'nilai_pilihan_a', 'nilai_pilihan_b', 'nilai_pilihan_c', 'nilai_pilihan_d', 'taksonomi_bloom', 'pembahasan', 'status'],
+            // Contoh 1 — Soal Mansoskul (skala 1-5, tanpa jawaban benar)
+            ['mansoskul', '', 'darat', 'Rekan kerja Anda melakukan kesalahan prosedur yang berpotensi membahayakan keselamatan. Tindakan yang paling tepat adalah?', 'Menegur langsung di depan rekan lain agar jera', 'Melaporkan ke atasan tanpa berbicara dengan rekan tersebut', 'Membicarakan secara empat mata lalu melaporkan sesuai prosedur jika perlu', 'Membiarkan karena bukan tanggung jawab saya', '', '3', '2', '5', '1', 'C5_mengevaluasi', '', 'draft'],
+            // Contoh 2 — Soal Teknis (jawaban benar/salah standar)
+            ['teknis', '2', '', 'Seorang Penguji Kendaraan Bermotor menemukan kadar CO melebihi ambang batas. Tindakan yang tepat adalah?', 'Lulus uji dengan catatan', 'Tidak lulus uji dan diberikan waktu perbaikan 14 hari', 'Tidak lulus uji dan dilaporkan ke kepolisian', 'Diberikan perpanjangan masa uji', 'B', '', '', '', '', 'C3_menerapkan', 'Kendaraan yang tidak memenuhi ambang batas emisi dinyatakan tidak lulus uji dan diberi waktu perbaikan.', 'draft'],
+            // Contoh 3 — Soal Mansoskul lain
+            ['mansoskul', '', 'laut', 'Bagaimana sikap Anda saat menerima instruksi mendadak dari atasan di luar jam kerja?', 'Menolak karena sudah di luar jam kerja', 'Menerima dan mengerjakan sebaik mungkin sesuai prioritas', 'Mengerjakan asal-asalan karena terpaksa', 'Mengabaikan instruksi tersebut', '', '1', '5', '2', '1', 'C2_memahami', '', 'aktif'],
         ];
     }
 
     public function styles(Worksheet $sheet): array
     {
         // Header biru
-        $sheet->getStyle('A1:L1')->applyFromArray([
+        $sheet->getStyle('A1:P1')->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F4E79']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
         ]);
 
         // Baris contoh — warna latar lebih terang
-        $sheet->getStyle('A2:L4')->applyFromArray([
+        $sheet->getStyle('A2:P4')->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF2F2F2']],
         ]);
 
         // Border seluruh tabel
-        $sheet->getStyle('A1:L4')->applyFromArray([
+        $sheet->getStyle('A1:P4')->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
@@ -184,9 +189,9 @@ class BankSoalDataSheet implements FromArray, WithTitle, WithStyles, WithColumnW
     public function columnWidths(): array
     {
         return [
-            'A' => 12, 'B' => 18, 'C' => 50, 'D' => 30, 'E' => 30,
-            'F' => 30, 'G' => 30, 'H' => 14, 'I' => 18, 'J' => 20,
-            'K' => 40, 'L' => 10,
+            'A' => 12, 'B' => 18, 'C' => 16, 'D' => 50, 'E' => 30, 'F' => 30,
+            'G' => 30, 'H' => 30, 'I' => 14, 'J' => 16, 'K' => 16, 'L' => 16,
+            'M' => 16, 'N' => 20, 'O' => 40, 'P' => 10,
         ];
     }
 }

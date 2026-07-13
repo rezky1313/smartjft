@@ -2,6 +2,14 @@
 
 @section('title', 'Riwayat Uji Kompetensi Saya — Pusbin JFT')
 
+@push('styles')
+<style>
+  .toggle-icon { transition: transform 0.2s; }
+  .toggle-icon.open { transform: rotate(90deg); }
+  tr.baris-toggle:hover { background:#f8f9fa; }
+</style>
+@endpush
+
 @section('isi')
 <div class="row">
   <div class="col-12">
@@ -22,6 +30,7 @@
           <table class="table table-bordered table-hover table-sm mb-0" style="font-size:0.85rem;">
             <thead class="thead-light">
               <tr>
+                <th width="30"></th>
                 <th width="40" class="text-center">No</th>
                 <th>Nama Jadwal</th>
                 <th width="120" class="text-center">Tanggal Ujian</th>
@@ -29,12 +38,14 @@
                 <th width="70" class="text-center">Nilai</th>
                 <th width="90" class="text-center">Passing Grade</th>
                 <th width="110" class="text-center">Status Kelulusan</th>
+                <th width="100" class="text-center">Kecurangan</th>
                 <th>Catatan</th>
               </tr>
             </thead>
             <tbody>
               @foreach ($riwayat as $i => $r)
-              <tr>
+              <tr class="baris-toggle" style="cursor:pointer;" data-toggle="collapse" data-target="#detailRiwayat{{ $r->id }}">
+                <td class="text-center"><i class="fas fa-chevron-right toggle-icon text-muted" data-target="#detailRiwayat{{ $r->id }}"></i></td>
                 <td class="text-center">{{ $i + 1 }}</td>
                 <td><strong>{{ $r->jadwal?->judul ?? '-' }}</strong></td>
                 <td class="text-center"><small>{{ $r->tanggal_ujian?->format('d M Y') ?? '-' }}</small></td>
@@ -60,7 +71,15 @@
                 <td class="text-center">
                   <span class="badge badge-{{ $r->badge_status }}">{{ $r->label_status }}</span>
                 </td>
-                <td><small class="text-muted">{{ $r->catatan_admin ?? '—' }}</small></td>
+                <td class="text-center">
+                  <span class="badge badge-{{ $r->badge_kecurangan }}" style="font-size:0.7rem;">{{ $r->label_kecurangan }}</span>
+                </td>
+                <td onclick="event.stopPropagation()"><small class="text-muted">{{ $r->catatan_admin ?? '—' }}</small></td>
+              </tr>
+              <tr class="collapse" id="detailRiwayat{{ $r->id }}">
+                <td colspan="9" class="bg-light py-3">
+                  @include('ujikom.hasil._detail_nilai', ['hasil' => $r, 'jadwal' => $r->jadwal])
+                </td>
               </tr>
               @endforeach
             </tbody>
@@ -73,3 +92,14 @@
   </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).on('show.bs.collapse', '.collapse', function() {
+    $(`.toggle-icon[data-target="#${this.id}"]`).addClass('open');
+});
+$(document).on('hide.bs.collapse', '.collapse', function() {
+    $(`.toggle-icon[data-target="#${this.id}"]`).removeClass('open');
+});
+</script>
+@endpush

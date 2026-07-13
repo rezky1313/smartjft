@@ -107,6 +107,54 @@
             @error('tempat')<div class="invalid-feedback">{{ $message }}</div>@enderror
           </div>
 
+          {{-- KONFIGURASI ASPEK PENILAIAN --}}
+          <h5 class="font-weight-bold border-bottom pb-2 mb-3 mt-4">Konfigurasi Aspek Penilaian</h5>
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="form-group">
+                <label>Jenjang Tujuan Ujian <span class="text-danger">*</span></label>
+                <select name="jenjang_tujuan" class="form-control @error('jenjang_tujuan') is-invalid @enderror" required>
+                  <option value="">-- Pilih Jenjang Tujuan --</option>
+                  <option value="ahli_utama"   {{ old('jenjang_tujuan') === 'ahli_utama'   ? 'selected' : '' }}>Ahli Utama</option>
+                  <option value="ahli_madya"   {{ old('jenjang_tujuan') === 'ahli_madya'   ? 'selected' : '' }}>Ahli Madya</option>
+                  <option value="ahli_muda"    {{ old('jenjang_tujuan') === 'ahli_muda'    ? 'selected' : '' }}>Ahli Muda</option>
+                  <option value="ahli_pertama" {{ old('jenjang_tujuan') === 'ahli_pertama' ? 'selected' : '' }}>Ahli Pertama</option>
+                  <option value="penyelia"     {{ old('jenjang_tujuan') === 'penyelia'     ? 'selected' : '' }}>Penyelia</option>
+                  <option value="mahir"        {{ old('jenjang_tujuan') === 'mahir'        ? 'selected' : '' }}>Mahir</option>
+                  <option value="terampil"     {{ old('jenjang_tujuan') === 'terampil'     ? 'selected' : '' }}>Terampil</option>
+                  <option value="pemula"       {{ old('jenjang_tujuan') === 'pemula'       ? 'selected' : '' }}>Pemula</option>
+                </select>
+                @error('jenjang_tujuan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+
+              <div class="row">
+                <div class="col-md-6">
+                  <strong>Kompetensi Teknis</strong>
+                  <div class="custom-control custom-checkbox mt-2">
+                    <input type="checkbox" class="custom-control-input" id="teknisWawancara" name="teknis_wawancara_aktif" value="1" {{ old('teknis_wawancara_aktif') ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="teknisWawancara">Aktifkan Wawancara</label>
+                  </div>
+                  <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="teknisPresentasi" name="teknis_presentasi_aktif" value="1" {{ old('teknis_presentasi_aktif') ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="teknisPresentasi">Aktifkan Presentasi</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <strong>Kompetensi Mansoskul</strong>
+                  <div class="custom-control custom-checkbox mt-2">
+                    <input type="checkbox" class="custom-control-input" id="mansoskulWawancara" name="mansoskul_wawancara_aktif" value="1" {{ old('mansoskul_wawancara_aktif') ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="mansoskulWawancara">Aktifkan Wawancara</label>
+                  </div>
+                  <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="mansoskulPresentasi" name="mansoskul_presentasi_aktif" value="1" {{ old('mansoskul_presentasi_aktif') ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="mansoskulPresentasi">Aktifkan Presentasi</label>
+                  </div>
+                </div>
+              </div>
+              <small class="text-muted d-block mt-2"><i class="fas fa-info-circle mr-1"></i>Tes CAT selalu aktif secara otomatis untuk kedua kompetensi.</small>
+            </div>
+          </div>
+
           {{-- PERSYARATAN --}}
           <h5 class="font-weight-bold border-bottom pb-2 mb-3 mt-4">Persyaratan Peserta</h5>
           <p class="text-muted small mb-2">

@@ -46,6 +46,15 @@
       </div>
     </div>
 
+    @if ($mansoskulBelumLengkap > 0)
+    <div class="alert alert-warning d-flex align-items-center">
+      <i class="fas fa-exclamation-triangle mr-2"></i>
+      <div>
+        <strong>{{ $mansoskulBelumLengkap }} soal Mansoskul</strong> belum punya Matra — lengkapi lewat halaman Edit supaya soal bisa dipakai dengan benar.
+      </div>
+    </div>
+    @endif
+
     <div class="card">
       <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <h3 class="card-title mb-0"><i class="fas fa-database mr-2"></i>Bank Soal</h3>
@@ -77,17 +86,19 @@
             <label class="small font-weight-bold mb-1">Jenis</label>
             <select name="jenis" class="form-control form-control-sm">
               <option value="">— Semua —</option>
-              <option value="umum"     {{ request('jenis') === 'umum'     ? 'selected' : '' }}>Umum</option>
-              <option value="spesifik" {{ request('jenis') === 'spesifik' ? 'selected' : '' }}>Spesifik</option>
+              <option value="mansoskul" {{ request('jenis') === 'mansoskul' ? 'selected' : '' }}>Mansoskul</option>
+              <option value="teknis"    {{ request('jenis') === 'teknis'    ? 'selected' : '' }}>Teknis</option>
             </select>
           </div>
           <div class="col-md-2 col-6 mb-2">
-            <label class="small font-weight-bold mb-1">Tingkat</label>
-            <select name="tingkat" class="form-control form-control-sm">
+            <label class="small font-weight-bold mb-1">Matra</label>
+            <select name="matra" class="form-control form-control-sm">
               <option value="">— Semua —</option>
-              <option value="mudah"  {{ request('tingkat') === 'mudah'  ? 'selected' : '' }}>Mudah</option>
-              <option value="sedang" {{ request('tingkat') === 'sedang' ? 'selected' : '' }}>Sedang</option>
-              <option value="sulit"  {{ request('tingkat') === 'sulit'  ? 'selected' : '' }}>Sulit</option>
+              <option value="darat"          {{ request('matra') === 'darat'          ? 'selected' : '' }}>Darat</option>
+              <option value="laut"           {{ request('matra') === 'laut'           ? 'selected' : '' }}>Laut</option>
+              <option value="udara"          {{ request('matra') === 'udara'          ? 'selected' : '' }}>Udara</option>
+              <option value="asdp"           {{ request('matra') === 'asdp'           ? 'selected' : '' }}>ASDP</option>
+              <option value="perkeretaapian" {{ request('matra') === 'perkeretaapian' ? 'selected' : '' }}>Perkeretaapian</option>
             </select>
           </div>
           <div class="col-md-2 col-6 mb-2">
@@ -132,10 +143,9 @@
                 <th width="40" class="text-center">No</th>
                 <th width="60">ID</th>
                 <th>Pertanyaan</th>
-                <th width="140">Kategori</th>
-                <th width="80" class="text-center">Tingkat</th>
+                <th width="140">Kategori / Matra</th>
                 <th width="110" class="text-center">Taksonomi</th>
-                <th width="70" class="text-center">Jenis</th>
+                <th width="80" class="text-center">Jenis</th>
                 <th width="70" class="text-center">Status</th>
                 <th width="120" class="text-center">Aksi</th>
               </tr>
@@ -146,10 +156,16 @@
                 <td class="text-center">{{ $soals->firstItem() + $i }}</td>
                 <td class="text-muted small">#{{ $s->id }}</td>
                 <td>{{ Str::limit($s->pertanyaan, 90) }}</td>
-                <td><small>{{ $s->kategori?->nama ?? 'Umum' }}</small></td>
-                <td class="text-center">
-                  @php $badgeTingkat = ['mudah'=>'success','sedang'=>'warning','sulit'=>'danger']; @endphp
-                  <span class="badge badge-{{ $badgeTingkat[$s->tingkat_kesulitan] ?? 'secondary' }}">{{ $s->label_tingkat }}</span>
+                <td>
+                  @if ($s->jenis === 'teknis')
+                    <small>{{ $s->kategori?->nama ?? '-' }}</small>
+                  @else
+                    @if ($s->matra)
+                      <small>{{ $s->label_matra }}</small>
+                    @else
+                      <span class="badge badge-warning" title="Matra belum diisi"><i class="fas fa-exclamation-triangle mr-1"></i>Belum Lengkap</span>
+                    @endif
+                  @endif
                 </td>
                 <td class="text-center">
                   @php $badgeTaksonomi = ['C1_mengingat'=>'secondary','C2_memahami'=>'info','C3_menerapkan'=>'primary','C4_menganalisis'=>'purple','C5_mengevaluasi'=>'warning','C6_mencipta'=>'danger']; @endphp
@@ -158,8 +174,8 @@
                   </span>
                 </td>
                 <td class="text-center">
-                  <span class="badge badge-{{ $s->jenis === 'umum' ? 'light border' : 'info' }}" style="font-size:0.7rem;">
-                    {{ $s->jenis === 'umum' ? 'Umum' : 'Spesifik' }}
+                  <span class="badge badge-{{ $s->jenis === 'mansoskul' ? 'light border' : 'info' }}" style="font-size:0.7rem;">
+                    {{ $s->label_jenis }}
                   </span>
                 </td>
                 <td class="text-center">
@@ -187,7 +203,7 @@
                 </td>
               </tr>
               @empty
-              <tr><td colspan="9" class="text-center text-muted py-4">Belum ada soal yang sesuai filter.</td></tr>
+              <tr><td colspan="8" class="text-center text-muted py-4">Belum ada soal yang sesuai filter.</td></tr>
               @endforelse
             </tbody>
           </table>

@@ -84,6 +84,11 @@
                     </form>
                     @endif
                   @endif
+                  @if ($j->teknis_wawancara_aktif || $j->teknis_presentasi_aktif || $j->mansoskul_wawancara_aktif || $j->mansoskul_presentasi_aktif)
+                  <a href="{{ route('ujikom-online.admin.nilai-manual.form', $j->id) }}" class="btn btn-xs btn-outline-warning" title="Input Nilai Wawancara/Presentasi">
+                    <i class="fas fa-star-half-alt mr-1"></i> Nilai Manual
+                  </a>
+                  @endif
                 </td>
               </tr>
               @empty
@@ -125,6 +130,45 @@
                     @endif
                   </p>
 
+                  @if ($j->mode_sesi_taksonomi)
+                    {{-- Mode 2 Sesi CAT: Teknis lalu Mansoskul --}}
+                    @php
+                      $keduaSelesai = $j->sesi_mansoskul && in_array($j->sesi_mansoskul->status_sesi, ['selesai', 'timeout']);
+                      $sesiAktif = null;
+                      if ($j->sesi_teknis && $j->sesi_teknis->status_sesi === 'berlangsung') $sesiAktif = $j->sesi_teknis;
+                      elseif ($j->sesi_mansoskul && $j->sesi_mansoskul->status_sesi === 'berlangsung') $sesiAktif = $j->sesi_mansoskul;
+                    @endphp
+                    <div class="mb-2" style="font-size:0.78rem;">
+                      <span class="badge badge-{{ $j->sesi_teknis?->badge_status_sesi ?? 'secondary' }} mr-1">
+                        Sesi 1 Teknis: {{ $j->sesi_teknis?->label_status_sesi ?? 'Belum Mulai' }}
+                      </span>
+                      <span class="badge badge-{{ $j->sesi_mansoskul?->badge_status_sesi ?? 'secondary' }}">
+                        Sesi 2 Mansoskul: {{ $j->sesi_mansoskul?->label_status_sesi ?? 'Belum Mulai' }}
+                      </span>
+                    </div>
+
+                    @if ($keduaSelesai)
+                      <a href="{{ route('ujikom-online.hasil-gabungan', ['jadwalId' => $j->id, 'pesertaId' => $j->peserta_record->id]) }}" class="btn btn-sm btn-outline-info btn-block">
+                        <i class="fas fa-eye mr-1"></i> Lihat Hasil Gabungan
+                      </a>
+                    @elseif ($sesiAktif)
+                      <div class="alert alert-primary py-2 mb-2">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> {{ $sesiAktif->label_jenis_sesi }} sedang berlangsung.
+                      </div>
+                      <a href="{{ route('ujikom-online.ujian', $sesiAktif->id) }}" class="btn btn-primary btn-block">
+                        <i class="fas fa-arrow-right mr-1"></i> Lanjutkan Ujian
+                      </a>
+                    @else
+                      <form action="{{ route('ujikom-online.mulai', $j->id) }}" method="POST"
+                            onsubmit="return confirm('Mulai/lanjutkan ujian sekarang? Timer akan langsung berjalan setelah Anda klik OK.')">
+                        @csrf
+                        <button class="btn btn-success btn-block">
+                          <i class="fas fa-play mr-1"></i> {{ !$j->sesi_teknis ? 'Mulai Ujian (Sesi 1: Teknis)' : 'Mulai Sesi 2: Mansoskul' }}
+                        </button>
+                      </form>
+                    @endif
+
+                  @else
                   @php $sesi = $j->sesi_peserta; @endphp
 
                   @if (!$j->sesi_dibuka)
@@ -166,6 +210,7 @@
                         <i class="fas fa-eye mr-1"></i> Lihat Hasil
                       </a>
                     </div>
+                  @endif
                   @endif
                 </div>
               </div>

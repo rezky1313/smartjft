@@ -32,8 +32,8 @@ class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, With
 
     private string $namaFile;
 
-    private array $validJenis      = ['umum', 'spesifik'];
-    private array $validTingkat    = ['mudah', 'sedang', 'sulit'];
+    private array $validJenis      = ['mansoskul', 'teknis'];
+    private array $validMatra      = ['darat', 'laut', 'udara', 'asdp', 'perkeretaapian'];
     private array $validTaksonomi  = ['C1_mengingat', 'C2_memahami', 'C3_menerapkan', 'C4_menganalisis', 'C5_mengevaluasi', 'C6_mencipta'];
     private array $validJawaban    = ['A', 'B', 'C', 'D'];
     private array $validStatus     = ['draft', 'aktif'];
@@ -50,7 +50,7 @@ class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, With
             $errors  = [];
 
             $jenis      = strtolower(trim($row['jenis'] ?? ''));
-            $tingkat    = strtolower(trim($row['tingkat_kesulitan'] ?? ''));
+            $matra      = strtolower(trim($row['matra'] ?? ''));
             $taksonomi  = trim($row['taksonomi_bloom'] ?? '');
             $jawaban    = strtoupper(trim($row['jawaban_benar'] ?? ''));
             $status     = strtolower(trim($row['status'] ?? 'draft'));
@@ -61,13 +61,7 @@ class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, With
                 $errors[] = 'Pertanyaan tidak boleh kosong';
             }
             if (!in_array($jenis, $this->validJenis)) {
-                $errors[] = "Jenis tidak valid '{$jenis}' (harus: umum/spesifik)";
-            }
-            if (!in_array($jawaban, $this->validJawaban)) {
-                $errors[] = "Jawaban benar tidak valid '{$jawaban}' (harus: A/B/C/D)";
-            }
-            if (!in_array($tingkat, $this->validTingkat)) {
-                $errors[] = "Tingkat kesulitan tidak valid '{$tingkat}' (harus: mudah/sedang/sulit)";
+                $errors[] = "Jenis tidak valid '{$jenis}' (harus: mansoskul/teknis)";
             }
             if (!in_array($taksonomi, $this->validTaksonomi)) {
                 $errors[] = "Taksonomi bloom tidak valid '{$taksonomi}'";
@@ -80,17 +74,38 @@ class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, With
                 }
             }
 
-            // Validasi kategori jika spesifik
+            // Validasi kategori jika teknis
             $kategoriId = null;
-            if ($jenis === 'spesifik') {
+            if ($jenis === 'teknis') {
                 if (empty($row['soal_kategori_id'])) {
-                    $errors[] = 'soal_kategori_id wajib diisi untuk soal spesifik';
+                    $errors[] = 'soal_kategori_id wajib diisi untuk soal teknis';
                 } else {
                     $kategori = SoalKategori::find((int) $row['soal_kategori_id']);
                     if (!$kategori) {
                         $errors[] = "soal_kategori_id '{$row['soal_kategori_id']}' tidak ditemukan";
                     } else {
                         $kategoriId = $kategori->id;
+                    }
+                }
+
+                if (!in_array($jawaban, $this->validJawaban)) {
+                    $errors[] = "Jawaban benar tidak valid '{$jawaban}' (harus: A/B/C/D) — wajib diisi untuk soal teknis";
+                }
+            }
+
+            // Validasi matra + nilai skala jika mansoskul
+            $nilaiPilihan = [];
+            if ($jenis === 'mansoskul') {
+                if (!in_array($matra, $this->validMatra)) {
+                    $errors[] = "Matra tidak valid '{$matra}' (harus: darat/laut/udara/asdp/perkeretaapian) — wajib diisi untuk soal mansoskul";
+                }
+
+                foreach (['a', 'b', 'c', 'd'] as $kode) {
+                    $nilai = trim($row["nilai_pilihan_{$kode}"] ?? '');
+                    if ($nilai === '' || !is_numeric($nilai) || (int) $nilai < 1 || (int) $nilai > 5) {
+                        $errors[] = "nilai_pilihan_" . $kode . " wajib diisi angka 1-5 untuk soal mansoskul";
+                    } else {
+                        $nilaiPilihan[strtoupper($kode)] = (int) $nilai;
                     }
                 }
             }
@@ -110,9 +125,9 @@ class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, With
             try {
                 $soal = BankSoal::create([
                     'soal_kategori_id'  => $kategoriId,
+                    'matra'             => $jenis === 'mansoskul' ? $matra : null,
                     'pertanyaan'        => $pertanyaan,
                     'pembahasan'        => trim($row['pembahasan'] ?? '') ?: null,
-                    'tingkat_kesulitan' => $tingkat,
                     'taksonomi_bloom'   => $taksonomi,
                     'jenis'             => $jenis,
                     'status'            => in_array($status, $this->validStatus) ? $status : 'draft',
@@ -126,7 +141,8 @@ class BankSoalImport implements ToCollection, WithHeadingRow, SkipsOnError, With
                         'bank_soal_id' => $soal->id,
                         'kode_pilihan' => $kode,
                         'teks_pilihan' => trim($row['pilihan_' . strtolower($kode)]),
-                        'is_benar'     => $kode === $jawaban,
+                        'is_benar'     => $jenis === 'teknis' && $kode === $jawaban,
+                        'nilai_skala'  => $jenis === 'mansoskul' ? $nilaiPilihan[$kode] : null,
                     ]);
                 }
 

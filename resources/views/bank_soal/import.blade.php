@@ -57,7 +57,8 @@
           <li>Gunakan template yang disediakan — <strong>jangan ubah nama kolom header</strong></li>
           <li>Isi data di sheet <strong>"Data Soal"</strong>, bukan sheet Petunjuk</li>
           <li>Lihat sheet <strong>"Daftar Kategori"</strong> untuk mendapatkan <code>soal_kategori_id</code> yang valid</li>
-          <li><code>soal_kategori_id</code> wajib diisi jika <code>jenis = spesifik</code>, boleh kosong jika <code>jenis = umum</code></li>
+          <li>Soal <strong>Teknis</strong>: <code>soal_kategori_id</code> &amp; <code>jawaban_benar</code> wajib diisi, <code>matra</code> &amp; <code>nilai_pilihan_a/b/c/d</code> dikosongkan</li>
+          <li>Soal <strong>Mansoskul</strong>: <code>matra</code> &amp; <code>nilai_pilihan_a/b/c/d</code> (1-5) wajib diisi, <code>soal_kategori_id</code> &amp; <code>jawaban_benar</code> dikosongkan</li>
           <li>Baris dengan error akan <strong>diskip</strong> — baris yang valid tetap diimport</li>
           <li>Nilai <code>status</code>: <code>draft</code> atau <code>aktif</code></li>
         </ul>
@@ -101,11 +102,13 @@
       <div class="card-header"><h3 class="card-title mb-0">Nilai Valid per Kolom</h3></div>
       <div class="card-body" style="font-size:0.82rem;">
         <p class="mb-1"><strong>jenis:</strong></p>
-        <p class="text-muted mb-2">umum &nbsp;|&nbsp; spesifik</p>
-        <p class="mb-1"><strong>jawaban_benar:</strong></p>
+        <p class="text-muted mb-2">mansoskul &nbsp;|&nbsp; teknis</p>
+        <p class="mb-1"><strong>matra</strong> <small>(wajib jika jenis=mansoskul):</small></p>
+        <p class="text-muted mb-2">darat &nbsp;|&nbsp; laut &nbsp;|&nbsp; udara &nbsp;|&nbsp; asdp &nbsp;|&nbsp; perkeretaapian</p>
+        <p class="mb-1"><strong>jawaban_benar</strong> <small>(wajib jika jenis=teknis):</small></p>
         <p class="text-muted mb-2">A &nbsp;|&nbsp; B &nbsp;|&nbsp; C &nbsp;|&nbsp; D</p>
-        <p class="mb-1"><strong>tingkat_kesulitan:</strong></p>
-        <p class="text-muted mb-2">mudah &nbsp;|&nbsp; sedang &nbsp;|&nbsp; sulit</p>
+        <p class="mb-1"><strong>nilai_pilihan_a/b/c/d</strong> <small>(wajib jika jenis=mansoskul):</small></p>
+        <p class="text-muted mb-2">1 &nbsp;s.d.&nbsp; 5</p>
         <p class="mb-1"><strong>taksonomi_bloom:</strong></p>
         <ul class="text-muted mb-2 pl-3">
           <li>C1_mengingat</li>

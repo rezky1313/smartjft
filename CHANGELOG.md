@@ -5,6 +5,211 @@
 
 ---
 
+## Versi 1.18.0 - Hasil Ujikom: Struktur Nilai Berlapis
+**Tanggal:** 14 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Halaman Hasil Uji Kompetensi sekarang menampilkan rincian nilai berlapis (CAT/Wawancara/Presentasi per kompetensi Teknis & Mansoskul, plus status kecurangan) lewat struktur accordion per peserta — bukan cuma nilai akhir tunggal. Data rincian disimpan sebagai kolom mentah di `ujikom_hasil` agar bisa diaudit terpisah dari nilai gabungan yang sudah ada sejak v1.16.0.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_14_000001_add_rincian_nilai_to_ujikom_hasil.php` — 6 kolom nullable: `nilai_teknis_cat`, `nilai_teknis_wawancara`, `nilai_teknis_presentasi`, `nilai_mansoskul_cat`, `nilai_mansoskul_wawancara`, `nilai_mansoskul_presentasi` (kolom `status_kecurangan` TIDAK ditambah ulang — sudah ada dari migration v1.17.0, dicek dulu lewat diagnostic sebelum menulis migration supaya tidak dobel)
+
+### Model
+- **UBAH** `app/Models/UjikomHasil.php` — fillable/casts 6 kolom baru, accessor `getBadgeKecuranganAttribute()`
+- **PERBAIKAN TAMBAHAN (di luar permintaan, wajib)** `app/Models/UjikomSesi.php` — `syncKeHasil()` (alur ujian satu-sesi/`tunggal` dari sebelum v1.17.0) sekarang ikut menghitung `status_kecurangan` dari jumlah pelanggaran anti-cheat; sebelumnya cuma alur 2-sesi (`cobaFinalisasiHasil()`) yang mengisi kolom ini, padahal halaman ini menampilkan status kecurangan untuk SEMUA jenis hasil termasuk yang dari alur lama
+
+### Controller
+- **UBAH** `app/Http/Controllers/UjikomOnlineController.php` — `cobaFinalisasiHasil()` mengisi 6 kolom rincian mentah di kedua cabang (belum final maupun final)
+- **UBAH** `app/Http/Controllers/UjikomHasilController.php` — `index()` tambah statistik jumlah peserta terindikasi kecurangan per jadwal
+
+### View
+- **BARU** `resources/views/ujikom/hasil/_detail_nilai.blade.php` — partial rincian nilai berlapis, dipakai bersama
+- **UBAH** `resources/views/ujikom/hasil/show.blade.php` — baris peserta jadi accordion (klik baris → expand rincian Teknis/Mansoskul/Kecurangan), kolom badge Kecurangan
+- **UBAH** `resources/views/ujikom/hasil/riwayat.blade.php` — accordion serupa untuk riwayat pribadi peserta (Pemangku JFT) + badge Kecurangan
+- **UBAH** `resources/views/ujikom/hasil/index.blade.php` — kolom agregat "Kecurangan" (jumlah peserta terindikasi per jadwal)
+- **UBAH** `resources/views/ujikom/hasil/pdf/rekap.blade.php` — kolom rincian Teknis/Mansoskul (CAT/Wawancara/Presentasi) + status kecurangan
+- **UBAH** `app/Exports/UjikomHasilExcelExport.php` — 10 kolom baru untuk rincian per aspek + status kecurangan
+
+---
+
+## Catatan Teknis
+
+- Diuji lewat tinker: render `index()`, `show()`, `riwayat()` peserta, `exportPdf()`, `exportExcel()` dengan data rincian penuh (breakdown CAT/Wawancara/Presentasi + status terindikasi) — data uji sementara di jadwal & hasil real dikembalikan persis ke nilai semula setelah verifikasi
+
+---
+
+## Versi 1.17.0 - Ujikom Online: 2 Sesi CAT + Anti-Cheat + Nilai Manual + Perhitungan Berbobot
+**Tanggal:** 13 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Modul Ujikom Online (CAT engine) diperluas untuk mendukung mode Paket Ujian "2 Sesi CAT" (v1.16.0): peserta mengerjakan Sesi Teknis lalu Sesi Mansoskul secara berurutan dengan timer masing-masing, nilai digabung dengan aspek Wawancara/Presentasi manual sesuai bobot jadwal, plus sistem anti-cheat (deteksi pindah tab/minimize/kamera mati, auto-submit di pelanggaran ke-3) dan halaman input nilai manual untuk Pusbin/Pewawancara. Alur ujian satu-sesi lama (mode Paket `acak_otomatis`/`manual`) **dipertahankan utuh** lewat percabangan kode, bukan ditimpa.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_13_000008_add_sesi_ganda_anticheat_to_ujikom_sesi.php` — kolom `sesi_teknis_id` (self-FK nullable) + `jenis_sesi` enum (`tunggal`/`teknis`/`mansoskul`, default `tunggal`) di `ujikom_sesi`. **Penyimpangan wajib dari draf**: unique constraint lama `(jadwal_id, peserta_id)` diperluas jadi `(jadwal_id, peserta_id, jenis_sesi)` — bukan cuma tambah kolom seperti draf — karena constraint lama akan menabrak begitu peserta punya 2 baris sesi (Teknis + Mansoskul) untuk jadwal yang sama
+- **BARU** `database/migrations/2026_07_13_000009_add_nilai_diperoleh_to_ujikom_sesi_soal.php` — kolom `nilai_diperoleh` (skala 1-5, khusus soal Mansoskul)
+- **BARU** `database/migrations/2026_07_13_000010_create_ujikom_nilai_manual_table.php` — tabel `ujikom_nilai_manual` (nilai Wawancara/Presentasi 1-5 per peserta per kompetensi)
+- **BARU** `database/migrations/2026_07_13_000011_create_ujikom_pelanggaran_table.php` — tabel `ujikom_pelanggaran` (log anti-cheat)
+- **BARU** `database/migrations/2026_07_13_000012_add_kompetensi_fields_to_ujikom_hasil.php` — `ujikom_hasil` tambah `nilai_teknis`, `nilai_mansoskul`, `bobot_teknis`, `bobot_mansoskul`, `status_kecurangan`
+
+### Model
+- **BARU** `app/Models/UjikomNilaiManual.php`, `app/Models/UjikomPelanggaran.php`
+- **UBAH** `app/Models/UjikomSesi.php` — relasi `sesiTeknis()`/`sesiMansoskul()`/`pelanggaran()`, accessor `label_jenis_sesi`; **baru** `hitungNilaiSesi()` (nilai satu sesi saja, tanpa sync ke hasil), `hitungNilaiKompetensi()` (gabung CAT+Wawancara+Presentasi sesuai bobot aspek jadwal)
+- **UBAH** `app/Models/UjikomHasil.php` — fillable/casts kolom baru
+- **BUG DITEMUKAN & DIPERBAIKI**: `nilai_diperoleh` belum ada di `$fillable` model `UjikomSesiSoal` — nilai skala Mansoskul diam-diam tidak pernah tersimpan (silent mass-assignment drop, tidak ada error), ketahuan saat testing end-to-end
+
+### Controller
+- **ROMBAK SEBAGIAN** `app/Http/Controllers/UjikomOnlineController.php` (~15 method baru/diubah, alur lama dipertahankan via percabangan `jenis_sesi`/mode paket):
+  - `mulai()`: percabangan ke `mulaiSesiTaksonomi()` (baru) kalau paket mode `sesi_taksonomi`, else alur lama utuh
+  - `jawab()`: skoring benar/salah (Teknis) vs nilai skala 1-5 dari pilihan (Mansoskul)
+  - `submit()`, `tutupSesi()`, `forceSubmit()`, `ujian()`: pakai helper baru `selesaikanSesi()` yang sadar jenis sesi (tunggal vs teknis/mansoskul)
+  - **Baru**: `cobaFinalisasiHasil()` (gabung nilai kedua sesi + aspek manual sesuai bobot, tunda ke status `belum_dinilai` kalau nilai manual yang aktif belum lengkap), `hasilGabungan()`, `catatPelanggaran()` (AJAX anti-cheat, auto-submit di pelanggaran ke-3), `formNilaiManual()`, `inputNilaiManual()`
+  - `bukaSesi()` di-guard menolak paket mode `sesi_taksonomi` (konsep "buka sesi massal" tidak relevan, sesi dibuat otomatis per-peserta)
+  - `index()`: data 2-sesi per peserta (status Sesi 1/Sesi 2, link lanjut/hasil gabungan)
+  - `monitoring()`: ringkasan jumlah & jenis pelanggaran per sesi
+
+### Routes
+- **UBAH** `routes/web.php` — 5 route baru: `hasil-gabungan`, `pelanggaran`, `nilai-manual.form`, `nilai-manual.store`
+
+### View
+- **BARU** `resources/views/ujikom/online/hasil_gabungan.blade.php`, `resources/views/ujikom/online/input_nilai_manual.blade.php`
+- **UBAH** `resources/views/ujikom/online/ujian.blade.php` — label sesi ("Sesi 1: Teknis"/"Sesi 2: Mansoskul") + JS anti-cheat (Page Visibility API, `getUserMedia` pantau kamera tiap 5 detik, lapor via AJAX)
+- **UBAH** `resources/views/ujikom/online/index.blade.php` — **(perluasan wajib di luar permintaan literal)** UI 2 sesi untuk peserta (badge status per sesi + tombol lanjut yang tepat) dan link "Nilai Manual" untuk admin — tanpa ini peserta tidak akan punya cara memicu alur 2 sesi sama sekali
+- **UBAH** `resources/views/ujikom/online/monitoring.blade.php` — kolom "Log Pelanggaran" + badge "Terindikasi Kecurangan" (≥3 pelanggaran)
+
+---
+
+## Catatan Teknis
+
+- Alur ujian mode lama (`acak_otomatis`/`manual`, sesi `jenis_sesi='tunggal'`) **tidak disentuh secara fungsional** — semua percabangan memastikan kode lama tetap berjalan identik, diverifikasi lewat regresi penuh
+- Diuji end-to-end lewat tinker (bukan cuma render): alur 2 sesi penuh (mulai→jawab→submit Teknis→mulai lagi→jawab→submit Mansoskul→finalisasi otomatis), status "menunggu nilai manual" saat aspek aktif, `inputNilaiManual()` memicu ulang finalisasi, anti-cheat 3x pelanggaran→auto-submit, dan regresi alur lama — semua data uji dihapus/dikembalikan setelah verifikasi
+
+---
+
+## Versi 1.16.0 - Konfigurasi Aspek Penilaian Ujikom + Paket Ujian 2 Sesi CAT
+**Tanggal:** 13 Juli 2026
+**Status:** Selesai ✅ (fitur konfigurasi & komposisi soal — alur ujian 2-sesi sungguhan di Ujikom Online BELUM dibangun, lihat Catatan Teknis)
+
+---
+
+## Ringkasan
+
+Dua penambahan pada modul Jadwal Ujikom dan Paket Ujian:
+
+1. **Konfigurasi Aspek Penilaian di Jadwal Ujikom** — Pusbin sekarang bisa menentukan per jadwal ujian apakah Kompetensi Teknis dan Kompetensi Mansoskul menyertakan aspek Wawancara dan/atau Presentasi (selain Tes CAT yang selalu aktif otomatis), plus `jenjang_tujuan` ujian yang menentukan bobot Teknis vs Mansoskul (dari `config/bobot_penilaian_jft.php`).
+2. **Paket Ujian mode baru "2 Sesi CAT"** — selain mode `acak_otomatis` dan `manual` yang sudah ada, Paket Ujian sekarang punya mode `sesi_taksonomi`: paket dibagi 2 sesi independen (Sesi Teknis by Kategori Soal, Sesi Mansoskul by Matra), masing-masing dengan Taksonomi Bloom maksimal dan jumlah soal sendiri. Komposisi jumlah soal per level taksonomi (C1–taksonomi maks) dihitung **otomatis berbobot berjenjang** (mis. maks C3 → rasio C1:C2:C3 = 1:2:3), dengan preview realtime via AJAX saat admin mengisi form.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_13_000005_add_aspek_penilaian_to_ujikom_jadwal.php` — 4 kolom boolean (`teknis_wawancara_aktif`, `teknis_presentasi_aktif`, `mansoskul_wawancara_aktif`, `mansoskul_presentasi_aktif`, default `false`) + `jenjang_tujuan` (string, nullable) di `ujikom_jadwal`
+- **BARU** `database/migrations/2026_07_13_000006_add_sesi_taksonomi_to_paket_ujian.php`
+  - Enum `paket_ujian.mode_pemilihan` diperluas `['acak_otomatis','manual']` → `+ 'sesi_taksonomi'` (raw SQL, additive — tidak perlu tahap migrasi data karena nilai lama tidak berubah)
+  - 8 kolom baru nullable: `durasi_menit_teknis`, `jumlah_soal_teknis`, `taksonomi_maks_teknis` (enum C1–C6), `soal_kategori_id_teknis`, `durasi_menit_mansoskul`, `jumlah_soal_mansoskul`, `taksonomi_maks_mansoskul` (enum C1–C6), `matra_mansoskul` (enum darat/laut/udara/asdp/perkeretaapian)
+- **BARU** `database/migrations/2026_07_13_000007_create_paket_ujian_komposisi_taksonomi_table.php` — tabel `paket_ujian_komposisi_taksonomi` (`paket_ujian_id`, `jenis_sesi` enum teknis/mansoskul, `taksonomi`, `jumlah_soal`)
+
+### Config
+- **BARU** `config/bobot_penilaian_jft.php` — bobot Teknis vs Mansoskul per jenjang (mis. Ahli Utama 65/35, Pemula 80/20), dibaca oleh `UjikomJadwal::getBobotJenjang()`
+
+### Model
+- **UBAH** `app/Models/UjikomJadwal.php` — fillable/casts field aspek penilaian baru; **baru** `getBobotAspek(string $kompetensi)` (hitung bobot CAT/Wawancara/Presentasi: CAT selalu 100% kalau keduanya nonaktif, 50/25/25 kalau keduanya aktif, dst — sesuai spesifikasi), `getBobotJenjang()` (baca config), accessor `label_jenjang_tujuan`
+- **BARU** `app/Models/PaketUjianKomposisiTaksonomi.php` — model baris komposisi taksonomi per sesi, accessor `label_taksonomi`
+- **UBAH** `app/Models/PaketUjian.php`
+  - Relasi baru `komposisiTaksonomi()`, `kategoriTeknis()` (belongsTo `SoalKategori` via `soal_kategori_id_teknis`)
+  - **Baru** `hitungKomposisiTaksonomi(string $taksonomiMaks, int $totalSoal)` — hitung komposisi per level taksonomi berbobot berjenjang (bobot 1..n, sisa pembulatan dibebankan ke taksonomi tertinggi)
+  - **Baru** `generateKomposisiTaksonomi()` — hapus & generate ulang baris `paket_ujian_komposisi_taksonomi` dari konfigurasi sesi aktif
+  - **Baru** `generateSoalSesi(string $jenisSesi)` — ambil soal aktif acak sesuai komposisi taksonomi + kategori/matra sesi
+  - **Baru** `cekKetersediaanKomposisi()` — cek soal aktif tersedia per baris komposisi (dipakai `cekKetersediaanSoal()` untuk mode `sesi_taksonomi`, format detail sama persis dengan mode `acak_otomatis` jadi otomatis kompatibel dengan banner peringatan yang sudah ada)
+  - `generateSoalUntukPeserta()` diperluas: mode `sesi_taksonomi` menggabungkan `generateSoalSesi('teknis')` + `generateSoalSesi('mansoskul')` (dipakai untuk preview admin — lihat Catatan Teknis soal batasan)
+  - Label mode: `sesi_taksonomi` → "2 Sesi CAT"
+
+### Controller
+- **UBAH** `app/Http/Controllers/UjikomJadwalController.php` — `store()`/`update()`: validasi & simpan `jenjang_tujuan` (required) + 4 field aspek boolean
+- **UBAH** `app/Http/Controllers/PaketUjianController.php`
+  - `store()`/`update()`: validasi kondisional mode `sesi_taksonomi` (tiap sesi: kalau `jumlah_soal_*` diisi maka durasi/taksonomi_maks/kategori-matra wajib ikut terisi; minimal 1 sesi harus diisi); `durasi_menit` & `jumlah_soal` total di-auto-hitung dari jumlah kedua sesi; panggil `generateKomposisiTaksonomi()` setelah simpan
+  - **Baru** `previewKomposisi(Request $request)` — endpoint AJAX, terima `jenis_sesi`/`taksonomi_maks`/`jumlah_soal`/`soal_kategori_id`/`matra`, kembalikan breakdown komposisi + ketersediaan soal aktif per taksonomi (dipakai form create/edit untuk preview realtime)
+  - `show()`/`edit()`: load relasi `komposisiTaksonomi`, `kategoriTeknis`
+
+### Routes
+- **UBAH** `routes/web.php` — route baru `GET paket-ujian/preview-komposisi`, ditempatkan sebelum `/{id}`
+
+### View
+- **UBAH** `resources/views/ujikom/jadwal/create.blade.php`, `edit.blade.php` — card "Konfigurasi Aspek Penilaian": dropdown Jenjang Tujuan (wajib) + checkbox Wawancara/Presentasi per kompetensi (Teknis, Mansoskul)
+- **UBAH** `resources/views/paket_ujian/create.blade.php`, `edit.blade.php` — radio mode ke-3 "2 Sesi CAT"; panel baru 2 kolom (Sesi Teknis: Kategori + Taksonomi Maks + Jumlah Soal + Durasi; Sesi Mansoskul: Matra + Taksonomi Maks + Jumlah Soal + Durasi), tiap sesi punya preview komposisi realtime (tabel butuh vs tersedia, baris merah kalau kurang) via AJAX ke `preview-komposisi`
+- **UBAH** `resources/views/paket_ujian/show.blade.php` — kartu info per sesi + tabel komposisi taksonomi dengan status ketersediaan; tombol "Generate Preview" digunakan bersama utk mode `acak_otomatis` & `sesi_taksonomi`. **Perbaikan tambahan (di luar permintaan, wajib)**: kondisi tampilan kolom kiri/kanan sebelumnya hanya mengenal 2 mode (`manual` vs `else`=acak) — kalau tidak diperbaiki, paket mode `sesi_taksonomi` akan tampil kosong/membingungkan (iterasi `kategoriAcak` yang kosong)
+
+---
+
+## Catatan Teknis
+
+- **Belum diimplementasikan**: alur ujian sungguhan 2-sesi-terpisah di Ujikom Online (peserta mengerjakan Sesi Teknis lalu Sesi Mansoskul dengan timer masing-masing, hasil skor per sesi digabung pakai bobot dari `getBobotJenjang()`) — ini di luar cakupan prompt saat ini. Saat ini `generateSoalUntukPeserta('sesi_taksonomi')` hanya menggabungkan kedua sesi jadi satu set soal untuk keperluan preview admin, BUKAN alur ujian bertahap yang sesungguhnya.
+- `PaketUjianKategoriAcak.jenis_soal` (enum `umum`/`spesifik`, dipakai mode `acak_otomatis`) sengaja **tidak** diubah — konsep berbeda dari `bank_soal.jenis` (`mansoskul`/`teknis`) yang di-rename di v1.15.0; `BankSoal::umum()`/`spesifik()` scope alias tetap menjembatani keduanya
+- Diuji lewat tinker: `hitungKomposisiTaksonomi()`/`generateKomposisiTaksonomi()` (2+4+6+8=20 sesuai bobot 1:2:3:4), `cekKetersediaanKomposisi()`, endpoint `previewKomposisi()`, `UjikomJadwalController::store()`, `PaketUjianController::store()`/`update()` end-to-end via simulasi Request, render semua view yang diubah tanpa error — data uji coba dihapus setelah verifikasi
+
+---
+
+## Versi 1.15.0 - Restrukturisasi Bank Soal & Kategori Bank Soal
+**Tanggal:** 13 Juli 2026
+**Status:** Selesai ✅
+
+---
+
+## Ringkasan
+
+Restrukturisasi klasifikasi Bank Soal: kolom `tingkat_kesulitan` (mudah/sedang/sulit) dihapus total; `bank_soal.jenis` di-rename dari `umum`/`spesifik` menjadi `mansoskul`/`teknis` (istilah baku); soal **Mansoskul** sekarang punya kolom `matra` sendiri (bukan lagi lewat Kategori Soal) dan pilihan jawabannya pakai **skala nilai 1–5** (bukan benar/salah); soal **Teknis** tetap pakai sistem benar/salah + Kategori Soal seperti sebelumnya. Kategori Soal sekarang murni khusus soal Teknis.
+
+---
+
+## Perubahan
+
+### Database
+- **BARU** `database/migrations/2026_07_13_000002_drop_tingkat_kesulitan_from_bank_soal.php` — hapus kolom `tingkat_kesulitan`
+- **BARU** `database/migrations/2026_07_13_000003_update_jenis_add_matra_bank_soal.php` — rename nilai enum `jenis` (`umum`→`mansoskul`, `spesifik`→`teknis`, 3-tahap: perluas → migrasi data → persempit, raw SQL karena `doctrine/dbal` tidak terinstall); tambah kolom `matra` (enum darat/laut/udara/asdp/perkeretaapian, nullable, khusus Mansoskul)
+- **BARU** `database/migrations/2026_07_13_000004_add_nilai_skala_to_bank_soal_pilihan.php` — tambah `nilai_skala` (tinyint 1-5, nullable) di `bank_soal_pilihan`
+
+### Model
+- **UBAH** `app/Models/BankSoal.php` — fillable: `tingkat_kesulitan` dihapus, `matra` ditambah; scope `umum()`/`spesifik()` dipertahankan sebagai **alias backward-compat** (internal diarahkan ke `jenis='mansoskul'`/`'teknis'`) karena `PaketUjian::generateSoalUntukPeserta()` masih memanggilnya; scope baru `mansoskul()`/`teknis()`; accessor `label_jenis`/`label_matra` baru, `label_tingkat`/`badge_tingkat` dihapus
+- **UBAH** `app/Models/BankSoalPilihan.php` — fillable/casts tambah `nilai_skala`
+
+### Controller
+- **UBAH** `app/Http/Controllers/BankSoalController.php` — `store()`/`update()`: validasi & branching penuh per jenis (Teknis wajib `soal_kategori_id`+`jawaban_benar`, null `matra`; Mansoskul wajib `matra`+`nilai_pilihan_a/b/c/d` 1-5, null `soal_kategori_id`); `index()`: filter `matra`, banner peringatan soal Mansoskul yang belum diisi `matra`; `getByKategori()` disesuaikan istilah baru
+- **PERBAIKAN TAMBAHAN (di luar permintaan, wajib)** `app/Http/Controllers/PaketUjianController.php` — modul Paket Ujian (soal-picker manual & preview generator) ternyata bergantung langsung pada `tingkat_kesulitan`/`label_tingkat`/`badge_tingkat`; kalau tidak diperbaiki akan error begitu kolom dihapus. Diganti ke basis Jenis (Mansoskul/Teknis): `show()`, `previewSoal()`, `getSoalByKategori()`
+
+### Import/Export
+- **UBAH** `app/Imports/BankSoalImport.php` — validasi ulang total per jenis (matra+nilai_pilihan untuk Mansoskul, kategori+jawaban_benar untuk Teknis)
+- **UBAH** `app/Exports/BankSoalTemplateExport.php` — template 16 kolom (tambah `matra`, `nilai_pilihan_a/b/c/d`; hapus `tingkat_kesulitan`), contoh data Mansoskul + Teknis
+
+### View
+- **UBAH** `resources/views/bank_soal/index.blade.php`, `create.blade.php`, `edit.blade.php`, `show.blade.php`, `import.blade.php` — form pakai toggle JS Jenis (radio jawaban benar utk Teknis vs 4× select Nilai Skala 1-5 utk Mansoskul); kolom Tingkat dihapus, kolom Kategori/Matra kondisional
+- **UBAH** `resources/views/soal_kategori/index.blade.php` — catatan penjelasan bahwa kategori "Umum" sudah tidak relevan (Mansoskul kini pakai `matra` langsung); badge "Tidak Terpakai" utk kategori "Umum" tanpa soal Teknis terkait
+- **PERBAIKAN TAMBAHAN (di luar permintaan, wajib)** `resources/views/paket_ujian/create.blade.php`, `edit.blade.php`, `show.blade.php` — soal-picker & preview diganti ke basis Jenis, konsisten dengan perbaikan controller di atas
+
+---
+
+## Catatan Teknis
+
+- **Bug Blade pre-existing ditemukan & diperbaiki**: `@json(...)` berisi array literal multi-baris yang memuat pemanggilan fungsi (mis. `Str::limit(...)`) di dalam closure `fn() =>` menyebabkan Blade compiler memotong output PHP di tengah jalan (`ParseError: Unclosed '['`) — bug ini SUDAH ADA sebelum perubahan ini (di `paket_ujian/edit.blade.php`, preload `soalTerpilih`), baru ketahuan saat render-test. Diperbaiki dengan memindahkan pembentukan array dari Blade ke Controller (`PaketUjianController::edit()`), view tinggal `@json($variabel)`
+- Diuji lewat tinker: migrasi + verifikasi skema, render semua view Bank Soal & Paket Ujian yang diubah (dengan `Auth::login()` + `View::share('errors', ...)` supaya representatif), sweep codebase utk sisa referensi `tingkat_kesulitan`/`label_tingkat`/`badge_tingkat`/nilai enum lama
+
+---
+
 ## Versi 1.14.0 - Sederhanakan Pengangkatan JFT (Hapus Ranking)
 **Tanggal:** 13 Juli 2026
 **Status:** Selesai ✅

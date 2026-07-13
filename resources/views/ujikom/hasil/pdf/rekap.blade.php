@@ -102,14 +102,17 @@
   <table class="data">
     <thead>
       <tr>
-        <th width="30">No</th>
+        <th width="25">No</th>
         <th>Nama Peserta</th>
-        <th width="110">NIP</th>
-        <th width="130">Unit Kerja</th>
-        <th width="70">Jabatan Tujuan</th>
-        <th width="55" class="text-center">Jenis</th>
-        <th width="45" class="text-center">Nilai</th>
-        <th width="75" class="text-center">Status</th>
+        <th width="95">NIP</th>
+        <th width="110">Unit Kerja</th>
+        <th width="60">Jabatan Tujuan</th>
+        <th width="45" class="text-center">Jenis</th>
+        <th width="90">Rincian Teknis</th>
+        <th width="90">Rincian Mansoskul</th>
+        <th width="40" class="text-center">Nilai</th>
+        <th width="60" class="text-center">Status</th>
+        <th width="60" class="text-center">Kecurangan</th>
       </tr>
     </thead>
     <tbody>
@@ -122,6 +125,26 @@
         <td>{{ $p->pegawai?->unitKerja?->nama_rs ?? '-' }}</td>
         <td>{{ $p->jabatan_tujuan_nama ?? '-' }} / {{ $p->jenjang_tujuan ?? '-' }}</td>
         <td class="text-center">{{ $hasil ? $hasil->label_jenis : '-' }}</td>
+        <td style="font-size:8.5px;">
+          @if ($hasil && $hasil->nilai_teknis !== null)
+            <strong>{{ number_format($hasil->nilai_teknis, 1) }}</strong> (Bobot {{ $hasil->bobot_teknis }}%)<br>
+            CAT: {{ $hasil->nilai_teknis_cat !== null ? number_format($hasil->nilai_teknis_cat, 1) : '-' }}
+            @if ($hasil->nilai_teknis_wawancara !== null) &bull; Wwc: {{ number_format($hasil->nilai_teknis_wawancara, 0) }}/5 @endif
+            @if ($hasil->nilai_teknis_presentasi !== null) &bull; Pres: {{ number_format($hasil->nilai_teknis_presentasi, 0) }}/5 @endif
+          @else
+            -
+          @endif
+        </td>
+        <td style="font-size:8.5px;">
+          @if ($hasil && $hasil->nilai_mansoskul !== null)
+            <strong>{{ number_format($hasil->nilai_mansoskul, 1) }}</strong> (Bobot {{ $hasil->bobot_mansoskul }}%)<br>
+            CAT: {{ $hasil->nilai_mansoskul_cat !== null ? number_format($hasil->nilai_mansoskul_cat, 1) : '-' }}
+            @if ($hasil->nilai_mansoskul_wawancara !== null) &bull; Wwc: {{ number_format($hasil->nilai_mansoskul_wawancara, 0) }}/5 @endif
+            @if ($hasil->nilai_mansoskul_presentasi !== null) &bull; Pres: {{ number_format($hasil->nilai_mansoskul_presentasi, 0) }}/5 @endif
+          @else
+            -
+          @endif
+        </td>
         <td class="text-center">{{ $hasil?->nilai !== null ? number_format($hasil->nilai, 0) : '-' }}</td>
         <td class="text-center">
           @if ($hasil)
@@ -132,9 +155,16 @@
             <span class="badge-belum">Belum Dinilai</span>
           @endif
         </td>
+        <td class="text-center">
+          @if ($hasil)
+            <span class="{{ $hasil->status_kecurangan === 'terindikasi' ? 'badge-tidak' : 'badge-lulus' }}">{{ $hasil->label_kecurangan }}</span>
+          @else
+            -
+          @endif
+        </td>
       </tr>
       @empty
-      <tr><td colspan="8" class="text-center">Belum ada data peserta.</td></tr>
+      <tr><td colspan="11" class="text-center">Belum ada data peserta.</td></tr>
       @endforelse
     </tbody>
   </table>

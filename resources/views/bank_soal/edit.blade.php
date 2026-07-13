@@ -36,22 +36,24 @@
                 <label class="font-weight-bold">Jenis Soal <span class="text-danger">*</span></label>
                 <div>
                   <div class="custom-control custom-radio custom-control-inline">
-                    <input type="radio" id="jenisUmum" name="jenis" value="umum" class="custom-control-input"
-                           {{ old('jenis', $soal->jenis) === 'umum' ? 'checked' : '' }} onchange="toggleKategori()">
-                    <label class="custom-control-label" for="jenisUmum">
-                      <strong>Umum</strong> <small class="text-muted">— berlaku untuk semua peserta</small>
+                    <input type="radio" id="jenisMansoskul" name="jenis" value="mansoskul" class="custom-control-input"
+                           {{ old('jenis', $soal->jenis) === 'mansoskul' ? 'checked' : '' }} onchange="toggleJenis()">
+                    <label class="custom-control-label" for="jenisMansoskul">
+                      <strong>Mansoskul</strong> <small class="text-muted">— manajerial &amp; sosio-kultural, nilai skala 1-5</small>
                     </label>
                   </div>
                   <div class="custom-control custom-radio custom-control-inline mt-1">
-                    <input type="radio" id="jenisSpesifik" name="jenis" value="spesifik" class="custom-control-input"
-                           {{ old('jenis', $soal->jenis) === 'spesifik' ? 'checked' : '' }} onchange="toggleKategori()">
-                    <label class="custom-control-label" for="jenisSpesifik">
-                      <strong>Spesifik</strong> <small class="text-muted">— sesuai kategori jabatan</small>
+                    <input type="radio" id="jenisTeknis" name="jenis" value="teknis" class="custom-control-input"
+                           {{ old('jenis', $soal->jenis) === 'teknis' ? 'checked' : '' }} onchange="toggleJenis()">
+                    <label class="custom-control-label" for="jenisTeknis">
+                      <strong>Teknis</strong> <small class="text-muted">— sesuai kategori jabatan, jawaban benar/salah</small>
                     </label>
                   </div>
                 </div>
               </div>
-              <div class="form-group" id="sectionKategori" style="{{ old('jenis', $soal->jenis) === 'spesifik' ? '' : 'display:none;' }}">
+
+              {{-- Kategori — khusus Teknis --}}
+              <div class="form-group" id="sectionKategori" style="{{ old('jenis', $soal->jenis) === 'teknis' ? '' : 'display:none;' }}">
                 <label class="font-weight-bold">Kategori <span class="text-danger">*</span></label>
                 <select name="soal_kategori_id" class="form-control">
                   <option value="">— Pilih Kategori —</option>
@@ -62,19 +64,19 @@
                   @endforeach
                 </select>
               </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label class="font-weight-bold">Tingkat Kesulitan <span class="text-danger">*</span></label>
-                <select name="tingkat_kesulitan" class="form-control">
-                  <option value="">— Pilih —</option>
-                  <option value="mudah"  {{ old('tingkat_kesulitan', $soal->tingkat_kesulitan) === 'mudah'  ? 'selected' : '' }}>Mudah</option>
-                  <option value="sedang" {{ old('tingkat_kesulitan', $soal->tingkat_kesulitan) === 'sedang' ? 'selected' : '' }}>Sedang</option>
-                  <option value="sulit"  {{ old('tingkat_kesulitan', $soal->tingkat_kesulitan) === 'sulit'  ? 'selected' : '' }}>Sulit</option>
+
+              {{-- Matra — khusus Mansoskul --}}
+              <div class="form-group" id="sectionMatra" style="{{ old('jenis', $soal->jenis) === 'mansoskul' ? '' : 'display:none;' }}">
+                <label class="font-weight-bold">Matra <span class="text-danger">*</span></label>
+                <select name="matra" class="form-control">
+                  <option value="">— Pilih Matra —</option>
+                  @foreach (['darat'=>'Darat','laut'=>'Laut','udara'=>'Udara','asdp'=>'ASDP','perkeretaapian'=>'Perkeretaapian'] as $val => $lbl)
+                  <option value="{{ $val }}" {{ old('matra', $soal->matra) === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                  @endforeach
                 </select>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
               <div class="form-group">
                 <label class="font-weight-bold">Taksonomi Bloom <span class="text-danger">*</span></label>
                 <select name="taksonomi_bloom" class="form-control">
@@ -131,13 +133,16 @@
           <h3 class="card-title mb-0"><span class="badge badge-primary mr-2">3</span>Pilihan Jawaban</h3>
         </div>
         <div class="card-body">
+          <p class="text-muted small mb-3" id="petunjukTeknis"><i class="fas fa-info-circle mr-1"></i>Centang radio button di sebelah kiri untuk menandai jawaban yang benar.</p>
+          <p class="text-muted small mb-3" id="petunjukMansoskul" style="display:none;"><i class="fas fa-info-circle mr-1"></i>Tiap pilihan diberi nilai skala 1-5 (bukan benar/salah) — 5 = paling tepat, 1 = paling tidak tepat.</p>
+
           @php $jawabanBenar = old('jawaban_benar', $soal->pilihan->where('is_benar', true)->first()?->kode_pilihan); @endphp
           @foreach ($soal->pilihan as $pilihan)
           @php $isBenar = $jawabanBenar === $pilihan->kode_pilihan; @endphp
           <div class="form-group pilihan-row" id="row{{ $pilihan->kode_pilihan }}"
                style="border:1px solid {{ $isBenar ? '#c3e6cb' : '#dee2e6' }};border-radius:6px;padding:10px 12px;margin-bottom:10px;background:{{ $isBenar ? '#d4edda' : '' }};">
             <div class="d-flex align-items-center">
-              <div class="mr-3">
+              <div class="mr-3 pilihan-radio-benar">
                 <input type="radio" name="jawaban_benar" value="{{ $pilihan->kode_pilihan }}" id="benar{{ $pilihan->kode_pilihan }}"
                        {{ $isBenar ? 'checked' : '' }}
                        onchange="highlightJawaban('{{ $pilihan->kode_pilihan }}')" style="transform:scale(1.3);">
@@ -148,6 +153,14 @@
               <div class="flex-fill">
                 <input type="text" name="pilihan[{{ $pilihan->kode_pilihan }}][teks]" class="form-control form-control-sm"
                        value="{{ old('pilihan.'.$pilihan->kode_pilihan.'.teks', $pilihan->teks_pilihan) }}">
+              </div>
+              <div class="ml-3 pilihan-nilai-skala" style="display:none; width:120px;">
+                <select name="pilihan[{{ $pilihan->kode_pilihan }}][nilai_skala]" class="form-control form-control-sm">
+                  <option value="">Nilai</option>
+                  @for ($n = 1; $n <= 5; $n++)
+                  <option value="{{ $n }}" {{ old('pilihan.'.$pilihan->kode_pilihan.'.nilai_skala', $pilihan->nilai_skala) == $n ? 'selected' : '' }}>Nilai {{ $n }}</option>
+                  @endfor
+                </select>
               </div>
             </div>
           </div>
@@ -172,9 +185,21 @@
 
 @push('scripts')
 <script>
-function toggleKategori() {
-  const isSpesifik = document.getElementById('jenisSpesifik').checked;
-  document.getElementById('sectionKategori').style.display = isSpesifik ? '' : 'none';
+function toggleJenis() {
+  const isMansoskul = document.getElementById('jenisMansoskul').checked;
+
+  document.getElementById('sectionKategori').style.display = isMansoskul ? 'none' : '';
+  document.getElementById('sectionMatra').style.display    = isMansoskul ? '' : 'none';
+
+  document.getElementById('petunjukTeknis').style.display    = isMansoskul ? 'none' : '';
+  document.getElementById('petunjukMansoskul').style.display = isMansoskul ? '' : 'none';
+
+  document.querySelectorAll('.pilihan-radio-benar').forEach(function (el) {
+    el.style.display = isMansoskul ? 'none' : '';
+  });
+  document.querySelectorAll('.pilihan-nilai-skala').forEach(function (el) {
+    el.style.display = isMansoskul ? '' : 'none';
+  });
 }
 
 function highlightJawaban(kode) {
@@ -189,5 +214,7 @@ function highlightJawaban(kode) {
     }
   });
 }
+
+document.addEventListener('DOMContentLoaded', toggleJenis);
 </script>
 @endpush

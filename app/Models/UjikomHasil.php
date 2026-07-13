@@ -17,7 +17,18 @@ class UjikomHasil extends Model
         'peserta_id',
         'jenis_ujian',
         'nilai',
+        'nilai_teknis',
+        'nilai_mansoskul',
+        'nilai_teknis_cat',
+        'nilai_teknis_wawancara',
+        'nilai_teknis_presentasi',
+        'nilai_mansoskul_cat',
+        'nilai_mansoskul_wawancara',
+        'nilai_mansoskul_presentasi',
+        'bobot_teknis',
+        'bobot_mansoskul',
         'status_kelulusan',
+        'status_kecurangan',
         'passing_grade',
         'catatan_admin',
         'dinilai_oleh',
@@ -25,8 +36,16 @@ class UjikomHasil extends Model
     ];
 
     protected $casts = [
-        'nilai'         => 'decimal:2',
-        'tanggal_ujian' => 'date',
+        'nilai'                      => 'decimal:2',
+        'nilai_teknis'               => 'decimal:2',
+        'nilai_mansoskul'            => 'decimal:2',
+        'nilai_teknis_cat'           => 'decimal:2',
+        'nilai_teknis_wawancara'     => 'decimal:2',
+        'nilai_teknis_presentasi'    => 'decimal:2',
+        'nilai_mansoskul_cat'        => 'decimal:2',
+        'nilai_mansoskul_wawancara'  => 'decimal:2',
+        'nilai_mansoskul_presentasi' => 'decimal:2',
+        'tanggal_ujian'              => 'date',
     ];
 
     // ─── Relasi ──────────────────────────────────────────────────────────────
@@ -79,6 +98,22 @@ class UjikomHasil extends Model
             'online'  => 'Online',
             'offline' => 'Offline',
             default   => $this->jenis_ujian,
+        };
+    }
+
+    public function getLabelKecuranganAttribute(): string
+    {
+        return match ($this->status_kecurangan) {
+            'terindikasi' => 'Terindikasi Kecurangan',
+            default       => 'Normal',
+        };
+    }
+
+    public function getBadgeKecuranganAttribute(): string
+    {
+        return match ($this->status_kecurangan) {
+            'terindikasi' => 'dark',
+            default       => 'success',
         };
     }
 }

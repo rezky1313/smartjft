@@ -24,8 +24,8 @@ class BankSoalController extends Controller
         if ($request->filled('jenis')) {
             $query->where('jenis', $request->jenis);
         }
-        if ($request->filled('tingkat')) {
-            $query->where('tingkat_kesulitan', $request->tingkat);
+        if ($request->filled('matra')) {
+            $query->where('matra', $request->matra);
         }
         if ($request->filled('taksonomi')) {
             $query->where('taksonomi_bloom', $request->taksonomi);
@@ -42,8 +42,9 @@ class BankSoalController extends Controller
             'draft'    => BankSoal::where('status', 'draft')->count(),
             'nonaktif' => BankSoal::where('status', 'nonaktif')->count(),
         ];
+        $mansoskulBelumLengkap = BankSoal::where('jenis', 'mansoskul')->whereNull('matra')->count();
 
-        return view('bank_soal.index', compact('soals', 'kategoris', 'statistik'));
+        return view('bank_soal.index', compact('soals', 'kategoris', 'statistik', 'mansoskulBelumLengkap'));
     }
 
     public function create()
@@ -55,25 +56,33 @@ class BankSoalController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'jenis'            => 'required|in:umum,spesifik',
-            'soal_kategori_id' => 'nullable|exists:soal_kategori,id',
-            'tingkat_kesulitan'=> 'required|in:mudah,sedang,sulit',
-            'taksonomi_bloom'  => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta',
-            'pertanyaan'       => 'required|string',
-            'pembahasan'       => 'nullable|string',
-            'pilihan'          => 'required|array|size:4',
-            'pilihan.*.teks'   => 'required|string',
-            'jawaban_benar'    => 'required|in:A,B,C,D',
-            'simpan_sebagai'   => 'required|in:draft,aktif',
+            'jenis'                 => 'required|in:mansoskul,teknis',
+            'soal_kategori_id'      => 'nullable|exists:soal_kategori,id',
+            'matra'                 => 'nullable|in:darat,laut,udara,asdp,perkeretaapian',
+            'taksonomi_bloom'       => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta',
+            'pertanyaan'            => 'required|string',
+            'pembahasan'            => 'nullable|string',
+            'pilihan'               => 'required|array|size:4',
+            'pilihan.*.teks'        => 'required|string',
+            'jawaban_benar'         => 'required_if:jenis,teknis|nullable|in:A,B,C,D',
+            'pilihan.*.nilai_skala' => 'required_if:jenis,mansoskul|nullable|integer|min:1|max:5',
+            'simpan_sebagai'        => 'required|in:draft,aktif',
         ]);
+
+        if ($request->jenis === 'teknis' && !$request->soal_kategori_id) {
+            return back()->withInput()->withErrors(['soal_kategori_id' => 'Kategori wajib diisi untuk soal Teknis.']);
+        }
+        if ($request->jenis === 'mansoskul' && !$request->matra) {
+            return back()->withInput()->withErrors(['matra' => 'Matra wajib diisi untuk soal Mansoskul.']);
+        }
 
         $status = $request->simpan_sebagai === 'aktif' ? 'aktif' : 'draft';
 
         $soal = BankSoal::create([
-            'soal_kategori_id'  => $request->jenis === 'spesifik' ? $request->soal_kategori_id : null,
+            'soal_kategori_id'  => $request->jenis === 'teknis' ? $request->soal_kategori_id : null,
+            'matra'             => $request->jenis === 'mansoskul' ? $request->matra : null,
             'pertanyaan'        => $request->pertanyaan,
             'pembahasan'        => $request->pembahasan,
-            'tingkat_kesulitan' => $request->tingkat_kesulitan,
             'taksonomi_bloom'   => $request->taksonomi_bloom,
             'jenis'             => $request->jenis,
             'status'            => $status,
@@ -87,7 +96,8 @@ class BankSoalController extends Controller
                 'bank_soal_id' => $soal->id,
                 'kode_pilihan' => $kode,
                 'teks_pilihan' => $request->pilihan[$kode]['teks'],
-                'is_benar'     => $request->jawaban_benar === $kode,
+                'is_benar'     => $request->jenis === 'teknis' && $request->jawaban_benar === $kode,
+                'nilai_skala'  => $request->jenis === 'mansoskul' ? (int) $request->pilihan[$kode]['nilai_skala'] : null,
             ]);
         }
 
@@ -113,23 +123,31 @@ class BankSoalController extends Controller
         $soal = BankSoal::findOrFail($id);
 
         $request->validate([
-            'jenis'            => 'required|in:umum,spesifik',
-            'soal_kategori_id' => 'nullable|exists:soal_kategori,id',
-            'tingkat_kesulitan'=> 'required|in:mudah,sedang,sulit',
-            'taksonomi_bloom'  => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta',
-            'pertanyaan'       => 'required|string',
-            'pembahasan'       => 'nullable|string',
-            'pilihan'          => 'required|array|size:4',
-            'pilihan.*.teks'   => 'required|string',
-            'jawaban_benar'    => 'required|in:A,B,C,D',
-            'status'           => 'required|in:draft,aktif,nonaktif',
+            'jenis'                 => 'required|in:mansoskul,teknis',
+            'soal_kategori_id'      => 'nullable|exists:soal_kategori,id',
+            'matra'                 => 'nullable|in:darat,laut,udara,asdp,perkeretaapian',
+            'taksonomi_bloom'       => 'required|in:C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta',
+            'pertanyaan'            => 'required|string',
+            'pembahasan'            => 'nullable|string',
+            'pilihan'               => 'required|array|size:4',
+            'pilihan.*.teks'        => 'required|string',
+            'jawaban_benar'         => 'required_if:jenis,teknis|nullable|in:A,B,C,D',
+            'pilihan.*.nilai_skala' => 'required_if:jenis,mansoskul|nullable|integer|min:1|max:5',
+            'status'                => 'required|in:draft,aktif,nonaktif',
         ]);
 
+        if ($request->jenis === 'teknis' && !$request->soal_kategori_id) {
+            return back()->withInput()->withErrors(['soal_kategori_id' => 'Kategori wajib diisi untuk soal Teknis.']);
+        }
+        if ($request->jenis === 'mansoskul' && !$request->matra) {
+            return back()->withInput()->withErrors(['matra' => 'Matra wajib diisi untuk soal Mansoskul.']);
+        }
+
         $soal->update([
-            'soal_kategori_id'  => $request->jenis === 'spesifik' ? $request->soal_kategori_id : null,
+            'soal_kategori_id'  => $request->jenis === 'teknis' ? $request->soal_kategori_id : null,
+            'matra'             => $request->jenis === 'mansoskul' ? $request->matra : null,
             'pertanyaan'        => $request->pertanyaan,
             'pembahasan'        => $request->pembahasan,
-            'tingkat_kesulitan' => $request->tingkat_kesulitan,
             'taksonomi_bloom'   => $request->taksonomi_bloom,
             'jenis'             => $request->jenis,
             'status'            => $request->status,
@@ -140,7 +158,8 @@ class BankSoalController extends Controller
                 ->where('kode_pilihan', $kode)
                 ->update([
                     'teks_pilihan' => $request->pilihan[$kode]['teks'],
-                    'is_benar'     => $request->jawaban_benar === $kode,
+                    'is_benar'     => $request->jenis === 'teknis' && $request->jawaban_benar === $kode,
+                    'nilai_skala'  => $request->jenis === 'mansoskul' ? (int) $request->pilihan[$kode]['nilai_skala'] : null,
                 ]);
         }
 
@@ -189,12 +208,12 @@ class BankSoalController extends Controller
         $soals = BankSoal::with('pilihan')
             ->aktif()
             ->where(function ($q) use ($kategoriId) {
-                $q->where('jenis', 'umum')
+                $q->where('jenis', 'mansoskul')
                   ->orWhere(function ($q2) use ($kategoriId) {
-                      $q2->where('jenis', 'spesifik')->where('soal_kategori_id', $kategoriId);
+                      $q2->where('jenis', 'teknis')->where('soal_kategori_id', $kategoriId);
                   });
             })
-            ->get(['id', 'pertanyaan', 'tingkat_kesulitan', 'taksonomi_bloom', 'jenis']);
+            ->get(['id', 'pertanyaan', 'matra', 'taksonomi_bloom', 'jenis']);
 
         return response()->json($soals);
     }

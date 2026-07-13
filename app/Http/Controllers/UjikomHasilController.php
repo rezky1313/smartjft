@@ -42,6 +42,7 @@ class UjikomHasilController extends Controller
                 'belum_dinilai' => (clone $hasil)->where('status_kelulusan', 'belum_dinilai')->count(),
                 'ada_online'    => (clone $hasil)->where('jenis_ujian', 'online')->exists(),
                 'ada_offline'   => (clone $hasil)->where('jenis_ujian', 'offline')->exists(),
+                'kecurangan'    => (clone $hasil)->where('status_kecurangan', 'terindikasi')->count(),
             ];
         });
 

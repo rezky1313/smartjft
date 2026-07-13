@@ -50,6 +50,7 @@ class UjikomJadwalController extends Controller
             'tanggal_selesai'                    => 'required|date|after_or_equal:tanggal_mulai',
             'tempat'                             => 'required|string|max:255',
             'kuota'                              => 'required|integer|min:1',
+            'jenjang_tujuan'                      => 'required|in:ahli_utama,ahli_madya,ahli_muda,ahli_pertama,penyelia,mahir,terampil,pemula',
             'persyaratan'                        => 'nullable|array',
             'persyaratan.*.nama_syarat'          => 'required_with:persyaratan|string|max:500',
             'persyaratan.*.keterangan'           => 'nullable|string',
@@ -60,16 +61,21 @@ class UjikomJadwalController extends Controller
         $status = $request->has('publish') ? 'published' : 'draft';
 
         $jadwal = UjikomJadwal::create([
-            'judul'           => $request->judul,
-            'jenis_ujian'     => $request->jenis_ujian,
-            'matra'           => $request->matra,
-            'deskripsi'       => $request->deskripsi,
-            'tanggal_mulai'   => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'tempat'          => $request->tempat,
-            'kuota'           => $request->kuota,
-            'status'          => $status,
-            'dibuat_oleh'     => Auth::id(),
+            'judul'                      => $request->judul,
+            'jenis_ujian'                => $request->jenis_ujian,
+            'matra'                      => $request->matra,
+            'deskripsi'                  => $request->deskripsi,
+            'tanggal_mulai'              => $request->tanggal_mulai,
+            'tanggal_selesai'            => $request->tanggal_selesai,
+            'tempat'                     => $request->tempat,
+            'kuota'                      => $request->kuota,
+            'status'                     => $status,
+            'dibuat_oleh'                => Auth::id(),
+            'jenjang_tujuan'             => $request->jenjang_tujuan,
+            'teknis_wawancara_aktif'     => $request->boolean('teknis_wawancara_aktif'),
+            'teknis_presentasi_aktif'    => $request->boolean('teknis_presentasi_aktif'),
+            'mansoskul_wawancara_aktif'  => $request->boolean('mansoskul_wawancara_aktif'),
+            'mansoskul_presentasi_aktif' => $request->boolean('mansoskul_presentasi_aktif'),
         ]);
 
         // Jika user mengirimkan persyaratan dari form, gunakan itu.
@@ -136,6 +142,7 @@ class UjikomJadwalController extends Controller
             'tanggal_selesai'                    => 'required|date|after_or_equal:tanggal_mulai',
             'tempat'                             => 'required|string|max:255',
             'kuota'                              => 'required|integer|min:1',
+            'jenjang_tujuan'                      => 'required|in:ahli_utama,ahli_madya,ahli_muda,ahli_pertama,penyelia,mahir,terampil,pemula',
             'persyaratan'                        => 'nullable|array',
             'persyaratan.*.nama_syarat'          => 'required_with:persyaratan|string|max:500',
             'persyaratan.*.keterangan'           => 'nullable|string',
@@ -146,15 +153,20 @@ class UjikomJadwalController extends Controller
         $status = $request->has('publish') ? 'published' : 'draft';
 
         $jadwal->update([
-            'judul'           => $request->judul,
-            'jenis_ujian'     => $request->jenis_ujian,
-            'matra'           => $request->matra,
-            'deskripsi'       => $request->deskripsi,
-            'tanggal_mulai'   => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'tempat'          => $request->tempat,
-            'kuota'           => $request->kuota,
-            'status'          => $status,
+            'judul'                      => $request->judul,
+            'jenis_ujian'                => $request->jenis_ujian,
+            'matra'                      => $request->matra,
+            'deskripsi'                  => $request->deskripsi,
+            'tanggal_mulai'              => $request->tanggal_mulai,
+            'tanggal_selesai'            => $request->tanggal_selesai,
+            'tempat'                     => $request->tempat,
+            'kuota'                      => $request->kuota,
+            'status'                     => $status,
+            'jenjang_tujuan'             => $request->jenjang_tujuan,
+            'teknis_wawancara_aktif'     => $request->boolean('teknis_wawancara_aktif'),
+            'teknis_presentasi_aktif'    => $request->boolean('teknis_presentasi_aktif'),
+            'mansoskul_wawancara_aktif'  => $request->boolean('mansoskul_wawancara_aktif'),
+            'mansoskul_presentasi_aktif' => $request->boolean('mansoskul_presentasi_aktif'),
         ]);
 
         // Hapus persyaratan lama beserta file-nya, lalu buat ulang

@@ -19,6 +19,12 @@
         @if (session('error'))
         <div class="alert alert-danger mx-3 mt-3 mb-0 py-2">{{ session('error') }}</div>
         @endif
+        <div class="alert alert-info mx-3 mt-3 mb-0 py-2">
+          <i class="fas fa-info-circle mr-1"></i>
+          Kategori Soal sekarang khusus dipakai untuk soal <strong>Teknis</strong>. Kategori <strong>"Umum"</strong> peninggalan
+          struktur lama sudah tidak relevan — soal <strong>Mansoskul</strong> kini memakai kolom <strong>Matra</strong> langsung
+          di Bank Soal, bukan Kategori. Data kategori "Umum" tidak dihapus otomatis, hanya ditandai jika sudah tidak terpakai.
+        </div>
 
         <div class="table-responsive">
           <table class="table table-bordered table-hover table-sm mb-0" style="font-size:0.85rem;">
@@ -40,6 +46,9 @@
               <tr>
                 <td class="text-center">{{ $i + 1 }}</td>
                 <td><strong>{{ $k->nama }}</strong>
+                  @if ($k->nama === 'Umum' && $k->soal_count === 0)
+                  <span class="badge badge-secondary ml-1" title="Kategori Umum sudah tidak dipakai soal Teknis manapun">Tidak Terpakai</span>
+                  @endif
                   @if($k->deskripsi)<br><small class="text-muted">{{ $k->deskripsi }}</small>@endif
                 </td>
                 <td><small>{{ $k->jabatan ?? '—' }}</small></td>

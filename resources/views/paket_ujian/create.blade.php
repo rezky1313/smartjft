@@ -103,7 +103,7 @@
         </div>
         <div class="card-body">
           <div class="row mb-3">
-            <div class="col-md-6">
+            <div class="col-md-4">
               <div class="custom-control custom-radio">
                 <input type="radio" id="modeAcak" name="mode_pemilihan" value="acak_otomatis" class="custom-control-input"
                        {{ old('mode_pemilihan', 'acak_otomatis') === 'acak_otomatis' ? 'checked' : '' }} onchange="toggleMode()">
@@ -113,13 +113,23 @@
                 </label>
               </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
               <div class="custom-control custom-radio">
                 <input type="radio" id="modeManual" name="mode_pemilihan" value="manual" class="custom-control-input"
                        {{ old('mode_pemilihan') === 'manual' ? 'checked' : '' }} onchange="toggleMode()">
                 <label class="custom-control-label font-weight-bold" for="modeManual">
                   <i class="fas fa-hand-pointer mr-1 text-info"></i> Manual
                   <small class="d-block text-muted font-weight-normal">Admin memilih soal satu per satu dari daftar bank soal</small>
+                </label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="custom-control custom-radio">
+                <input type="radio" id="modeSesi" name="mode_pemilihan" value="sesi_taksonomi" class="custom-control-input"
+                       {{ old('mode_pemilihan') === 'sesi_taksonomi' ? 'checked' : '' }} onchange="toggleMode()">
+                <label class="custom-control-label font-weight-bold" for="modeSesi">
+                  <i class="fas fa-layer-group mr-1 text-success"></i> 2 Sesi CAT
+                  <small class="d-block text-muted font-weight-normal">Sesi Teknis + Mansoskul terpisah, komposisi taksonomi dihitung otomatis</small>
                 </label>
               </div>
             </div>
@@ -191,11 +201,10 @@
                 </select>
               </div>
               <div class="col-md-2">
-                <select id="filterTingkat" class="form-control form-control-sm" onchange="filterSoal()">
-                  <option value="">— Semua Tingkat —</option>
-                  <option value="mudah">Mudah</option>
-                  <option value="sedang">Sedang</option>
-                  <option value="sulit">Sulit</option>
+                <select id="filterJenis" class="form-control form-control-sm" onchange="filterSoal()">
+                  <option value="">— Semua Jenis —</option>
+                  <option value="mansoskul">Mansoskul</option>
+                  <option value="teknis">Teknis</option>
                 </select>
               </div>
               <div class="col-md-4">
@@ -227,6 +236,99 @@
                   <div class="p-3 text-muted text-center small" id="emptyTerpilih">Belum ada soal dipilih. Klik soal di kiri untuk memilih.</div>
                 </div>
                 <div id="hiddenSoalTerpilih"></div>
+              </div>
+            </div>
+          </div>
+
+          {{-- Panel: 2 Sesi CAT --}}
+          <div id="panelSesiCat" style="{{ old('mode_pemilihan') === 'sesi_taksonomi' ? '' : 'display:none;' }}">
+            <p class="text-muted small mb-3"><i class="fas fa-info-circle mr-1"></i>Isi minimal satu sesi. Komposisi jumlah soal per taksonomi dihitung otomatis berbobot berjenjang (taksonomi lebih tinggi mendapat porsi lebih besar).</p>
+            <div class="row">
+              {{-- Sesi Teknis --}}
+              <div class="col-md-6">
+                <div class="card border-primary mb-2">
+                  <div class="card-header bg-light py-2"><strong><i class="fas fa-toolbox mr-1 text-primary"></i>Sesi Teknis</strong></div>
+                  <div class="card-body">
+                    <div class="form-group">
+                      <label class="small font-weight-bold mb-1">Kategori Soal</label>
+                      <select name="soal_kategori_id_teknis" id="selKategoriTeknis" class="form-control form-control-sm" onchange="previewKomposisi('teknis')">
+                        <option value="">— Pilih Kategori —</option>
+                        @foreach ($kategoris as $k)
+                        <option value="{{ $k->id }}" {{ old('soal_kategori_id_teknis') == $k->id ? 'selected' : '' }}>{{ $k->nama }}</option>
+                        @endforeach
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="small font-weight-bold mb-1">Taksonomi Maksimal</label>
+                      <select name="taksonomi_maks_teknis" id="selTaksonomiTeknis" class="form-control form-control-sm" onchange="previewKomposisi('teknis')">
+                        <option value="">— Pilih —</option>
+                        @foreach (['C1_mengingat'=>'C1 — Mengingat','C2_memahami'=>'C2 — Memahami','C3_menerapkan'=>'C3 — Menerapkan','C4_menganalisis'=>'C4 — Menganalisis','C5_mengevaluasi'=>'C5 — Mengevaluasi','C6_mencipta'=>'C6 — Mencipta'] as $val => $lbl)
+                        <option value="{{ $val }}" {{ old('taksonomi_maks_teknis') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                        @endforeach
+                      </select>
+                    </div>
+                    <div class="row">
+                      <div class="col-6">
+                        <div class="form-group mb-2">
+                          <label class="small font-weight-bold mb-1">Jumlah Soal</label>
+                          <input type="number" name="jumlah_soal_teknis" id="inputJumlahTeknis" class="form-control form-control-sm"
+                                 value="{{ old('jumlah_soal_teknis') }}" min="1" oninput="previewKomposisi('teknis')">
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="form-group mb-2">
+                          <label class="small font-weight-bold mb-1">Durasi (menit)</label>
+                          <input type="number" name="durasi_menit_teknis" class="form-control form-control-sm"
+                                 value="{{ old('durasi_menit_teknis', 60) }}" min="5" max="360">
+                        </div>
+                      </div>
+                    </div>
+                    <div id="previewTeknis"></div>
+                  </div>
+                </div>
+              </div>
+              {{-- Sesi Mansoskul --}}
+              <div class="col-md-6">
+                <div class="card border-success mb-2">
+                  <div class="card-header bg-light py-2"><strong><i class="fas fa-users mr-1 text-success"></i>Sesi Mansoskul</strong></div>
+                  <div class="card-body">
+                    <div class="form-group">
+                      <label class="small font-weight-bold mb-1">Matra</label>
+                      <select name="matra_mansoskul" id="selMatraMansoskul" class="form-control form-control-sm" onchange="previewKomposisi('mansoskul')">
+                        <option value="">— Pilih Matra —</option>
+                        @foreach (['darat'=>'Darat','laut'=>'Laut','udara'=>'Udara','asdp'=>'ASDP','perkeretaapian'=>'Perkeretaapian'] as $val => $lbl)
+                        <option value="{{ $val }}" {{ old('matra_mansoskul') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                        @endforeach
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="small font-weight-bold mb-1">Taksonomi Maksimal</label>
+                      <select name="taksonomi_maks_mansoskul" id="selTaksonomiMansoskul" class="form-control form-control-sm" onchange="previewKomposisi('mansoskul')">
+                        <option value="">— Pilih —</option>
+                        @foreach (['C1_mengingat'=>'C1 — Mengingat','C2_memahami'=>'C2 — Memahami','C3_menerapkan'=>'C3 — Menerapkan','C4_menganalisis'=>'C4 — Menganalisis','C5_mengevaluasi'=>'C5 — Mengevaluasi','C6_mencipta'=>'C6 — Mencipta'] as $val => $lbl)
+                        <option value="{{ $val }}" {{ old('taksonomi_maks_mansoskul') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                        @endforeach
+                      </select>
+                    </div>
+                    <div class="row">
+                      <div class="col-6">
+                        <div class="form-group mb-2">
+                          <label class="small font-weight-bold mb-1">Jumlah Soal</label>
+                          <input type="number" name="jumlah_soal_mansoskul" id="inputJumlahMansoskul" class="form-control form-control-sm"
+                                 value="{{ old('jumlah_soal_mansoskul') }}" min="1" oninput="previewKomposisi('mansoskul')">
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="form-group mb-2">
+                          <label class="small font-weight-bold mb-1">Durasi (menit)</label>
+                          <input type="number" name="durasi_menit_mansoskul" class="form-control form-control-sm"
+                                 value="{{ old('durasi_menit_mansoskul', 60) }}" min="5" max="360">
+                        </div>
+                      </div>
+                    </div>
+                    <div id="previewMansoskul"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -262,9 +364,52 @@ let soalTerpilih = [];
 
 // ── Toggle mode panel ──
 function toggleMode() {
-  const isAcak = document.getElementById('modeAcak').checked;
-  document.getElementById('panelAcak').style.display   = isAcak ? '' : 'none';
-  document.getElementById('panelManual').style.display = isAcak ? 'none' : '';
+  const mode = document.querySelector('input[name="mode_pemilihan"]:checked').value;
+  document.getElementById('panelAcak').style.display    = mode === 'acak_otomatis'   ? '' : 'none';
+  document.getElementById('panelManual').style.display  = mode === 'manual'          ? '' : 'none';
+  document.getElementById('panelSesiCat').style.display = mode === 'sesi_taksonomi'  ? '' : 'none';
+}
+
+// ── Preview Komposisi Taksonomi (2 Sesi CAT) ──
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function previewKomposisi(jenisSesi) {
+  const suffix        = capitalize(jenisSesi);
+  const taksonomiMaks = document.getElementById('selTaksonomi' + suffix).value;
+  const jumlahSoal    = document.getElementById('inputJumlah' + suffix).value;
+  const container     = document.getElementById('preview' + suffix);
+
+  if (!taksonomiMaks || !jumlahSoal || parseInt(jumlahSoal) < 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const params = new URLSearchParams({ jenis_sesi: jenisSesi, taksonomi_maks: taksonomiMaks, jumlah_soal: jumlahSoal });
+  if (jenisSesi === 'teknis') {
+    params.append('soal_kategori_id', document.getElementById('selKategoriTeknis').value);
+  } else {
+    params.append('matra', document.getElementById('selMatraMansoskul').value);
+  }
+
+  container.innerHTML = '<div class="text-muted small mt-2"><i class="fas fa-spinner fa-spin mr-1"></i>Menghitung komposisi...</div>';
+
+  fetch('{{ route('paket-ujian.preview-komposisi') }}?' + params.toString())
+    .then(r => r.json())
+    .then(data => {
+      let html = '<div class="table-responsive mt-2"><table class="table table-sm table-bordered mb-0" style="font-size:0.78rem;">' +
+        '<thead class="thead-light"><tr><th>Taksonomi</th><th class="text-center" width="60">Butuh</th><th class="text-center" width="70">Tersedia</th></tr></thead><tbody>';
+      data.detail.forEach(function (d) {
+        html += `<tr class="${d.cukup ? '' : 'table-danger'}"><td>${d.label}</td><td class="text-center">${d.jumlah}</td><td class="text-center">${d.tersedia}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      if (!data.cukup) {
+        html += '<div class="text-danger small mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Sebagian taksonomi kekurangan soal di bank soal.</div>';
+      }
+      container.innerHTML = html;
+    })
+    .catch(function () {
+      container.innerHTML = '<div class="text-danger small mt-2">Gagal memuat preview komposisi.</div>';
+    });
 }
 
 // ── Acak Otomatis ──
@@ -324,12 +469,12 @@ function hitungTotal() {
 // ── Mode Manual ──
 function filterSoal() {
   const kategoriId = document.getElementById('filterKategori').value;
-  const tingkat    = document.getElementById('filterTingkat').value;
+  const jenis      = document.getElementById('filterJenis').value;
   const q          = document.getElementById('filterCari').value;
 
   const params = new URLSearchParams();
   if (kategoriId) params.append('kategori_id', kategoriId);
-  if (tingkat)    params.append('tingkat', tingkat);
+  if (jenis)      params.append('jenis', jenis);
   if (q)          params.append('q', q);
 
   document.getElementById('listTersedia').innerHTML = '<div class="p-3 text-center text-muted small"><i class="fas fa-spinner fa-spin mr-1"></i>Memuat...</div>';
@@ -345,7 +490,7 @@ function filterSoal() {
 
 function resetFilter() {
   document.getElementById('filterKategori').value = '';
-  document.getElementById('filterTingkat').value  = '';
+  document.getElementById('filterJenis').value    = '';
   document.getElementById('filterCari').value     = '';
   filterSoal();
 }
@@ -362,7 +507,7 @@ function renderTersedia() {
 
   container.innerHTML = tampil.map(s => `
     <div class="d-flex align-items-center px-2 py-1 border-bottom soal-item" style="cursor:pointer;font-size:0.8rem;" onclick="pilihSoal(${s.id})" title="${s.pertanyaan}">
-      <span class="badge badge-${s.badge} mr-2" style="min-width:45px;font-size:0.7rem;">${s.tingkat}</span>
+      <span class="badge badge-${s.badge} mr-2" style="min-width:60px;font-size:0.7rem;">${s.label_jenis}</span>
       <span class="badge badge-secondary mr-2" style="font-size:0.65rem;">${s.taksonomi}</span>
       <span class="flex-fill text-truncate">${s.pertanyaan}</span>
       <i class="fas fa-plus text-success ml-2"></i>
@@ -397,7 +542,7 @@ function renderTerpilih() {
   container.innerHTML = soalTerpilih.map((s, i) => `
     <div class="d-flex align-items-center px-2 py-1 border-bottom" style="font-size:0.8rem;">
       <span class="text-muted mr-2" style="min-width:20px;">${i+1}.</span>
-      <span class="badge badge-${s.badge} mr-2" style="min-width:45px;font-size:0.7rem;">${s.tingkat}</span>
+      <span class="badge badge-${s.badge} mr-2" style="min-width:60px;font-size:0.7rem;">${s.label_jenis}</span>
       <span class="flex-fill text-truncate">${s.pertanyaan}</span>
       <button type="button" class="btn btn-xs btn-outline-danger ml-2" onclick="hapusTerpilih(${s.id})"><i class="fas fa-times"></i></button>
     </div>`).join('');

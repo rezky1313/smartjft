@@ -14,9 +14,9 @@ class BankSoal extends Model
 
     protected $fillable = [
         'soal_kategori_id',
+        'matra',
         'pertanyaan',
         'pembahasan',
-        'tingkat_kesulitan',
         'taksonomi_bloom',
         'jenis',
         'status',
@@ -63,25 +63,51 @@ class BankSoal extends Model
         return $query->where('status', 'aktif');
     }
 
+    /**
+     * Soal Mansoskul (dulu "Umum"). Nama method dipertahankan "umum" karena masih
+     * dipanggil dari PaketUjian::generateSoalUntukPeserta()/cekKetersediaanSoal()
+     * untuk konfigurasi paket ujian berjenis_soal="umum" — lihat catatan di sana.
+     */
     public function scopeUmum($query)
     {
-        return $query->where('jenis', 'umum');
+        return $query->where('jenis', 'mansoskul');
     }
 
     public function scopeSpesifik($query, int $kategoriId)
     {
-        return $query->where('jenis', 'spesifik')->where('soal_kategori_id', $kategoriId);
+        return $query->where('jenis', 'teknis')->where('soal_kategori_id', $kategoriId);
+    }
+
+    public function scopeMansoskul($query)
+    {
+        return $query->where('jenis', 'mansoskul');
+    }
+
+    public function scopeTeknis($query, ?int $kategoriId = null)
+    {
+        return $query->where('jenis', 'teknis')->when($kategoriId, fn($q) => $q->where('soal_kategori_id', $kategoriId));
     }
 
     // ─── Accessor ────────────────────────────────────────────────────────────
 
-    public function getLabelTingkatAttribute(): string
+    public function getLabelJenisAttribute(): string
     {
-        return match ($this->tingkat_kesulitan) {
-            'mudah'  => 'Mudah',
-            'sedang' => 'Sedang',
-            'sulit'  => 'Sulit',
-            default  => $this->tingkat_kesulitan,
+        return match ($this->jenis) {
+            'mansoskul' => 'Mansoskul',
+            'teknis'    => 'Teknis',
+            default     => $this->jenis,
+        };
+    }
+
+    public function getLabelMatraAttribute(): string
+    {
+        return match ($this->matra) {
+            'darat'          => 'Darat',
+            'laut'           => 'Laut',
+            'udara'          => 'Udara',
+            'asdp'           => 'ASDP',
+            'perkeretaapian' => 'Perkeretaapian',
+            default          => $this->matra ?? '-',
         };
     }
 
@@ -108,13 +134,4 @@ class BankSoal extends Model
         };
     }
 
-    public function getBadgeTingkatAttribute(): string
-    {
-        return match ($this->tingkat_kesulitan) {
-            'mudah'  => 'success',
-            'sedang' => 'warning',
-            'sulit'  => 'danger',
-            default  => 'secondary',
-        };
-    }
 }

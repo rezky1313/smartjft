@@ -251,6 +251,8 @@ Route::prefix('ujikom-online')->name('ujikom-online.')->middleware('auth')->grou
     Route::post('/navigasi/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'navigasi'])->name('navigasi');
     Route::post('/submit/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'submit'])->name('submit');
     Route::get('/hasil/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'hasil'])->name('hasil');
+    Route::get('/hasil-gabungan/{jadwalId}/{pesertaId}', [\App\Http\Controllers\UjikomOnlineController::class, 'hasilGabungan'])->name('hasil-gabungan');
+    Route::post('/pelanggaran/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'catatPelanggaran'])->name('pelanggaran');
 });
 
 // ─── Ujikom Online — Admin ──────────────────────────────────────────────────
@@ -259,6 +261,8 @@ Route::prefix('ujikom-online/admin')->name('ujikom-online.admin.')->middleware([
     Route::post('/tutup-sesi/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'tutupSesi'])->name('tutup-sesi');
     Route::get('/monitoring/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'monitoring'])->name('monitoring');
     Route::post('/force-submit/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'forceSubmit'])->name('force-submit');
+    Route::get('/nilai-manual/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'formNilaiManual'])->name('nilai-manual.form');
+    Route::post('/nilai-manual', [\App\Http\Controllers\UjikomOnlineController::class, 'inputNilaiManual'])->name('nilai-manual.store');
 });
 
 // ─── Ujikom Hasil — HARUS di atas group ujikom/{id} ─────────────────────────
@@ -387,6 +391,7 @@ Route::prefix('soal-kategori')->name('soal-kategori.')->middleware(['auth', 'rol
 // ─── Paket Ujian ─────────────────────────────────────────────────────────────
 Route::prefix('paket-ujian')->name('paket-ujian.')->middleware(['auth', 'role:admin|super_admin'])->group(function () {
     Route::get('/get-soal-kategori', [PaketUjianController::class, 'getSoalByKategori'])->name('get-soal');
+    Route::get('/preview-komposisi', [PaketUjianController::class, 'previewKomposisi'])->name('preview-komposisi');
     Route::get('/', [PaketUjianController::class, 'index'])->name('index');
     Route::get('/create', [PaketUjianController::class, 'create'])->name('create');
     Route::post('/', [PaketUjianController::class, 'store'])->name('store');

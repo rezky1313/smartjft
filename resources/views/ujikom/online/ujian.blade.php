@@ -46,10 +46,26 @@
     font-weight: 700; font-size: 0.85rem; margin-right: 12px; flex-shrink: 0;
   }
   .pilihan-item.selected .pilihan-kode { background: #007bff; color: #fff; }
+
+  /* Anti-cheat warning */
+  .anti-cheat-warning {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 99999; width: 90%; max-width: 500px;
+    animation: slideDown 0.3s ease-out;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 </style>
 @endpush
 
 @section('isi')
+
+@if ($sesi->jenis_sesi !== 'tunggal')
+<div class="alert alert-primary py-2 mb-3 d-flex align-items-center justify-content-between flex-wrap">
+  <span><i class="fas fa-layer-group mr-1"></i> <strong>{{ $sesi->label_jenis_sesi }}</strong></span>
+  <span class="small">{{ $sesi->jenis_sesi === 'teknis' ? 'Sesi 1 dari 2' : 'Sesi 2 dari 2' }}</span>
+</div>
+@endif
+
 <div class="row">
 
   {{-- Panel Kiri: Navigasi --}}
@@ -309,6 +325,64 @@
       document.documentElement.requestFullscreen().catch(() => {});
     }
   } catch (e) {}
+
+  // ── Anti-Cheat ──────────────────────────────────────────────────────────
+  const pelanggaranUrl = '{{ route("ujikom-online.pelanggaran", $sesi->id) }}';
+
+  function laporkanPelanggaran(jenis) {
+    fetch(pelanggaranUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+      body: JSON.stringify({ jenis_pelanggaran: jenis }),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.pesan) return;
+        tampilkanPeringatanAntiCheat(data.pesan);
+        if (data.auto_submit) {
+          setTimeout(function () { document.getElementById('formSubmit').submit(); }, 2500);
+        }
+      })
+      .catch(function () {});
+  }
+
+  function tampilkanPeringatanAntiCheat(pesan) {
+    const modal = document.createElement('div');
+    modal.className = 'anti-cheat-warning';
+    modal.innerHTML = '<div class="alert alert-danger text-center mb-0 shadow">' +
+      '<i class="fas fa-exclamation-triangle mr-1"></i> ' + pesan + '</div>';
+    document.body.prepend(modal);
+    setTimeout(function () { modal.remove(); }, 5000);
+  }
+
+  // Deteksi pindah tab / minimize (Page Visibility API)
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      laporkanPelanggaran('pindah_tab');
+    }
+  });
+
+  window.addEventListener('blur', function () {
+    laporkanPelanggaran('minimize');
+  });
+
+  // Deteksi status kamera (wajib aktif selama ujian berlangsung)
+  let cameraStream = null;
+  async function mulaiPantauKamera() {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setInterval(function () {
+        const track = cameraStream.getVideoTracks()[0];
+        if (!track || !track.enabled || track.readyState !== 'live') {
+          laporkanPelanggaran('kamera_mati');
+        }
+      }, 5000);
+    } catch (err) {
+      tampilkanPeringatanAntiCheat('Kamera wajib diaktifkan untuk mengikuti ujian ini.');
+      laporkanPelanggaran('kamera_mati');
+    }
+  }
+  mulaiPantauKamera();
 })();
 </script>
 @endpush

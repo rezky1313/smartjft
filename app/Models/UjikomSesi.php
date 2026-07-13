@@ -16,6 +16,8 @@ class UjikomSesi extends Model
         'ujikom_jadwal_id',
         'paket_ujian_id',
         'peserta_id',
+        'sesi_teknis_id',
+        'jenis_sesi',
         'status_sesi',
         'waktu_mulai',
         'waktu_selesai',
@@ -60,6 +62,27 @@ class UjikomSesi extends Model
     public function log()
     {
         return $this->hasMany(UjikomSesiLog::class, 'ujikom_sesi_id')->orderByDesc('created_at');
+    }
+
+    /**
+     * Sesi Teknis dari pasangan sesi ini (kalau sesi ini adalah sesi Mansoskul).
+     */
+    public function sesiTeknis()
+    {
+        return $this->belongsTo(UjikomSesi::class, 'sesi_teknis_id');
+    }
+
+    /**
+     * Sesi Mansoskul dari pasangan sesi ini (kalau sesi ini adalah sesi Teknis).
+     */
+    public function sesiMansoskul()
+    {
+        return $this->hasOne(UjikomSesi::class, 'sesi_teknis_id');
+    }
+
+    public function pelanggaran()
+    {
+        return $this->hasMany(UjikomPelanggaran::class, 'ujikom_sesi_id');
     }
 
     // ─── Accessor ────────────────────────────────────────────────────────────
@@ -108,6 +131,16 @@ class UjikomSesi extends Model
         };
     }
 
+    public function getLabelJenisSesiAttribute(): string
+    {
+        return match ($this->jenis_sesi) {
+            'teknis'    => 'Sesi 1 — Teknis',
+            'mansoskul' => 'Sesi 2 — Mansoskul',
+            'tunggal'   => 'Sesi Tunggal',
+            default     => $this->jenis_sesi,
+        };
+    }
+
     // ─── Business Logic ──────────────────────────────────────────────────────
 
     public function hitungNilai(): void
@@ -148,14 +181,70 @@ class UjikomSesi extends Model
                 'peserta_id'       => $fresh->peserta_id,
             ],
             [
-                'ujikom_sesi_id'   => $fresh->id,
-                'jenis_ujian'      => 'online',
-                'nilai'            => $fresh->nilai_akhir,
-                'status_kelulusan' => $fresh->status_lulus,
-                'passing_grade'    => $fresh->paketUjian->passing_grade ?? null,
-                'tanggal_ujian'    => $fresh->waktu_selesai?->toDateString(),
-                'dinilai_oleh'     => null,
+                'ujikom_sesi_id'    => $fresh->id,
+                'jenis_ujian'       => 'online',
+                'nilai'             => $fresh->nilai_akhir,
+                'status_kelulusan'  => $fresh->status_lulus,
+                'passing_grade'     => $fresh->paketUjian->passing_grade ?? null,
+                'tanggal_ujian'     => $fresh->waktu_selesai?->toDateString(),
+                'dinilai_oleh'      => null,
+                'status_kecurangan' => $fresh->pelanggaran()->count() >= 3 ? 'terindikasi' : 'normal',
             ]
         );
+    }
+
+    /**
+     * Hitung nilai sesi CAT ini saja (0-100), TANPA menyimpan/sync ke ujikom_hasil —
+     * dipakai khusus alur 2 sesi (jenis_sesi teknis/mansoskul), finalisasi digabung
+     * lewat UjikomOnlineController::cobaFinalisasiHasil() setelah kedua sesi selesai.
+     * Teknis: persentase jawaban benar. Mansoskul: rata-rata nilai_diperoleh (skala 1-5) -> 0-100.
+     */
+    public function hitungNilaiSesi(): float
+    {
+        $totalSoal = $this->soal()->count();
+        if ($totalSoal === 0) {
+            return 0;
+        }
+
+        if ($this->jenis_sesi === 'mansoskul') {
+            $totalNilai    = (int) $this->soal()->sum('nilai_diperoleh');
+            $maksimalNilai = $totalSoal * 5;
+            return $maksimalNilai > 0 ? round(($totalNilai / $maksimalNilai) * 100, 2) : 0;
+        }
+
+        $benar = $this->soal()->where('is_benar', true)->count();
+        return round(($benar / $totalSoal) * 100, 2);
+    }
+
+    /**
+     * Hitung nilai gabungan 1 kompetensi (Teknis atau Mansoskul), menggabungkan
+     * CAT + Wawancara + Presentasi sesuai bobot aspek aktif di Jadwal.
+     *
+     * @param  string     $kompetensi       'teknis' | 'mansoskul'
+     * @param  float      $nilaiCat         nilai sesi CAT (0-100)
+     * @param  float|null $nilaiWawancara   skala 1-5, null jika tidak aktif/belum dinilai
+     * @param  float|null $nilaiPresentasi  skala 1-5, null jika tidak aktif/belum dinilai
+     * @param  array      $bobotAspek       hasil UjikomJadwal::getBobotAspek($kompetensi)
+     */
+    public static function hitungNilaiKompetensi(
+        string $kompetensi,
+        float $nilaiCat,
+        ?float $nilaiWawancara,
+        ?float $nilaiPresentasi,
+        array $bobotAspek
+    ): float {
+        $total = $nilaiCat * ($bobotAspek['cat'] / 100);
+
+        if ($bobotAspek['wawancara'] > 0 && $nilaiWawancara !== null) {
+            $wawancaraSkor100 = ($nilaiWawancara / 5) * 100;
+            $total += $wawancaraSkor100 * ($bobotAspek['wawancara'] / 100);
+        }
+
+        if ($bobotAspek['presentasi'] > 0 && $nilaiPresentasi !== null) {
+            $presentasiSkor100 = ($nilaiPresentasi / 5) * 100;
+            $total += $presentasiSkor100 * ($bobotAspek['presentasi'] / 100);
+        }
+
+        return round($total, 2);
     }
 }

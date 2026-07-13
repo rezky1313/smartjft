@@ -17,12 +17,14 @@ class UjikomSesiSoal extends Model
         'urutan',
         'pilihan_dipilih',
         'is_benar',
+        'nilai_diperoleh',
         'waktu_dijawab',
     ];
 
     protected $casts = [
-        'is_benar'      => 'boolean',
-        'waktu_dijawab' => 'datetime',
+        'is_benar'        => 'boolean',
+        'nilai_diperoleh' => 'integer',
+        'waktu_dijawab'   => 'datetime',
     ];
 
     protected $with = ['bankSoal.pilihan'];

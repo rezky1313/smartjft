@@ -13,6 +13,9 @@ use App\Models\UjikomJadwal;
 use App\Models\UjikomPendaftaran;
 use App\Models\UjikomPendaftaranPeserta;
 use App\Models\PaketUjian;
+use App\Models\UjikomHasil;
+use App\Models\UjikomNilaiManual;
+use App\Models\UjikomPelanggaran;
 
 class UjikomOnlineController extends Controller
 {
@@ -69,11 +72,35 @@ class UjikomOnlineController extends Controller
         $jadwals->each(function ($j) use ($pesertaRecords) {
             $peserta = $pesertaRecords->first(fn($p) => $p->pendaftaran->ujikom_jadwal_id === $j->id);
             $j->peserta_record = $peserta;
-            $j->sesi_peserta   = $peserta
-                ? UjikomSesi::where('ujikom_jadwal_id', $j->id)->where('peserta_id', $peserta->id)->first()
-                : null;
-            // Cek apakah sesi sudah dibuka oleh admin
-            $j->sesi_dibuka = UjikomSesi::where('ujikom_jadwal_id', $j->id)->exists();
+
+            $paketAktif = PaketUjian::where('ujikom_jadwal_id', $j->id)->where('status', 'aktif')->latest()->first();
+            $j->mode_sesi_taksonomi = $paketAktif && $paketAktif->mode_pemilihan === 'sesi_taksonomi';
+
+            if (!$peserta) {
+                $j->sesi_peserta = null;
+                $j->sesi_teknis = null;
+                $j->sesi_mansoskul = null;
+                $j->sesi_dibuka = false;
+                return;
+            }
+
+            if ($j->mode_sesi_taksonomi) {
+                // Mode 2 Sesi CAT: tidak butuh "buka sesi" admin terpisah — paket aktif = siap dimulai
+                $j->sesi_dibuka  = true;
+                $j->sesi_peserta = null;
+                $j->sesi_teknis  = UjikomSesi::where('ujikom_jadwal_id', $j->id)
+                    ->where('peserta_id', $peserta->id)->where('jenis_sesi', 'teknis')->first();
+                $j->sesi_mansoskul = $j->sesi_teknis
+                    ? UjikomSesi::where('sesi_teknis_id', $j->sesi_teknis->id)->first()
+                    : null;
+            } else {
+                $j->sesi_teknis = null;
+                $j->sesi_mansoskul = null;
+                $j->sesi_peserta = UjikomSesi::where('ujikom_jadwal_id', $j->id)
+                    ->where('peserta_id', $peserta->id)->where('jenis_sesi', 'tunggal')->first();
+                // Cek apakah sesi sudah dibuka oleh admin
+                $j->sesi_dibuka = UjikomSesi::where('ujikom_jadwal_id', $j->id)->exists();
+            }
         });
 
         return view('ujikom.online.index', compact('jadwals'));
@@ -98,10 +125,27 @@ class UjikomOnlineController extends Controller
             return back()->with('error', 'Anda tidak terdaftar atau belum diverifikasi untuk jadwal ini.');
         }
 
-        // 2. Cek apakah sesi sudah dibuka oleh admin (ada sesi lain utk jadwal ini)
+        // 2. Ambil paket ujian aktif untuk jadwal ini (ambil yang paling baru diaktifkan jika lebih dari 1)
+        $paket = PaketUjian::where('ujikom_jadwal_id', $jadwalId)
+            ->where('status', 'aktif')
+            ->latest()
+            ->first();
+
+        if (!$paket) {
+            return back()->with('error', 'Paket ujian belum tersedia untuk jadwal ini. Silakan hubungi admin Pusbin.');
+        }
+
+        // Mode "2 Sesi CAT" (Teknis + Mansoskul terpisah) punya alur sendiri — lihat mulaiSesiTaksonomi().
+        // Mode acak_otomatis/manual (satu sesi CAT tunggal) tetap pakai alur lama di bawah, TIDAK diubah.
+        if ($paket->mode_pemilihan === 'sesi_taksonomi') {
+            return $this->mulaiSesiTaksonomi($jadwal, $paket, $peserta);
+        }
+
+        // 3. Cek apakah sesi sudah dibuka oleh admin (ada sesi lain utk jadwal ini)
         // Atau peserta sudah punya sesi
         $sesiExisting = UjikomSesi::where('ujikom_jadwal_id', $jadwalId)
             ->where('peserta_id', $peserta->id)
+            ->where('jenis_sesi', 'tunggal')
             ->first();
 
         if ($sesiExisting) {
@@ -112,17 +156,7 @@ class UjikomOnlineController extends Controller
                 return redirect()->route('ujikom-online.hasil', $sesiExisting->id);
             }
             // status_sesi === 'menunggu' (dibuat massal oleh admin via bukaSesi(), belum ada soal/timer)
-            // → lanjut ke bawah untuk diaktifkan, JANGAN buat sesi baru (unique: ujikom_jadwal_id + peserta_id)
-        }
-
-        // 3. Ambil paket ujian aktif untuk jadwal ini (ambil yang paling baru diaktifkan jika lebih dari 1)
-        $paket = PaketUjian::where('ujikom_jadwal_id', $jadwalId)
-            ->where('status', 'aktif')
-            ->latest()
-            ->first();
-
-        if (!$paket) {
-            return back()->with('error', 'Paket ujian belum tersedia untuk jadwal ini. Silakan hubungi admin Pusbin.');
+            // → lanjut ke bawah untuk diaktifkan, JANGAN buat sesi baru (unique: ujikom_jadwal_id + peserta_id + jenis_sesi)
         }
 
         // 4. Generate soal
@@ -176,6 +210,85 @@ class UjikomOnlineController extends Controller
     }
 
     /**
+     * Alur "mulai" khusus paket mode sesi_taksonomi (2 Sesi CAT: Teknis lalu Mansoskul).
+     * Dipanggil dari mulai() di atas — TIDAK menyentuh alur lama (mode acak_otomatis/manual).
+     */
+    private function mulaiSesiTaksonomi(UjikomJadwal $jadwal, PaketUjian $paket, UjikomPendaftaranPeserta $peserta)
+    {
+        $jadwalId = $jadwal->id;
+
+        $sesiTeknis = UjikomSesi::where('ujikom_jadwal_id', $jadwalId)
+            ->where('peserta_id', $peserta->id)
+            ->where('jenis_sesi', 'teknis')
+            ->first();
+
+        if (!$sesiTeknis) {
+            $soal = $paket->generateSoalSesi('teknis');
+            if ($soal->isEmpty()) {
+                return back()->with('error', 'Soal Sesi Teknis belum tersedia di bank soal. Hubungi admin Pusbin.');
+            }
+            $sesiTeknis = $this->buatSesiGanda($jadwalId, $paket, $peserta, 'teknis', $soal, $paket->durasi_menit_teknis ?: 60);
+            return redirect()->route('ujikom-online.ujian', $sesiTeknis->id);
+        }
+
+        if (!in_array($sesiTeknis->status_sesi, ['selesai', 'timeout'])) {
+            return redirect()->route('ujikom-online.ujian', $sesiTeknis->id);
+        }
+
+        // Sesi Teknis selesai -> cek/lanjut Sesi Mansoskul
+        $sesiMansoskul = UjikomSesi::where('sesi_teknis_id', $sesiTeknis->id)->first();
+        if (!$sesiMansoskul) {
+            $soal = $paket->generateSoalSesi('mansoskul');
+            if ($soal->isEmpty()) {
+                return back()->with('error', 'Soal Sesi Mansoskul belum tersedia di bank soal. Hubungi admin Pusbin.');
+            }
+            $sesiMansoskul = $this->buatSesiGanda($jadwalId, $paket, $peserta, 'mansoskul', $soal, $paket->durasi_menit_mansoskul ?: 60, $sesiTeknis->id);
+            return redirect()->route('ujikom-online.ujian', $sesiMansoskul->id)
+                ->with('info', 'Sesi 1 (Teknis) selesai. Memulai Sesi 2 (Mansoskul).');
+        }
+
+        if (!in_array($sesiMansoskul->status_sesi, ['selesai', 'timeout'])) {
+            return redirect()->route('ujikom-online.ujian', $sesiMansoskul->id);
+        }
+
+        return redirect()->route('ujikom-online.hasil-gabungan', ['jadwalId' => $jadwalId, 'pesertaId' => $peserta->id]);
+    }
+
+    private function buatSesiGanda($jadwalId, PaketUjian $paket, UjikomPendaftaranPeserta $peserta, string $jenisSesi, $soalSet, int $durasiMenit, ?int $sesiTeknisId = null)
+    {
+        return DB::transaction(function () use ($jadwalId, $paket, $peserta, $jenisSesi, $soalSet, $durasiMenit, $sesiTeknisId) {
+            $now  = Carbon::now();
+            $sesi = UjikomSesi::create([
+                'ujikom_jadwal_id' => $jadwalId,
+                'paket_ujian_id'   => $paket->id,
+                'peserta_id'       => $peserta->id,
+                'jenis_sesi'       => $jenisSesi,
+                'sesi_teknis_id'   => $sesiTeknisId,
+                'status_sesi'      => 'berlangsung',
+                'waktu_mulai'      => $now,
+                'batas_waktu'      => $now->copy()->addMinutes($durasiMenit),
+                'ip_address'       => request()->ip(),
+            ]);
+
+            foreach ($soalSet as $urutan => $soal) {
+                UjikomSesiSoal::create([
+                    'ujikom_sesi_id' => $sesi->id,
+                    'bank_soal_id'   => $soal->id,
+                    'urutan'         => $urutan + 1,
+                ]);
+            }
+
+            UjikomSesiLog::create([
+                'ujikom_sesi_id' => $sesi->id,
+                'aksi'           => 'mulai',
+                'detail'         => ['jumlah_soal' => $soalSet->count(), 'jenis_sesi' => $jenisSesi, 'paket' => $paket->nama],
+            ]);
+
+            return $sesi;
+        });
+    }
+
+    /**
      * Halaman ujian CAT-style.
      */
     public function ujian($sesiId)
@@ -186,16 +299,20 @@ class UjikomOnlineController extends Controller
         // Cek kepemilikan
         $this->authorizeAksesSesi($sesi);
 
-        // Jika sesi sudah selesai/timeout → redirect ke hasil
+        // Jika sesi sudah selesai/timeout → redirect ke hasil (sesi tunggal) atau ke index (sesi 2-sesi,
+        // supaya tombol "Lanjutkan Ujian" di index yang menentukan langkah berikutnya via mulai())
         if (in_array($sesi->status_sesi, ['selesai', 'timeout'])) {
-            return redirect()->route('ujikom-online.hasil', $sesi->id);
+            return $sesi->jenis_sesi === 'tunggal'
+                ? redirect()->route('ujikom-online.hasil', $sesi->id)
+                : redirect()->route('ujikom-online.index')->with('info', 'Sesi ini sudah selesai. Silakan lanjutkan dari daftar ujian.');
         }
 
         // Cek timeout
         if ($sesi->batas_waktu && Carbon::now()->gte($sesi->batas_waktu)) {
-            $sesi->hitungNilai();
-            $sesi->update(['status_sesi' => 'timeout']);
-            return redirect()->route('ujikom-online.hasil', $sesi->id);
+            $this->selesaikanSesi($sesi, 'timeout');
+            return $sesi->jenis_sesi === 'tunggal'
+                ? redirect()->route('ujikom-online.hasil', $sesi->id)
+                : redirect()->route('ujikom-online.index')->with('info', 'Waktu sesi habis. Silakan lanjutkan dari daftar ujian.');
         }
 
         // Siapkan data soal (acak pilihan jika paket mengatur)
@@ -236,8 +353,7 @@ class UjikomOnlineController extends Controller
 
         // Cek timeout
         if ($sesi->batas_waktu && Carbon::now()->gte($sesi->batas_waktu)) {
-            $sesi->hitungNilai();
-            $sesi->update(['status_sesi' => 'timeout']);
+            $this->selesaikanSesi($sesi, 'timeout');
             return response()->json(['success' => false, 'message' => 'Waktu habis.', 'timeout' => true], 422);
         }
 
@@ -250,18 +366,20 @@ class UjikomOnlineController extends Controller
             ->where('id', $request->soal_id)
             ->firstOrFail();
 
-        // Tentukan benar/salah
-        $jawabanBenar = $soalSesi->bankSoal->pilihan
-            ->where('is_benar', true)
-            ->first();
+        $pilihanDipilih = $soalSesi->bankSoal->pilihan
+            ->first(fn($p) => strtoupper($p->kode_pilihan) === $request->jawaban);
 
-        $isBenar = $jawabanBenar && strtoupper($jawabanBenar->kode_pilihan) === $request->jawaban;
+        $update = ['pilihan_dipilih' => $request->jawaban, 'waktu_dijawab' => Carbon::now()];
 
-        $soalSesi->update([
-            'pilihan_dipilih' => $request->jawaban,
-            'is_benar'        => $isBenar,
-            'waktu_dijawab'   => Carbon::now(),
-        ]);
+        if ($sesi->jenis_sesi === 'mansoskul') {
+            // Mansoskul: tiap pilihan sudah punya nilai skala 1-5 sendiri (bukan benar/salah)
+            $update['nilai_diperoleh'] = $pilihanDipilih->nilai_skala ?? null;
+        } else {
+            $update['is_benar'] = (bool) ($pilihanDipilih->is_benar ?? false);
+        }
+
+        $soalSesi->update($update);
+        // PENTING: jangan kembalikan is_benar/nilai_diperoleh ke frontend — cegah kebocoran kunci jawaban
 
         // Log
         UjikomSesiLog::create([
@@ -310,7 +428,7 @@ class UjikomOnlineController extends Controller
         }
 
         // Hitung nilai dan selesaikan
-        $sesi->hitungNilai();
+        $this->selesaikanSesi($sesi, 'selesai');
 
         // Log
         UjikomSesiLog::create([
@@ -321,6 +439,18 @@ class UjikomOnlineController extends Controller
                 'status_lulus' => $sesi->fresh()->status_lulus,
             ],
         ]);
+
+        if ($sesi->jenis_sesi === 'teknis') {
+            return redirect()->route('ujikom-online.index')
+                ->with('info', 'Sesi 1 (Teknis) berhasil disubmit. Silakan lanjutkan ke Sesi 2 (Mansoskul).');
+        }
+
+        if ($sesi->jenis_sesi === 'mansoskul') {
+            return redirect()->route('ujikom-online.hasil-gabungan', [
+                'jadwalId'  => $sesi->ujikom_jadwal_id,
+                'pesertaId' => $sesi->peserta_id,
+            ])->with('success', 'Ujian berhasil disubmit.');
+        }
 
         return redirect()->route('ujikom-online.hasil', $sesiId)
             ->with('success', 'Ujian berhasil disubmit.');
@@ -350,6 +480,82 @@ class UjikomOnlineController extends Controller
         return view('ujikom.online.hasil', compact('sesi', 'durasi'));
     }
 
+    /**
+     * Halaman hasil gabungan (mode 2 Sesi CAT — Teknis + Mansoskul).
+     */
+    public function hasilGabungan($jadwalId, $pesertaId)
+    {
+        $peserta = UjikomPendaftaranPeserta::with('pegawai')->findOrFail($pesertaId);
+
+        // Otorisasi: admin boleh semua, peserta cuma boleh lihat hasilnya sendiri
+        $user = Auth::user();
+        if (!$user->hasAnyRole(['admin', 'super_admin']) && $peserta->pegawai_id !== $user->sdm_id) {
+            abort(403, 'Anda tidak memiliki akses ke hasil ini.');
+        }
+
+        $jadwal = UjikomJadwal::findOrFail($jadwalId);
+
+        $sesiTeknis = UjikomSesi::where('ujikom_jadwal_id', $jadwalId)
+            ->where('peserta_id', $pesertaId)->where('jenis_sesi', 'teknis')->first();
+        $sesiMansoskul = $sesiTeknis
+            ? UjikomSesi::where('sesi_teknis_id', $sesiTeknis->id)->first()
+            : null;
+
+        $hasil = UjikomHasil::where('ujikom_jadwal_id', $jadwalId)->where('peserta_id', $pesertaId)->first();
+
+        $bobotTeknis    = $jadwal->getBobotAspek('teknis');
+        $bobotMansoskul = $jadwal->getBobotAspek('mansoskul');
+
+        $nilaiManual = UjikomNilaiManual::where('ujikom_jadwal_id', $jadwalId)->where('peserta_id', $pesertaId)->get()
+            ->keyBy(fn($n) => $n->kompetensi . '_' . $n->aspek);
+
+        return view('ujikom.online.hasil_gabungan', compact(
+            'jadwal', 'peserta', 'sesiTeknis', 'sesiMansoskul', 'hasil', 'bobotTeknis', 'bobotMansoskul', 'nilaiManual'
+        ));
+    }
+
+    /**
+     * AJAX: catat pelanggaran anti-cheat (pindah tab, minimize, kamera mati).
+     */
+    public function catatPelanggaran(Request $request, $sesiId)
+    {
+        $sesi = UjikomSesi::findOrFail($sesiId);
+        $this->authorizeAksesSesi($sesi);
+
+        $request->validate([
+            'jenis_pelanggaran' => 'required|in:pindah_tab,minimize,kamera_mati',
+        ]);
+
+        if ($sesi->status_sesi !== 'berlangsung') {
+            return response()->json(['pelanggaran_ke' => 0, 'auto_submit' => false, 'pesan' => '']);
+        }
+
+        $jumlahSaatIni = $sesi->pelanggaran()->count() + 1;
+
+        UjikomPelanggaran::create([
+            'ujikom_sesi_id'     => $sesiId,
+            'jenis_pelanggaran'  => $request->jenis_pelanggaran,
+            'pelanggaran_ke'     => $jumlahSaatIni,
+            'waktu_kejadian'     => Carbon::now(),
+        ]);
+
+        // Belum ada broadcast realtime (Echo/Pusher) ke dashboard admin — admin melihatnya
+        // lewat kolom "Log Pelanggaran" di monitoring.blade.php saat auto-refresh 30 detik.
+
+        $autoSubmit = $jumlahSaatIni >= 3;
+        if ($autoSubmit) {
+            $this->selesaikanSesi($sesi, 'timeout');
+        }
+
+        return response()->json([
+            'pelanggaran_ke' => $jumlahSaatIni,
+            'auto_submit'    => $autoSubmit,
+            'pesan'          => $autoSubmit
+                ? 'Anda telah melanggar aturan ujian 3 kali. Ujian disubmit otomatis.'
+                : "Peringatan! Pelanggaran ke-{$jumlahSaatIni} dari 3. Ujian akan disubmit otomatis jika mencapai 3 kali.",
+        ]);
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     //  ADMIN
     // ═════════════════════════════════════════════════════════════════════════
@@ -369,6 +575,10 @@ class UjikomOnlineController extends Controller
 
         if (!$paket) {
             return back()->with('error', 'Belum ada paket ujian aktif untuk jadwal ini.');
+        }
+
+        if ($paket->mode_pemilihan === 'sesi_taksonomi') {
+            return back()->with('error', 'Paket mode "2 Sesi CAT" tidak perlu dibuka manual — peserta otomatis bisa mulai Sesi 1 (Teknis) begitu paket aktif.');
         }
 
         // Ambil semua peserta yang sudah diverifikasi pusbin
@@ -403,6 +613,75 @@ class UjikomOnlineController extends Controller
     }
 
     /**
+     * Form input nilai manual (Wawancara/Presentasi) untuk semua peserta terverifikasi di jadwal —
+     * hanya aspek yang aktif (bobot > 0) di konfigurasi jadwal yang ditampilkan.
+     */
+    public function formNilaiManual($jadwalId)
+    {
+        $jadwal = UjikomJadwal::findOrFail($jadwalId);
+
+        $pesertaList = UjikomPendaftaranPeserta::with(['pegawai', 'pendaftaran'])
+            ->whereHas('pendaftaran', function ($q) use ($jadwalId) {
+                $q->where('ujikom_jadwal_id', $jadwalId)
+                  ->whereIn('status', ['diverifikasi_pusbin', 'selesai']);
+            })->get();
+
+        $bobotTeknis    = $jadwal->getBobotAspek('teknis');
+        $bobotMansoskul = $jadwal->getBobotAspek('mansoskul');
+
+        $nilaiManual = UjikomNilaiManual::where('ujikom_jadwal_id', $jadwalId)->get()
+            ->groupBy('peserta_id')
+            ->map(fn($rows) => $rows->keyBy(fn($n) => $n->kompetensi . '_' . $n->aspek));
+
+        return view('ujikom.online.input_nilai_manual', compact(
+            'jadwal', 'pesertaList', 'bobotTeknis', 'bobotMansoskul', 'nilaiManual'
+        ));
+    }
+
+    /**
+     * Simpan/update satu nilai manual (Wawancara/Presentasi, skala 1-5) untuk 1 peserta.
+     * Kalau sesi Mansoskul peserta itu sudah selesai, coba finalisasi ulang Hasil Ujikom-nya.
+     */
+    public function inputNilaiManual(Request $request)
+    {
+        $request->validate([
+            'ujikom_jadwal_id' => 'required|exists:ujikom_jadwal,id',
+            'peserta_id'       => 'required|exists:ujikom_pendaftaran_peserta,id',
+            'kompetensi'       => 'required|in:teknis,mansoskul',
+            'aspek'            => 'required|in:wawancara,presentasi',
+            'nilai'            => 'required|integer|min:1|max:5',
+            'catatan'          => 'nullable|string',
+        ]);
+
+        UjikomNilaiManual::updateOrCreate(
+            [
+                'ujikom_jadwal_id' => $request->ujikom_jadwal_id,
+                'peserta_id'       => $request->peserta_id,
+                'kompetensi'       => $request->kompetensi,
+                'aspek'            => $request->aspek,
+            ],
+            [
+                'nilai'        => $request->nilai,
+                'catatan'      => $request->catatan,
+                'dinilai_oleh' => Auth::id(),
+            ]
+        );
+
+        // Kalau sesi Mansoskul peserta ini sudah selesai, coba finalisasi ulang (mungkin ini nilai terakhir yg ditunggu)
+        $sesiMansoskul = UjikomSesi::where('ujikom_jadwal_id', $request->ujikom_jadwal_id)
+            ->where('peserta_id', $request->peserta_id)
+            ->where('jenis_sesi', 'mansoskul')
+            ->where('status_sesi', 'selesai')
+            ->first();
+
+        if ($sesiMansoskul) {
+            $this->cobaFinalisasiHasil($sesiMansoskul);
+        }
+
+        return back()->with('success', 'Nilai berhasil disimpan.');
+    }
+
+    /**
      * Admin tutup sesi — force submit semua sesi yang masih berlangsung.
      */
     public function tutupSesi(Request $request, $jadwalId)
@@ -412,7 +691,7 @@ class UjikomOnlineController extends Controller
             ->get();
 
         foreach ($sesiAktif as $sesi) {
-            $sesi->hitungNilai();
+            $this->selesaikanSesi($sesi, 'timeout');
             UjikomSesiLog::create([
                 'ujikom_sesi_id' => $sesi->id,
                 'aksi'           => 'timeout',
@@ -438,13 +717,15 @@ class UjikomOnlineController extends Controller
     {
         $jadwal = UjikomJadwal::findOrFail($jadwalId);
 
-        $sesiList = UjikomSesi::with(['peserta.pegawai', 'paketUjian'])
+        $sesiList = UjikomSesi::with(['peserta.pegawai', 'paketUjian', 'pelanggaran'])
             ->where('ujikom_jadwal_id', $jadwalId)
             ->get();
 
-        // Hitung progress per sesi
+        // Hitung progress + ringkasan pelanggaran per sesi
         $sesiList->each(function ($s) {
-            $s->progress_data = $s->progress;
+            $s->progress_data       = $s->progress;
+            $s->jumlah_pelanggaran  = $s->pelanggaran->count();
+            $s->ringkasan_pelanggaran = $s->pelanggaran->countBy('jenis_pelanggaran');
         });
 
         $statistik = [
@@ -468,7 +749,7 @@ class UjikomOnlineController extends Controller
             return back()->with('error', 'Sesi sudah selesai.');
         }
 
-        $sesi->hitungNilai();
+        $this->selesaikanSesi($sesi, 'timeout');
 
         UjikomSesiLog::create([
             'ujikom_sesi_id' => $sesi->id,
@@ -482,6 +763,125 @@ class UjikomOnlineController extends Controller
     // ═════════════════════════════════════════════════════════════════════════
     //  HELPER
     // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Selesaikan sesi (submit/timeout), sadar jenis sesi:
+     * - 'tunggal' (alur lama): pakai UjikomSesi::hitungNilai() apa adanya (sudah sync ke ujikom_hasil).
+     * - 'teknis'/'mansoskul' (2 Sesi CAT): hitung nilai sesi ini saja, JANGAN sync ke ujikom_hasil
+     *   langsung — kalau ini sesi Mansoskul (sesi terakhir), coba finalisasi via cobaFinalisasiHasil().
+     */
+    private function selesaikanSesi(UjikomSesi $sesi, string $statusAkhir = 'selesai'): void
+    {
+        if ($sesi->jenis_sesi === 'tunggal') {
+            $sesi->hitungNilai();
+            if ($statusAkhir !== 'selesai') {
+                $sesi->update(['status_sesi' => $statusAkhir]);
+            }
+            return;
+        }
+
+        $sesi->update([
+            'nilai_akhir'   => $sesi->hitungNilaiSesi(),
+            'status_sesi'   => $statusAkhir,
+            'waktu_selesai' => Carbon::now(),
+        ]);
+
+        if ($sesi->jenis_sesi === 'mansoskul') {
+            $this->cobaFinalisasiHasil($sesi->fresh());
+        }
+    }
+
+    /**
+     * Coba finalisasi ke Hasil Ujikom setelah sesi Mansoskul (sesi terakhir) selesai. Jika masih
+     * menunggu nilai manual (Wawancara/Presentasi aktif di jadwal tapi belum diinput), tunda dulu
+     * dengan status "belum_dinilai" — dipanggil ulang dari inputNilaiManual() setiap nilai baru masuk.
+     */
+    private function cobaFinalisasiHasil(UjikomSesi $sesiMansoskul): void
+    {
+        $sesiTeknis = UjikomSesi::find($sesiMansoskul->sesi_teknis_id);
+        $jadwal     = $sesiMansoskul->jadwal;
+        $pesertaId  = $sesiMansoskul->peserta_id;
+
+        if (!$sesiTeknis || !$jadwal) {
+            return;
+        }
+
+        $bobotTeknis    = $jadwal->getBobotAspek('teknis');
+        $bobotMansoskul = $jadwal->getBobotAspek('mansoskul');
+
+        $ambilNilaiManual = function (string $kompetensi, string $aspek) use ($jadwal, $pesertaId) {
+            return UjikomNilaiManual::where([
+                'ujikom_jadwal_id' => $jadwal->id,
+                'peserta_id'       => $pesertaId,
+                'kompetensi'       => $kompetensi,
+                'aspek'            => $aspek,
+            ])->value('nilai');
+        };
+
+        $wawancaraTeknis     = $bobotTeknis['wawancara'] > 0 ? $ambilNilaiManual('teknis', 'wawancara') : null;
+        $presentasiTeknis    = $bobotTeknis['presentasi'] > 0 ? $ambilNilaiManual('teknis', 'presentasi') : null;
+        $wawancaraMansoskul  = $bobotMansoskul['wawancara'] > 0 ? $ambilNilaiManual('mansoskul', 'wawancara') : null;
+        $presentasiMansoskul = $bobotMansoskul['presentasi'] > 0 ? $ambilNilaiManual('mansoskul', 'presentasi') : null;
+
+        // Cek apakah semua aspek yang WAJIB (bobotnya > 0, artinya aktif di jadwal) sudah terisi
+        $menungguManual =
+            ($bobotTeknis['wawancara'] > 0 && $wawancaraTeknis === null) ||
+            ($bobotTeknis['presentasi'] > 0 && $presentasiTeknis === null) ||
+            ($bobotMansoskul['wawancara'] > 0 && $wawancaraMansoskul === null) ||
+            ($bobotMansoskul['presentasi'] > 0 && $presentasiMansoskul === null);
+
+        // Indikasi kecurangan dari pelanggaran di kedua sesi (dihitung di sini juga supaya
+        // sudah terlihat di tampilan detail meski status masih "belum_dinilai")
+        $totalPelanggaran = $sesiTeknis->pelanggaran()->count() + $sesiMansoskul->pelanggaran()->count();
+
+        // Rincian mentah per aspek — disimpan di kedua cabang (belum final maupun final)
+        // supaya Pusbin bisa lihat aspek mana yang sudah/belum terisi lewat tampilan detail.
+        $rincianAspek = [
+            'nilai_teknis_cat'           => $sesiTeknis->nilai_akhir,
+            'nilai_teknis_wawancara'     => $wawancaraTeknis,
+            'nilai_teknis_presentasi'    => $presentasiTeknis,
+            'nilai_mansoskul_cat'        => $sesiMansoskul->nilai_akhir,
+            'nilai_mansoskul_wawancara'  => $wawancaraMansoskul,
+            'nilai_mansoskul_presentasi' => $presentasiMansoskul,
+            'status_kecurangan'          => $totalPelanggaran >= 3 ? 'terindikasi' : 'normal',
+        ];
+
+        if ($menungguManual) {
+            UjikomHasil::updateOrCreate(
+                ['ujikom_jadwal_id' => $jadwal->id, 'peserta_id' => $pesertaId],
+                array_merge($rincianAspek, [
+                    'ujikom_sesi_id'   => $sesiMansoskul->id,
+                    'jenis_ujian'      => 'online',
+                    'status_kelulusan' => 'belum_dinilai',
+                ])
+            );
+            return;
+        }
+
+        $nilaiTeknisFinal    = UjikomSesi::hitungNilaiKompetensi('teknis', (float) $sesiTeknis->nilai_akhir, $wawancaraTeknis, $presentasiTeknis, $bobotTeknis);
+        $nilaiMansoskulFinal = UjikomSesi::hitungNilaiKompetensi('mansoskul', (float) $sesiMansoskul->nilai_akhir, $wawancaraMansoskul, $presentasiMansoskul, $bobotMansoskul);
+
+        $bobotJenjang = $jadwal->getBobotJenjang();
+        $nilaiAkhir   = ($nilaiTeknisFinal * $bobotJenjang['teknis'] / 100) + ($nilaiMansoskulFinal * $bobotJenjang['mansoskul'] / 100);
+        $passingGrade = $sesiMansoskul->paketUjian->passing_grade ?? 70;
+        $statusLulus  = $nilaiAkhir >= $passingGrade ? 'lulus' : 'tidak_lulus';
+
+        UjikomHasil::updateOrCreate(
+            ['ujikom_jadwal_id' => $jadwal->id, 'peserta_id' => $pesertaId],
+            array_merge($rincianAspek, [
+                'ujikom_sesi_id'   => $sesiMansoskul->id,
+                'jenis_ujian'      => 'online',
+                'nilai_teknis'     => $nilaiTeknisFinal,
+                'nilai_mansoskul'  => $nilaiMansoskulFinal,
+                'bobot_teknis'     => $bobotJenjang['teknis'],
+                'bobot_mansoskul'  => $bobotJenjang['mansoskul'],
+                'nilai'            => round($nilaiAkhir, 2),
+                'status_kelulusan' => $statusLulus,
+                'passing_grade'    => $passingGrade,
+                'tanggal_ujian'    => now()->toDateString(),
+            ])
+        );
+    }
 
     private function authorizeAksesSesi(UjikomSesi $sesi): void
     {

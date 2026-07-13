@@ -28,31 +28,34 @@
             <p class="mb-0"><strong>#{{ $soal->id }}</strong></p>
           </div>
           <div class="col-md-3">
-            <p class="mb-1 text-muted small font-weight-bold">KATEGORI</p>
-            <p class="mb-0">{{ $soal->kategori?->nama ?? '<span class="text-muted">— Umum —</span>' }}</p>
+            <p class="mb-1 text-muted small font-weight-bold">{{ $soal->jenis === 'teknis' ? 'KATEGORI' : 'MATRA' }}</p>
+            <p class="mb-0">
+              @if ($soal->jenis === 'teknis')
+                {{ $soal->kategori?->nama ?? '-' }}
+              @else
+                @if ($soal->matra)
+                  {{ $soal->label_matra }}
+                @else
+                  <span class="badge badge-warning"><i class="fas fa-exclamation-triangle mr-1"></i>Belum Diisi</span>
+                @endif
+              @endif
+            </p>
           </div>
           <div class="col-md-2">
             <p class="mb-1 text-muted small font-weight-bold">JENIS</p>
             <p class="mb-0">
-              <span class="badge badge-{{ $soal->jenis === 'umum' ? 'secondary' : 'info' }}">
-                {{ $soal->jenis === 'umum' ? 'Umum' : 'Spesifik' }}
+              <span class="badge badge-{{ $soal->jenis === 'mansoskul' ? 'secondary' : 'info' }}">
+                {{ $soal->label_jenis }}
               </span>
             </p>
           </div>
-          <div class="col-md-2">
-            <p class="mb-1 text-muted small font-weight-bold">TINGKAT</p>
-            <p class="mb-0">
-              @php $badgeTingkat = ['mudah'=>'success','sedang'=>'warning','sulit'=>'danger']; @endphp
-              <span class="badge badge-{{ $badgeTingkat[$soal->tingkat_kesulitan] ?? 'secondary' }}">{{ $soal->label_tingkat }}</span>
-            </p>
-          </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
             <p class="mb-1 text-muted small font-weight-bold">TAKSONOMI</p>
             <p class="mb-0">
               <span class="badge badge-secondary">{{ $soal->label_taksonomi }}</span>
             </p>
           </div>
-          <div class="col-md-1">
+          <div class="col-md-2">
             <p class="mb-1 text-muted small font-weight-bold">STATUS</p>
             <p class="mb-0">
               @php $badgeStatus = ['aktif'=>'success','draft'=>'secondary','nonaktif'=>'danger']; @endphp
@@ -96,21 +99,34 @@
         <h3 class="card-title mb-0"><i class="fas fa-list-ul mr-2"></i>Pilihan Jawaban</h3>
       </div>
       <div class="card-body">
-        @foreach ($soal->pilihan as $p)
-        <div class="d-flex align-items-start mb-2 p-2 rounded"
-             style="{{ $p->is_benar ? 'background:#d4edda;border:1px solid #c3e6cb;' : 'background:#f8f9fa;border:1px solid #dee2e6;' }}">
-          <span class="badge mr-3 mt-1 {{ $p->is_benar ? 'badge-success' : 'badge-secondary' }}"
-                style="font-size:0.9rem;min-width:28px;padding:5px 8px;">
-            {{ $p->kode_pilihan }}
-          </span>
-          <span style="font-size:0.95rem;">{{ $p->teks_pilihan }}</span>
-          @if ($p->is_benar)
-          <span class="ml-auto text-success small font-weight-bold">
-            <i class="fas fa-check-circle mr-1"></i>Jawaban Benar
-          </span>
-          @endif
-        </div>
-        @endforeach
+        @if ($soal->jenis === 'teknis')
+          @foreach ($soal->pilihan as $p)
+          <div class="d-flex align-items-start mb-2 p-2 rounded"
+               style="{{ $p->is_benar ? 'background:#d4edda;border:1px solid #c3e6cb;' : 'background:#f8f9fa;border:1px solid #dee2e6;' }}">
+            <span class="badge mr-3 mt-1 {{ $p->is_benar ? 'badge-success' : 'badge-secondary' }}"
+                  style="font-size:0.9rem;min-width:28px;padding:5px 8px;">
+              {{ $p->kode_pilihan }}
+            </span>
+            <span style="font-size:0.95rem;">{{ $p->teks_pilihan }}</span>
+            @if ($p->is_benar)
+            <span class="ml-auto text-success small font-weight-bold">
+              <i class="fas fa-check-circle mr-1"></i>Jawaban Benar
+            </span>
+            @endif
+          </div>
+          @endforeach
+        @else
+          <p class="text-muted small mb-3"><i class="fas fa-info-circle mr-1"></i>Soal Mansoskul tidak punya jawaban benar/salah — tiap pilihan punya nilai skala 1-5 sendiri.</p>
+          @foreach ($soal->pilihan as $p)
+          <div class="d-flex align-items-center mb-2 p-2 rounded" style="background:#f8f9fa;border:1px solid #dee2e6;">
+            <span class="badge badge-secondary mr-3" style="font-size:0.9rem;min-width:28px;padding:5px 8px;">
+              {{ $p->kode_pilihan }}
+            </span>
+            <span style="font-size:0.95rem;" class="flex-fill">{{ $p->teks_pilihan }}</span>
+            <span class="badge badge-info ml-auto">Nilai {{ $p->nilai_skala ?? '-' }}</span>
+          </div>
+          @endforeach
+        @endif
       </div>
     </div>
 

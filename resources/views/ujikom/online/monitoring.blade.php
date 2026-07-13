@@ -67,10 +67,12 @@
               <tr>
                 <th width="40" class="text-center">No</th>
                 <th>Nama Peserta</th>
+                <th width="90" class="text-center">Sesi</th>
                 <th width="100" class="text-center">Status</th>
                 <th width="130" class="text-center">Progress</th>
                 <th width="80" class="text-center">Nilai</th>
                 <th width="90" class="text-center">Status Lulus</th>
+                <th width="120" class="text-center">Log Pelanggaran</th>
                 <th width="90" class="text-center">Aksi</th>
               </tr>
             </thead>
@@ -81,6 +83,13 @@
                 <td>
                   <strong>{{ $s->peserta?->pegawai?->nama_lengkap ?? '-' }}</strong>
                   <br><small class="text-muted">{{ $s->peserta?->pegawai?->nip ?? '-' }}</small>
+                </td>
+                <td class="text-center">
+                  @if ($s->jenis_sesi !== 'tunggal')
+                    <span class="badge badge-light border">{{ $s->jenis_sesi === 'teknis' ? 'Sesi 1: Teknis' : 'Sesi 2: Mansoskul' }}</span>
+                  @else
+                    <span class="text-muted">—</span>
+                  @endif
                 </td>
                 <td class="text-center">
                   <span class="badge badge-{{ $s->badge_status_sesi }}">{{ $s->label_status_sesi }}</span>
@@ -116,6 +125,18 @@
                   @endif
                 </td>
                 <td class="text-center">
+                  @if ($s->jumlah_pelanggaran > 0)
+                    <span class="badge badge-danger" title="{{ $s->ringkasan_pelanggaran->map(fn($jml, $jenis) => $jenis . ': ' . $jml)->implode(', ') }}">
+                      <i class="fas fa-exclamation-triangle mr-1"></i>{{ $s->jumlah_pelanggaran }}x
+                    </span>
+                    @if ($s->jumlah_pelanggaran >= 3)
+                    <br><span class="badge badge-dark mt-1">Terindikasi Kecurangan</span>
+                    @endif
+                  @else
+                    <span class="text-muted small">—</span>
+                  @endif
+                </td>
+                <td class="text-center">
                   @if (in_array($s->status_sesi, ['berlangsung', 'menunggu']))
                   <form action="{{ route('ujikom-online.admin.force-submit', $s->id) }}" method="POST" class="d-inline"
                         onsubmit="return confirm('Force submit peserta ini?')">
@@ -130,7 +151,7 @@
                 </td>
               </tr>
               @empty
-              <tr><td colspan="7" class="text-center text-muted py-4">Belum ada sesi peserta.</td></tr>
+              <tr><td colspan="9" class="text-center text-muted py-4">Belum ada sesi peserta.</td></tr>
               @endforelse
             </tbody>
           </table>

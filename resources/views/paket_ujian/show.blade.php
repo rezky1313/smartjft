@@ -191,17 +191,17 @@
         </div>
         @endif
 
-        {{-- Statistik Tingkat Kesulitan (mode manual) --}}
-        @if ($paket->mode_pemilihan === 'manual' && count($statTingkat))
+        {{-- Statistik Jenis Soal (mode manual) --}}
+        @if ($paket->mode_pemilihan === 'manual' && count($statJenis))
         <div class="card">
           <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-bar mr-1"></i> Statistik Soal</h3></div>
           <div class="card-body pb-2">
             @php
-              $tingkatMap = ['mudah' => ['label' => 'Mudah', 'color' => 'success'], 'sedang' => ['label' => 'Sedang', 'color' => 'warning'], 'sulit' => ['label' => 'Sulit', 'color' => 'danger']];
-              $total = array_sum($statTingkat);
+              $jenisMap = ['mansoskul' => ['label' => 'Mansoskul', 'color' => 'secondary'], 'teknis' => ['label' => 'Teknis', 'color' => 'info']];
+              $total = array_sum($statJenis);
             @endphp
-            @foreach ($tingkatMap as $key => $meta)
-              @php $jml = $statTingkat[$key] ?? 0; $pct = $total > 0 ? round($jml / $total * 100) : 0; @endphp
+            @foreach ($jenisMap as $key => $meta)
+              @php $jml = $statJenis[$key] ?? 0; $pct = $total > 0 ? round($jml / $total * 100) : 0; @endphp
               <div class="mb-2">
                 <div class="d-flex justify-content-between mb-1" style="font-size:0.82rem;">
                   <span>{{ $meta['label'] }}</span><span>{{ $jml }} soal ({{ $pct }}%)</span>
@@ -212,6 +212,44 @@
               </div>
             @endforeach
             <p class="text-muted mb-0 mt-2" style="font-size:0.8rem;">Total: {{ $total }} soal terpilih dari {{ $paket->jumlah_soal }} target</p>
+          </div>
+        </div>
+        @endif
+
+        {{-- Konfigurasi 2 Sesi CAT --}}
+        @if ($paket->mode_pemilihan === 'sesi_taksonomi')
+        <div class="card card-outline card-primary">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-toolbox mr-1"></i> Sesi Teknis</h3></div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0" style="font-size:0.84rem;">
+              <tr><td class="text-muted pl-3" width="120">Kategori</td><td>{{ $paket->kategoriTeknis?->nama ?? '-' }}</td></tr>
+              <tr><td class="text-muted pl-3">Taksonomi Maks</td><td>{{ $paket->taksonomi_maks_teknis ?? '-' }}</td></tr>
+              <tr><td class="text-muted pl-3">Jumlah Soal</td><td>{{ $paket->jumlah_soal_teknis ?? 0 }} soal</td></tr>
+              <tr><td class="text-muted pl-3">Durasi</td><td>{{ $paket->durasi_menit_teknis ?? 0 }} menit</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card card-outline card-success">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-users mr-1"></i> Sesi Mansoskul</h3></div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0" style="font-size:0.84rem;">
+              <tr><td class="text-muted pl-3" width="120">Matra</td><td>{{ $paket->matra_mansoskul ? ucfirst($paket->matra_mansoskul) : '-' }}</td></tr>
+              <tr><td class="text-muted pl-3">Taksonomi Maks</td><td>{{ $paket->taksonomi_maks_mansoskul ?? '-' }}</td></tr>
+              <tr><td class="text-muted pl-3">Jumlah Soal</td><td>{{ $paket->jumlah_soal_mansoskul ?? 0 }} soal</td></tr>
+              <tr><td class="text-muted pl-3">Durasi</td><td>{{ $paket->durasi_menit_mansoskul ?? 0 }} menit</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-eye mr-1"></i> Preview Set Soal</h3></div>
+          <div class="card-body">
+            <p class="text-muted small mb-2">Lihat contoh set soal gabungan kedua sesi (digenerate secara acak sesuai komposisi taksonomi).</p>
+            <button class="btn btn-sm btn-outline-primary btn-block" id="btnPreview">
+              <i class="fas fa-dice mr-1"></i> Generate Preview
+            </button>
+            <div id="previewResult" class="mt-2" style="display:none;"></div>
           </div>
         </div>
         @endif
@@ -239,8 +277,8 @@
                   <tr>
                     <th width="40" class="text-center">No</th>
                     <th>Pertanyaan</th>
-                    <th width="130">Kategori</th>
-                    <th width="80" class="text-center">Tingkat</th>
+                    <th width="130">Kategori / Matra</th>
+                    <th width="90" class="text-center">Jenis</th>
                     <th width="90" class="text-center">Kunci</th>
                   </tr>
                 </thead>
@@ -254,9 +292,17 @@
                       <span class="badge badge-light border ml-1" style="font-size:0.7rem;">Essay</span>
                       @endif
                     </td>
-                    <td><small class="text-muted">{{ $soal->kategori?->nama ?? '— Umum —' }}</small></td>
+                    <td>
+                      <small class="text-muted">
+                        @if ($soal->jenis === 'teknis')
+                          {{ $soal->kategori?->nama ?? '-' }}
+                        @else
+                          {{ $soal->matra ? $soal->label_matra : 'Belum Lengkap' }}
+                        @endif
+                      </small>
+                    </td>
                     <td class="text-center">
-                      <span class="badge badge-{{ $soal->badge_tingkat }}">{{ $soal->label_tingkat }}</span>
+                      <span class="badge badge-{{ $soal->jenis === 'mansoskul' ? 'light border' : 'info' }}">{{ $soal->label_jenis }}</span>
                     </td>
                     <td class="text-center">
                       @php $jawaban = $soal->jawabanBenar->first(); @endphp
@@ -277,7 +323,7 @@
           </div>
         </div>
 
-        @else
+        @elseif ($paket->mode_pemilihan === 'acak_otomatis')
         {{-- Mode Acak: tampilkan ringkasan konfigurasi + preview hasil --}}
         <div class="card">
           <div class="card-header">
@@ -330,6 +376,70 @@
           </div>
         </div>
 
+        @elseif ($paket->mode_pemilihan === 'sesi_taksonomi')
+        {{-- 2 Sesi CAT: tampilkan komposisi taksonomi per sesi --}}
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0"><i class="fas fa-layer-group mr-1"></i> Komposisi Taksonomi per Sesi</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small mb-3">Jumlah soal per level taksonomi Bloom, dihitung otomatis berbobot berjenjang, beserta ketersediaan di bank soal.</p>
+            @php
+              $komposisiTeknis    = $paket->komposisiTaksonomi->where('jenis_sesi', 'teknis');
+              $komposisiMansoskul = $paket->komposisiTaksonomi->where('jenis_sesi', 'mansoskul');
+              $detailByLabel      = collect($ketersediaan['detail'])->keyBy('label');
+            @endphp
+            <div class="row">
+              @if ($komposisiTeknis->isNotEmpty())
+              <div class="col-md-6 mb-3">
+                <h6 class="font-weight-bold small"><i class="fas fa-toolbox mr-1 text-primary"></i>Sesi Teknis</h6>
+                <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                  <thead class="thead-light"><tr><th>Taksonomi</th><th class="text-center" width="60">Butuh</th><th class="text-center" width="60">OK?</th></tr></thead>
+                  <tbody>
+                    @foreach ($komposisiTeknis as $k)
+                    @php $d = $detailByLabel->get('Teknis — ' . $k->label_taksonomi); @endphp
+                    <tr>
+                      <td>{{ $k->label_taksonomi }}</td>
+                      <td class="text-center">{{ $k->jumlah_soal }}</td>
+                      <td class="text-center">
+                        @if ($d)
+                          @if ($d['cukup'])<i class="fas fa-check text-success"></i>@else<i class="fas fa-times text-danger"></i>@endif
+                        @endif
+                      </td>
+                    </tr>
+                    @endforeach
+                  </tbody>
+                </table>
+              </div>
+              @endif
+              @if ($komposisiMansoskul->isNotEmpty())
+              <div class="col-md-6 mb-3">
+                <h6 class="font-weight-bold small"><i class="fas fa-users mr-1 text-success"></i>Sesi Mansoskul</h6>
+                <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                  <thead class="thead-light"><tr><th>Taksonomi</th><th class="text-center" width="60">Butuh</th><th class="text-center" width="60">OK?</th></tr></thead>
+                  <tbody>
+                    @foreach ($komposisiMansoskul as $k)
+                    @php $d = $detailByLabel->get('Mansoskul — ' . $k->label_taksonomi); @endphp
+                    <tr>
+                      <td>{{ $k->label_taksonomi }}</td>
+                      <td class="text-center">{{ $k->jumlah_soal }}</td>
+                      <td class="text-center">
+                        @if ($d)
+                          @if ($d['cukup'])<i class="fas fa-check text-success"></i>@else<i class="fas fa-times text-danger"></i>@endif
+                        @endif
+                      </td>
+                    </tr>
+                    @endforeach
+                  </tbody>
+                </table>
+              </div>
+              @endif
+            </div>
+          </div>
+        </div>
+        @endif
+
+        @if ($paket->mode_pemilihan !== 'manual')
         {{-- Area hasil preview --}}
         <div class="card" id="previewCard" style="display:none;">
           <div class="card-header d-flex align-items-center justify-content-between">
@@ -351,7 +461,7 @@
 
 @push('scripts')
 <script>
-@if ($paket->mode_pemilihan === 'acak_otomatis')
+@if (in_array($paket->mode_pemilihan, ['acak_otomatis', 'sesi_taksonomi']))
 $('#btnPreview').on('click', function () {
     const btn = $(this);
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menggenerate...');
@@ -372,7 +482,7 @@ $('#btnPreview').on('click', function () {
                 <th class="text-center" width="40">No</th>
                 <th>Pertanyaan</th>
                 <th width="130">Kategori</th>
-                <th class="text-center" width="90">Tingkat</th>
+                <th class="text-center" width="90">Jenis</th>
                 <th class="text-center" width="90">Taksonomi</th>
               </tr>
             </thead>
@@ -382,7 +492,7 @@ $('#btnPreview').on('click', function () {
               <td class="text-center text-muted">${i+1}</td>
               <td>${s.pertanyaan}</td>
               <td><small class="text-muted">${s.kategori}</small></td>
-              <td class="text-center"><span class="badge badge-${s.badge_tingkat}">${s.tingkat}</span></td>
+              <td class="text-center"><span class="badge badge-${s.badge_jenis}">${s.label_jenis}</span></td>
               <td class="text-center"><small class="text-muted">${s.taksonomi}</small></td>
             </tr>`;
         });

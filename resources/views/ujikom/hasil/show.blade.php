@@ -9,6 +9,9 @@
   .chart-bar { background:#3490dc; border-radius:4px 4px 0 0; width:100%; min-height:4px; transition:all .3s; }
   .chart-bar-label { font-size:0.7rem; color:#6c757d; margin-top:3px; }
   .chart-bar-val { font-size:0.72rem; font-weight:600; color:#333; }
+  .toggle-icon { transition: transform 0.2s; }
+  .toggle-icon.open { transform: rotate(90deg); }
+  tr.baris-toggle:hover { background:#f8f9fa; }
 </style>
 @endpush
 
@@ -111,12 +114,14 @@
           <table class="table table-bordered table-hover table-sm mb-0" style="font-size:0.83rem;">
             <thead class="thead-light">
               <tr>
+                <th width="30"></th>
                 <th width="40" class="text-center">No</th>
                 <th>Nama / NIP</th>
                 <th width="140">Unit Kerja</th>
                 <th width="80" class="text-center">Jenis</th>
                 <th width="70" class="text-center">Nilai</th>
                 <th width="90" class="text-center">Status</th>
+                <th width="100" class="text-center">Kecurangan</th>
                 <th>Catatan Admin</th>
                 <th width="60" class="text-center">Aksi</th>
               </tr>
@@ -124,7 +129,13 @@
             <tbody>
               @forelse ($pesertaList as $i => $p)
               @php $hasil = $hasilMap->get($p->id); @endphp
-              <tr>
+              <tr class="{{ $hasil ? 'baris-toggle' : '' }}" style="{{ $hasil ? 'cursor:pointer;' : '' }}"
+                  @if ($hasil) data-toggle="collapse" data-target="#detailPeserta{{ $p->id }}" @endif>
+                <td class="text-center">
+                  @if ($hasil)
+                  <i class="fas fa-chevron-right toggle-icon text-muted" data-target="#detailPeserta{{ $p->id }}"></i>
+                  @endif
+                </td>
                 <td class="text-center">{{ $i + 1 }}</td>
                 <td>
                   <strong>{{ $p->pegawai?->nama_lengkap ?? '-' }}</strong>
@@ -150,7 +161,12 @@
                     <span class="badge badge-secondary">Belum Dinilai</span>
                   @endif
                 </td>
-                <td>
+                <td class="text-center">
+                  @if ($hasil)
+                    <span class="badge badge-{{ $hasil->badge_kecurangan }}" style="font-size:0.7rem;">{{ $hasil->label_kecurangan }}</span>
+                  @else <span class="text-muted">—</span> @endif
+                </td>
+                <td onclick="event.stopPropagation()">
                   @if ($hasil)
                   <span class="catatan-text" data-hasil-id="{{ $hasil->id }}">{{ $hasil->catatan_admin ?? '' }}</span>
                   <button class="btn btn-xs btn-link p-0 ml-1 btn-edit-catatan" data-hasil-id="{{ $hasil->id }}" title="Edit catatan">
@@ -172,7 +188,7 @@
                   </div>
                   @else <span class="text-muted">—</span> @endif
                 </td>
-                <td class="text-center">
+                <td class="text-center" onclick="event.stopPropagation()">
                   @if (!$hasil || $hasil->status_kelulusan === 'belum_dinilai')
                   <a href="{{ route('ujikom.hasil.input-offline', $jadwal->id) }}" class="btn btn-xs btn-outline-warning" title="Input nilai">
                     <i class="fas fa-edit"></i>
@@ -180,8 +196,15 @@
                   @endif
                 </td>
               </tr>
+              @if ($hasil)
+              <tr class="collapse" id="detailPeserta{{ $p->id }}">
+                <td colspan="10" class="bg-light py-3">
+                  @include('ujikom.hasil._detail_nilai', ['hasil' => $hasil, 'jadwal' => $jadwal])
+                </td>
+              </tr>
+              @endif
               @empty
-              <tr><td colspan="8" class="text-center text-muted py-4">Belum ada peserta terdaftar.</td></tr>
+              <tr><td colspan="10" class="text-center text-muted py-4">Belum ada peserta terdaftar.</td></tr>
               @endforelse
             </tbody>
           </table>
@@ -227,6 +250,14 @@ $(document).on('click', '.btn-save-catatan', function() {
             alert('Gagal menyimpan catatan.');
         }
     });
+});
+
+// Putar ikon chevron saat baris detail dibuka/ditutup
+$(document).on('show.bs.collapse', '.collapse', function() {
+    $(`.toggle-icon[data-target="#${this.id}"]`).addClass('open');
+});
+$(document).on('hide.bs.collapse', '.collapse', function() {
+    $(`.toggle-icon[data-target="#${this.id}"]`).removeClass('open');
 });
 </script>
 @endpush

@@ -16,10 +16,12 @@ class BankSoalPilihan extends Model
         'kode_pilihan',
         'teks_pilihan',
         'is_benar',
+        'nilai_skala',
     ];
 
     protected $casts = [
-        'is_benar' => 'boolean',
+        'is_benar'    => 'boolean',
+        'nilai_skala' => 'integer',
     ];
 
     // ─── Relasi ──────────────────────────────────────────────────────────────

@@ -86,6 +86,7 @@
                 <th width="70" class="text-center text-success">Lulus</th>
                 <th width="80" class="text-center text-danger">Tdk Lulus</th>
                 <th width="90" class="text-center text-muted">Blm Dinilai</th>
+                <th width="90" class="text-center">Kecurangan</th>
                 <th width="180" class="text-center">Aksi</th>
               </tr>
             </thead>
@@ -122,6 +123,11 @@
                   @else <span class="text-muted">0</span> @endif
                 </td>
                 <td class="text-center">
+                  @if ($j->stat_hasil['kecurangan'] > 0)
+                  <span class="badge badge-dark" title="Peserta terindikasi kecurangan"><i class="fas fa-exclamation-triangle mr-1"></i>{{ $j->stat_hasil['kecurangan'] }}</span>
+                  @else <span class="text-muted">0</span> @endif
+                </td>
+                <td class="text-center">
                   <a href="{{ route('ujikom.hasil.show', $j->id) }}" class="btn btn-xs btn-outline-info" title="Detail">
                     <i class="fas fa-eye"></i>
                   </a>
@@ -134,7 +140,7 @@
                 </td>
               </tr>
               @empty
-              <tr><td colspan="9" class="text-center text-muted py-4">Belum ada data hasil ujian.</td></tr>
+              <tr><td colspan="10" class="text-center text-muted py-4">Belum ada data hasil ujian.</td></tr>
               @endforelse
             </tbody>
           </table>

@@ -25,6 +25,14 @@ class PaketUjian extends Model
         'acak_soal',
         'acak_pilihan',
         'dibuat_oleh',
+        'durasi_menit_teknis',
+        'jumlah_soal_teknis',
+        'taksonomi_maks_teknis',
+        'soal_kategori_id_teknis',
+        'durasi_menit_mansoskul',
+        'jumlah_soal_mansoskul',
+        'taksonomi_maks_mansoskul',
+        'matra_mansoskul',
     ];
 
     protected $casts = [
@@ -61,6 +69,16 @@ class PaketUjian extends Model
                     ->orderByPivot('urutan');
     }
 
+    public function komposisiTaksonomi()
+    {
+        return $this->hasMany(PaketUjianKomposisiTaksonomi::class, 'paket_ujian_id');
+    }
+
+    public function kategoriTeknis()
+    {
+        return $this->belongsTo(SoalKategori::class, 'soal_kategori_id_teknis');
+    }
+
     // ─── Accessor ────────────────────────────────────────────────────────────
 
     public function getLabelStatusAttribute(): string
@@ -86,9 +104,10 @@ class PaketUjian extends Model
     public function getLabelModeAttribute(): string
     {
         return match ($this->mode_pemilihan) {
-            'acak_otomatis' => 'Acak Otomatis',
-            'manual'        => 'Manual',
-            default         => $this->mode_pemilihan,
+            'acak_otomatis'   => 'Acak Otomatis',
+            'manual'          => 'Manual',
+            'sesi_taksonomi'  => '2 Sesi CAT',
+            default           => $this->mode_pemilihan,
         };
     }
 
@@ -105,12 +124,19 @@ class PaketUjian extends Model
                 ->where('bank_soal.status', 'aktif')
                 ->with('pilihan')
                 ->get();
+        } elseif ($this->mode_pemilihan === 'sesi_taksonomi') {
+            // Gabungan sesi Teknis + Mansoskul (dipakai untuk preview; alur ujian 2-sesi
+            // yang sesungguhnya di Ujikom Online belum diimplementasikan — lihat generateSoalSesi()).
+            $soal = $this->generateSoalSesi('teknis')
+                ->merge($this->generateSoalSesi('mansoskul'))
+                ->load('pilihan');
         } else {
             // Mode acak: ambil soal per konfigurasi kategori
             $soal = collect();
 
             foreach ($this->kategoriAcak as $config) {
                 if ($config->jenis_soal === 'umum') {
+                    // BankSoal::umum() sudah diarahkan ke jenis='mansoskul' (rename bank_soal.jenis)
                     $pool = BankSoal::umum()
                         ->aktif()
                         ->with('pilihan')
@@ -159,6 +185,10 @@ class PaketUjian extends Model
             ];
         }
 
+        if ($this->mode_pemilihan === 'sesi_taksonomi') {
+            return $this->cekKetersediaanKomposisi();
+        }
+
         $detail = [];
         $semuaCukup = true;
 
@@ -183,5 +213,114 @@ class PaketUjian extends Model
         }
 
         return ['cukup' => $semuaCukup, 'detail' => $detail];
+    }
+
+    /**
+     * Ketersediaan soal aktif per baris komposisi taksonomi (mode sesi_taksonomi).
+     */
+    public function cekKetersediaanKomposisi(): array
+    {
+        $detail     = [];
+        $semuaCukup = true;
+
+        foreach ($this->komposisiTaksonomi as $k) {
+            $query = BankSoal::aktif()->where('taksonomi_bloom', $k->taksonomi);
+
+            if ($k->jenis_sesi === 'teknis') {
+                $query->where('jenis', 'teknis')->where('soal_kategori_id', $this->soal_kategori_id_teknis);
+                $labelSesi = 'Teknis';
+            } else {
+                $query->where('jenis', 'mansoskul')->where('matra', $this->matra_mansoskul);
+                $labelSesi = 'Mansoskul';
+            }
+
+            $tersedia = $query->count();
+            $cukup    = $tersedia >= $k->jumlah_soal;
+            if (!$cukup) $semuaCukup = false;
+
+            $detail[] = [
+                'label'    => "{$labelSesi} — {$k->label_taksonomi}",
+                'butuh'    => $k->jumlah_soal,
+                'tersedia' => $tersedia,
+                'cukup'    => $cukup,
+            ];
+        }
+
+        return ['cukup' => $semuaCukup, 'detail' => $detail];
+    }
+
+    /**
+     * Hitung komposisi jumlah soal per taksonomi secara proporsional (bobot berjenjang
+     * 1..n) sampai taksonomi maksimal yang dipilih. Contoh: maks C3 -> bobot C1:C2:C3 = 1:2:3.
+     */
+    public function hitungKomposisiTaksonomi(string $taksonomiMaks, int $totalSoal): array
+    {
+        $urutan = ['C1_mengingat', 'C2_memahami', 'C3_menerapkan', 'C4_menganalisis', 'C5_mengevaluasi', 'C6_mencipta'];
+        $n = array_search($taksonomiMaks, $urutan) + 1;
+        $levelAktif = array_slice($urutan, 0, $n);
+        $totalBobot = $n * ($n + 1) / 2;
+        $komposisi = [];
+        $terpakai = 0;
+
+        foreach ($levelAktif as $idx => $taksonomi) {
+            $level = $idx + 1;
+            $jumlah = (int) round(($level / $totalBobot) * $totalSoal);
+            $komposisi[$taksonomi] = $jumlah;
+            $terpakai += $jumlah;
+        }
+
+        $selisih = $totalSoal - $terpakai;
+        if ($selisih !== 0) {
+            $taksonomiTertinggi = end($levelAktif);
+            $komposisi[$taksonomiTertinggi] += $selisih;
+        }
+
+        return $komposisi;
+    }
+
+    /**
+     * Generate ulang baris paket_ujian_komposisi_taksonomi berdasarkan konfigurasi
+     * taksonomi_maks_teknis/mansoskul + jumlah_soal_teknis/mansoskul saat ini.
+     */
+    public function generateKomposisiTaksonomi(): void
+    {
+        $this->komposisiTaksonomi()->delete();
+
+        if ($this->taksonomi_maks_teknis && $this->jumlah_soal_teknis) {
+            foreach ($this->hitungKomposisiTaksonomi($this->taksonomi_maks_teknis, $this->jumlah_soal_teknis) as $tax => $jml) {
+                if ($jml > 0) {
+                    $this->komposisiTaksonomi()->create(['jenis_sesi' => 'teknis', 'taksonomi' => $tax, 'jumlah_soal' => $jml]);
+                }
+            }
+        }
+        if ($this->taksonomi_maks_mansoskul && $this->jumlah_soal_mansoskul) {
+            foreach ($this->hitungKomposisiTaksonomi($this->taksonomi_maks_mansoskul, $this->jumlah_soal_mansoskul) as $tax => $jml) {
+                if ($jml > 0) {
+                    $this->komposisiTaksonomi()->create(['jenis_sesi' => 'mansoskul', 'taksonomi' => $tax, 'jumlah_soal' => $jml]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Ambil set soal aktif untuk satu sesi ('teknis' atau 'mansoskul') sesuai komposisi taksonomi.
+     */
+    public function generateSoalSesi(string $jenisSesi): Collection
+    {
+        $komposisi    = $this->komposisiTaksonomi()->where('jenis_sesi', $jenisSesi)->get();
+        $soalTerpilih = collect();
+
+        foreach ($komposisi as $k) {
+            $query = BankSoal::where('status', 'aktif')->where('taksonomi_bloom', $k->taksonomi);
+            if ($jenisSesi === 'teknis') {
+                $query->where('jenis', 'teknis')->where('soal_kategori_id', $this->soal_kategori_id_teknis);
+            } else {
+                $query->where('jenis', 'mansoskul')->where('matra', $this->matra_mansoskul);
+            }
+            $soal = $query->inRandomOrder()->take($k->jumlah_soal)->get();
+            $soalTerpilih = $soalTerpilih->merge($soal);
+        }
+
+        return $soalTerpilih->shuffle();
     }
 }
