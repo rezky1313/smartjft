@@ -5,6 +5,81 @@
 
 ---
 
+## Versi 1.19.0 - Perbaikan Anti-Cheat, Gerbang Buka Sesi, Dashboard Pemangku & Import Excel
+**Tanggal:** 16 Juli 2026
+**Status:** ⚠️ BELUM DITEST — kode sudah diverifikasi lewat tinker/unit-level (tidak ada error, alur data benar), tapi BELUM dicoba end-to-end di browser oleh user. Jangan anggap selesai sampai user mengonfirmasi hasil test.
+
+---
+
+## Ringkasan
+
+Empat batch perbaikan/fitur pada modul Ujikom Online (CAT engine), Dashboard Pemangku, dan Import Excel (Unit Kerja/Formasi/Pegawai JFT). Beberapa diagnosa awal di prompt ternyata tidak sesuai kode sungguhan (lihat Catatan Teknis tiap bagian) — implementasi disesuaikan dengan kondisi kode nyata, bukan mengikuti asumsi literal.
+
+---
+
+## Perubahan
+
+### 1. Anti-Cheat — Status Sesi, Kamera Wajib, Peringatan Pelanggaran
+
+**Database**
+- **BARU** `database/migrations/2026_07_15_000001_add_disubmit_paksa_to_ujikom_sesi_status.php` — tambah nilai enum `disubmit_paksa` di `ujikom_sesi.status_sesi`, memisahkan makna "disubmit paksa akibat 3x pelanggaran anti-cheat" dari `timeout` ("waktu ujian benar-benar habis") yang sebelumnya memakai nilai yang sama
+
+**Model & Controller**
+- **UBAH** `app/Models/UjikomSesi.php` — `getLabelStatusSesiAttribute()`/`getBadgeStatusSesiAttribute()`/`getSisaWaktuAttribute()` tambah case `disubmit_paksa`
+- **UBAH** `app/Http/Controllers/UjikomOnlineController.php`
+  - `submit()`: sebelumnya hardcode status `'selesai'` tanpa mengecek alasan request — kalau timer JS di browser mencapai 0 dan submit form yang sama terkirim, sesi salah tercatat `'selesai'` padahal waktu sudah habis. Sekarang menentukan status dari `batas_waktu` vs waktu server (`Carbon::now()`), bukan asumsi client
+  - `catatPelanggaran()`: pelanggaran ke-3 sekarang set `'disubmit_paksa'`, bukan `'timeout'`
+  - Semua pengecekan status terminal `['selesai','timeout']` diperluas jadi `['selesai','timeout','disubmit_paksa']` (7 titik)
+
+**View**
+- **UBAH** `resources/views/ujikom/online/ujian.blade.php`
+  - Kamera: sebelumnya kalau izin kamera ditolak/gagal di awal, hanya lapor **1x pelanggaran** lalu tidak pernah dicek ulang (interval pengecekan cuma didaftarkan setelah `getUserMedia` sukses) — peserta bisa selesai ujian dengan kamera mati total memakai cuma 1 dari 3 jatah pelanggaran. Sekarang ada overlay penuh layar non-dismissable (`.camera-block-overlay`) yang memblokir interaksi, pengecekan tiap 5 detik berjalan terus-menerus, dan sistem otomatis mencoba mengaktifkan ulang kamera
+  - Peringatan pelanggaran: sudah memakai `<div>` custom (bukan `alert()` native) sejak awal, tapi gaya visualnya memakai Bootstrap `alert-danger` pudar — diganti kelas `.anti-cheat-warning-box` (merah solid, teks putih tebal, sesuai spesifikasi)
+- **UBAH** `resources/views/ujikom/online/hasil.blade.php`, `index.blade.php`, `monitoring.blade.php` — badge/label untuk status `disubmit_paksa`, array status terminal diperluas
+
+### 2. Gerbang "Buka Sesi" Admin Sebelum Peserta Bisa Mulai Ujian
+
+- **UBAH** `app/Http/Controllers/UjikomOnlineController.php` — `mulai()`: root cause bug adalah baris `else { $sesi = UjikomSesi::create(...) }` yang membuat sesi baru sendiri kalau admin belum pernah `bukaSesi()` — komentar kode sudah menyebut "cek apakah sesi sudah dibuka admin" tapi tidak pernah benar-benar memblokir. Sekarang kalau belum ada baris `ujikom_sesi` sama sekali, peserta ditolak dengan pesan "Sesi ujian belum dibuka oleh Admin Pusbin..."
+- **UBAH** `resources/views/ujikom/online/index.blade.php` — badge status eksplisit (Belum Dibuka/Sedang Berlangsung/Ditutup) di samping tombol Buka/Tutup Sesi yang sudah ada sebelumnya
+- **UBAH** `resources/views/ujikom/jadwal/index.blade.php`, `show.blade.php` — badge status sesi online + tombol Buka/Tutup Sesi (memakai ulang route admin yang sudah ada, bukan duplikasi logic)
+
+### 3. Dashboard Pemangku — Jadwal Terdekat Tidak Pernah Muncul
+
+- **UBAH** `app/Http/Controllers/PetaDashboardController.php` — `dashboardPemangku()`: query `$jadwalTerdekat` memfilter `status = 'dipublikasikan'`, padahal enum yang benar adalah `'published'` (bug identik dengan yang diperbaiki di v1.12.2, tapi lokasi ini luput saat itu). Akibatnya jadwal terdekat **selalu kosong** sejak fitur ini dibuat. Sisi view (`dashboard.blade.php`) sudah benar dari awal, tidak diubah
+
+### 4. Import Excel & Download Template — Unit Kerja, Formasi, Pegawai JFT
+
+**Baru**
+- `app/Imports/UnitKerjaImport.php` — validasi per baris + resolusi `regency_id` dari nama Provinsi/Kab-Kota (logic sama dengan command `GenerateUnitKerjaSeederFromExcel` yang sudah ada, supaya konsisten)
+- `app/Exports/UnitKerjaTemplateExport.php`, `FormasiTemplateExport.php`, `PegawaiTemplateExport.php` — masing-masing 2 sheet (Petunjuk + Data), mengikuti gaya styling `BankSoalTemplateExport`
+- `resources/views/users/import.blade.php` — halaman upload Import Excel Unit Kerja (mengikuti pola `bank_soal/import.blade.php`, tanpa tabel riwayat log ke database — lihat Catatan Teknis)
+
+**Controller & Route**
+- **UBAH** `app/Http/Controllers/UnitKerjaController.php` — `importPage()`, `import()`, `downloadTemplate()`
+- **UBAH** `app/Http/Controllers/FormasiJabatanController.php`, `SdmController.php` — `downloadTemplate()`
+- **UBAH** `routes/web.php` — 9 route baru (`user.unitkerja.import`, `.import.store`, `.template`, `user.formasi.template`, `user.sdm.template`), static routes ditempatkan sebelum wildcard `/{id}`
+
+**View**
+- **UBAH** `resources/views/users/index.blade.php` — tombol "+ Import Excel"
+- **UBAH** `resources/views/formasi_jabatan/index.blade.php`, `sdm/index.blade.php` — tombol "Download Template"
+
+---
+
+## Catatan Teknis
+
+- **Diagnosa awal di prompt vs kode sungguhan** — beberapa asumsi tidak akurat, diperbaiki sesuai kondisi nyata setelah verifikasi:
+  - `bukaSesi()`/`tutupSesi()` di `UjikomOnlineController` **sudah ada** sebelum prompt FIX-2 — tidak dibuat ulang (akan fatal error "Cannot redeclare method" kalau ditambah lagi)
+  - Tombol Edit/Hapus Jadwal Ujikom & Paket Ujian (PERUBAHAN 1 & 2 di prompt FIX-3) **sudah lengkap** dari sebelumnya dengan validasi backend yang benar — tidak ada perubahan
+  - Tabel `unit_kerja` tidak punya kolom "jenis UPT"; wilayah disimpan sebagai `regency_id` (FK), bukan teks provinsi/kab-kota
+  - Import Formasi yang sudah ada memakai format **pivot** (1 baris = 1 Unit×Jabatan, 8 kolom kuota per jenjang, `tahun_formasi` diisi di form bukan di file) — bukan format flat `unit_kerja_id/jabatan_id/jenjang/kuota/tahun` seperti asumsi prompt
+  - Import Pegawai JFT yang sudah ada resolve Unit Kerja & Formasi dari **nama teks**, bukan ID — kolom TMT cuma satu (`tmt_pengangkatan`), bukan "TMT PNS" + "TMT Jabatan" terpisah
+- View `resources/views/users/import.blade.php` dipilih (bukan `resources/views/unitkerja/import.blade.php` seperti saran prompt) karena seluruh CRUD Unit Kerja historisnya memang di folder `users/` (peninggalan rename Rumahsakit→UnitKerja v1.13.0)
+- Riwayat import Unit Kerja **tidak** dibuatkan tabel log terpisah (beda dari pola penuh Bank Soal) — detail baris gagal ditampilkan lewat flash session di halaman yang sama, cukup untuk kebutuhan saat ini
+- Diuji lewat tinker: migration + verifikasi enum kolom, render seluruh view yang diubah (`view:cache` tanpa error), simulasi end-to-end gerbang `mulai()` (blokir sebelum `bukaSesi()`, lolos sesudahnya, 0 sesi liar terbentuk), simulasi dashboard pemangku (jadwal published muncul di HTML), generate ketiga file template Excel, dan import Unit Kerja (1 baris valid + 1 baris gagal, hasil tepat) — semua data uji dirollback/dihapus setelah verifikasi
+- **BELUM diuji:** interaksi kamera sungguhan di browser (izinkan/tolak kamera), submit manual vs timer habis sungguhan, klik tombol Buka/Tutup Sesi dari UI, upload file Excel sungguhan lewat form web
+
+---
+
 ## Versi 1.18.0 - Hasil Ujikom: Struktur Nilai Berlapis
 **Tanggal:** 14 Juli 2026
 **Status:** Selesai ✅

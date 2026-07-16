@@ -54,6 +54,24 @@
     animation: slideDown 0.3s ease-out;
   }
   @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .anti-cheat-warning-box {
+    background: #dc3545; color: #fff;
+    padding: 16px 32px; border-radius: 8px;
+    font-weight: bold; font-size: 18px; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  /* Overlay blokir kamera — tidak bisa ditutup/dilewati */
+  .camera-block-overlay {
+    position: fixed; inset: 0; z-index: 999999;
+    background: rgba(20, 20, 20, 0.92);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; text-align: center; padding: 20px;
+  }
+  .camera-block-box {
+    max-width: 420px; background: #dc3545; border-radius: 12px;
+    padding: 32px 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
 </style>
 @endpush
 
@@ -349,7 +367,7 @@
   function tampilkanPeringatanAntiCheat(pesan) {
     const modal = document.createElement('div');
     modal.className = 'anti-cheat-warning';
-    modal.innerHTML = '<div class="alert alert-danger text-center mb-0 shadow">' +
+    modal.innerHTML = '<div class="anti-cheat-warning-box">' +
       '<i class="fas fa-exclamation-triangle mr-1"></i> ' + pesan + '</div>';
     document.body.prepend(modal);
     setTimeout(function () { modal.remove(); }, 5000);
@@ -366,23 +384,74 @@
     laporkanPelanggaran('minimize');
   });
 
-  // Deteksi status kamera (wajib aktif selama ujian berlangsung)
-  let cameraStream = null;
-  async function mulaiPantauKamera() {
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setInterval(function () {
-        const track = cameraStream.getVideoTracks()[0];
-        if (!track || !track.enabled || track.readyState !== 'live') {
-          laporkanPelanggaran('kamera_mati');
-        }
-      }, 5000);
-    } catch (err) {
-      tampilkanPeringatanAntiCheat('Kamera wajib diaktifkan untuk mengikuti ujian ini.');
-      laporkanPelanggaran('kamera_mati');
+  // ── Kamera wajib aktif selama ujian (Anti-Cheat) ───────────────────────
+  // Kalau izin kamera ditolak/mati, ujian diblokir total lewat overlay penuh
+  // layar yang tidak bisa ditutup — bukan cuma toast peringatan sesaat —
+  // dan terus dicoba diaktifkan ulang tiap 5 detik selama kamera belum menyala.
+  let cameraStream       = null;
+  let cameraOverlayEl    = null;
+  let cameraCheckStarted = false;
+
+  function tampilkanOverlayKamera(pesan) {
+    if (cameraOverlayEl) {
+      cameraOverlayEl.querySelector('.camera-overlay-text').textContent = pesan;
+      return;
+    }
+    cameraOverlayEl = document.createElement('div');
+    cameraOverlayEl.className = 'camera-block-overlay';
+    cameraOverlayEl.innerHTML =
+      '<div class="camera-block-box">' +
+        '<i class="fas fa-video-slash fa-3x mb-3"></i>' +
+        '<h4 class="camera-overlay-text">' + pesan + '</h4>' +
+        '<p class="small mb-3">Ujian tidak dapat dilanjutkan sampai kamera aktif. Izinkan akses kamera pada prompt browser, lalu klik "Coba Lagi".</p>' +
+        '<button type="button" class="btn btn-light" id="btnCobaKamera"><i class="fas fa-redo mr-1"></i> Coba Lagi</button>' +
+      '</div>';
+    document.body.appendChild(cameraOverlayEl);
+    document.getElementById('btnCobaKamera').addEventListener('click', aktifkanKamera);
+  }
+
+  function tutupOverlayKamera() {
+    if (cameraOverlayEl) {
+      cameraOverlayEl.remove();
+      cameraOverlayEl = null;
     }
   }
-  mulaiPantauKamera();
+
+  async function aktifkanKamera() {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      tutupOverlayKamera();
+
+      const track = cameraStream.getVideoTracks()[0];
+      track.addEventListener('ended', function () {
+        cameraStream = null;
+        laporkanPelanggaran('kamera_mati');
+        tampilkanOverlayKamera('Kamera terputus selama ujian berlangsung!');
+      });
+
+      if (!cameraCheckStarted) {
+        cameraCheckStarted = true;
+        pantauKameraBerkala();
+      }
+    } catch (err) {
+      laporkanPelanggaran('kamera_mati');
+      tampilkanOverlayKamera('Kamera wajib diaktifkan untuk mengikuti ujian ini.');
+    }
+  }
+
+  function pantauKameraBerkala() {
+    setInterval(function () {
+      const track = cameraStream ? cameraStream.getVideoTracks()[0] : null;
+      if (!track || !track.enabled || track.readyState !== 'live') {
+        cameraStream = null;
+        laporkanPelanggaran('kamera_mati');
+        tampilkanOverlayKamera('Kamera tidak aktif! Ujian tidak dapat dilanjutkan.');
+        aktifkanKamera();
+      }
+    }, 5000);
+  }
+
+  aktifkanKamera();
 })();
 </script>
 @endpush

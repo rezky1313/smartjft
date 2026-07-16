@@ -385,7 +385,7 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
             ? Sdmmodels::with(['formasiJabatan.jenjang', 'unitKerja'])->find($sdmId)
             : null;
 
-        $jadwalTerdekat = UjikomJadwal::where('status', 'dipublikasikan')
+        $jadwalTerdekat = UjikomJadwal::where('status', 'published')
             ->where('tanggal_mulai', '>=', now()->toDateString())
             ->orderBy('tanggal_mulai')
             ->take(3)

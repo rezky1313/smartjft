@@ -537,6 +537,16 @@ public function importPivotForm()
     return view('formasi_jabatan.import_pivot'); // view upload sederhana (tahun + file)
 }
 
+/**
+ * Download template Excel Formasi (format pivot: Unit + Jabatan + kuota per jenjang).
+ */
+public function downloadTemplate()
+{
+    return Excel::download(
+        new \App\Exports\FormasiTemplateExport(), 'template_formasi.xlsx'
+    );
+}
+
 public function importPivotStore(Request $request)
 {
     $request->validate([

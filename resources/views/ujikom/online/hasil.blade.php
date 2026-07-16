@@ -84,6 +84,8 @@
           Selesai: {{ $sesi->waktu_selesai?->format('d M Y H:i') }} WIB
           @if ($sesi->status_sesi === 'timeout')
           <br><span class="badge badge-warning">Timeout — waktu habis</span>
+          @elseif ($sesi->status_sesi === 'disubmit_paksa')
+          <br><span class="badge badge-dark">Disubmit paksa — terindikasi pelanggaran (3x)</span>
           @endif
         </p>
 

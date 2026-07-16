@@ -89,7 +89,7 @@ class UjikomSesi extends Model
 
     public function getSisaWaktuAttribute(): int
     {
-        if (!$this->batas_waktu || $this->status_sesi === 'selesai' || $this->status_sesi === 'timeout') {
+        if (!$this->batas_waktu || in_array($this->status_sesi, ['selesai', 'timeout', 'disubmit_paksa'])) {
             return 0;
         }
 
@@ -112,22 +112,24 @@ class UjikomSesi extends Model
     public function getLabelStatusSesiAttribute(): string
     {
         return match ($this->status_sesi) {
-            'menunggu'    => 'Menunggu',
-            'berlangsung' => 'Berlangsung',
-            'selesai'     => 'Selesai',
-            'timeout'     => 'Timeout',
-            default       => $this->status_sesi,
+            'menunggu'       => 'Menunggu',
+            'berlangsung'    => 'Berlangsung',
+            'selesai'        => 'Selesai',
+            'timeout'        => 'Timeout',
+            'disubmit_paksa' => 'Disubmit Paksa (Pelanggaran)',
+            default          => $this->status_sesi,
         };
     }
 
     public function getBadgeStatusSesiAttribute(): string
     {
         return match ($this->status_sesi) {
-            'menunggu'    => 'secondary',
-            'berlangsung' => 'primary',
-            'selesai'     => 'success',
-            'timeout'     => 'danger',
-            default       => 'secondary',
+            'menunggu'       => 'secondary',
+            'berlangsung'    => 'primary',
+            'selesai'        => 'success',
+            'timeout'        => 'danger',
+            'disubmit_paksa' => 'dark',
+            default          => 'secondary',
         };
     }
 

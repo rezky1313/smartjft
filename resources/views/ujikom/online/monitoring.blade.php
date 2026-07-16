@@ -102,7 +102,7 @@
                       </div>
                       <small>{{ $s->progress_data['dijawab'] }}/{{ $s->progress_data['total'] }}</small>
                     </div>
-                  @elseif (in_array($s->status_sesi, ['selesai', 'timeout']))
+                  @elseif (in_array($s->status_sesi, ['selesai', 'timeout', 'disubmit_paksa']))
                     <small class="text-muted">{{ $s->progress_data['dijawab'] }}/{{ $s->progress_data['total'] }}</small>
                   @else
                     <small class="text-muted">—</small>

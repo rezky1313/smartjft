@@ -11,6 +11,7 @@
   <div>
     @can('create unit kerja')
     <a href="{{ route('user.unitkerja.create') }}" class="btn btn-primary">+ Tambah Unit Kerja</a>
+    <a href="{{ route('user.unitkerja.import') }}" class="btn btn-success">+ Import Excel</a>
     @endcan
     <a href="{{ route('user.unitkerja.trash') }}" class="btn btn-outline-secondary">
       Sampah @if(!empty($trashed) && $trashed) <span class="badge bg-secondary">{{ $trashed }}</span>@endif

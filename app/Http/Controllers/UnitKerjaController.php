@@ -142,5 +142,39 @@ public function forceDelete($id)
     return back()->with('success','Unit Kerja dihapus permanen.');
 }
 
+/**
+ * Form upload Import Excel Unit Kerja.
+ */
+public function importPage()
+{
+    return view('users.import');
+}
+
+/**
+ * Proses Import Excel Unit Kerja.
+ */
+public function import(Request $request)
+{
+    $request->validate(['file' => 'required|file|mimes:xlsx,xls|max:10240']);
+
+    $import = new \App\Imports\UnitKerjaImport();
+    \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+    $pesan = "Import selesai: {$import->berhasil} unit kerja berhasil, {$import->gagal} gagal.";
+
+    return redirect()->route('user.unitkerja.import')
+        ->with($import->gagal > 0 ? 'warning' : 'success', $pesan)
+        ->with('import_errors', $import->detailGagal);
+}
+
+/**
+ * Download template Excel Unit Kerja.
+ */
+public function downloadTemplate()
+{
+    return \Maatwebsite\Excel\Facades\Excel::download(
+        new \App\Exports\UnitKerjaTemplateExport(), 'template_unit_kerja.xlsx'
+    );
+}
 
 }

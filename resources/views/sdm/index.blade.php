@@ -17,6 +17,9 @@
     @can('create pegawai')
     <a href="{{ route('user.sdm.create') }}" class="btn btn-primary btn-sm">+ Tambah Pemangku JFT</a>
     <a href="{{ route('user.sdm.import.form') }}" class="btn btn-success btn-sm">+ Import Excel</a>
+    <a href="{{ route('user.sdm.template') }}" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-file-excel mr-1"></i> Download Template
+    </a>
     @endcan
   </div>
 </div>

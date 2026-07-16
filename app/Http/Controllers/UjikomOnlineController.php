@@ -42,7 +42,7 @@ class UjikomOnlineController extends Controller
                     'total'       => UjikomSesi::where('ujikom_jadwal_id', $j->id)->count(),
                     'menunggu'    => UjikomSesi::where('ujikom_jadwal_id', $j->id)->where('status_sesi', 'menunggu')->count(),
                     'berlangsung' => UjikomSesi::where('ujikom_jadwal_id', $j->id)->where('status_sesi', 'berlangsung')->count(),
-                    'selesai'     => UjikomSesi::where('ujikom_jadwal_id', $j->id)->whereIn('status_sesi', ['selesai', 'timeout'])->count(),
+                    'selesai'     => UjikomSesi::where('ujikom_jadwal_id', $j->id)->whereIn('status_sesi', ['selesai', 'timeout', 'disubmit_paksa'])->count(),
                 ];
                 // Cek apakah sudah ada sesi dibuka
                 $j->sesi_dibuka = UjikomSesi::where('ujikom_jadwal_id', $j->id)->exists();
@@ -152,11 +152,15 @@ class UjikomOnlineController extends Controller
             if ($sesiExisting->status_sesi === 'berlangsung') {
                 return redirect()->route('ujikom-online.ujian', $sesiExisting->id);
             }
-            if (in_array($sesiExisting->status_sesi, ['selesai', 'timeout'])) {
+            if (in_array($sesiExisting->status_sesi, ['selesai', 'timeout', 'disubmit_paksa'])) {
                 return redirect()->route('ujikom-online.hasil', $sesiExisting->id);
             }
             // status_sesi === 'menunggu' (dibuat massal oleh admin via bukaSesi(), belum ada soal/timer)
             // → lanjut ke bawah untuk diaktifkan, JANGAN buat sesi baru (unique: ujikom_jadwal_id + peserta_id + jenis_sesi)
+        } else {
+            // Belum ada baris ujikom_sesi sama sekali untuk peserta ini di jadwal ini — artinya
+            // Admin Pusbin belum memanggil bukaSesi(). Peserta TIDAK BOLEH mulai ujian sendiri.
+            return back()->with('error', 'Sesi ujian belum dibuka oleh Admin Pusbin. Silakan tunggu pengumuman lebih lanjut.');
         }
 
         // 4. Generate soal
@@ -166,26 +170,19 @@ class UjikomOnlineController extends Controller
             return back()->with('error', 'Tidak ada soal yang tersedia di bank soal.');
         }
 
-        // 5. Aktifkan sesi 'menunggu' yang sudah ada (dibuat admin), atau buat baru jika belum ada sama sekali
-        $sesi = DB::transaction(function () use ($jadwalId, $paket, $peserta, $soalSet, $request, $sesiExisting) {
-            $now  = Carbon::now();
-            $data = [
+        // 5. Aktifkan sesi 'menunggu' yang sudah dibuka admin (lihat blok if/else di atas — $sesiExisting
+        // dijamin terisi di titik ini, sesi baru TIDAK PERNAH dibuat langsung oleh peserta)
+        $sesi = DB::transaction(function () use ($paket, $soalSet, $request, $sesiExisting) {
+            $now = Carbon::now();
+
+            $sesiExisting->update([
                 'paket_ujian_id' => $paket->id,
                 'status_sesi'    => 'berlangsung',
                 'waktu_mulai'    => $now,
                 'batas_waktu'    => $now->copy()->addMinutes($paket->durasi_menit),
                 'ip_address'     => $request->ip(),
-            ];
-
-            if ($sesiExisting) {
-                $sesiExisting->update($data);
-                $sesi = $sesiExisting;
-            } else {
-                $sesi = UjikomSesi::create($data + [
-                    'ujikom_jadwal_id' => $jadwalId,
-                    'peserta_id'       => $peserta->id,
-                ]);
-            }
+            ]);
+            $sesi = $sesiExisting;
 
             // 6. Insert soal dengan urutan
             foreach ($soalSet as $urutan => $soal) {
@@ -231,7 +228,7 @@ class UjikomOnlineController extends Controller
             return redirect()->route('ujikom-online.ujian', $sesiTeknis->id);
         }
 
-        if (!in_array($sesiTeknis->status_sesi, ['selesai', 'timeout'])) {
+        if (!in_array($sesiTeknis->status_sesi, ['selesai', 'timeout', 'disubmit_paksa'])) {
             return redirect()->route('ujikom-online.ujian', $sesiTeknis->id);
         }
 
@@ -247,7 +244,7 @@ class UjikomOnlineController extends Controller
                 ->with('info', 'Sesi 1 (Teknis) selesai. Memulai Sesi 2 (Mansoskul).');
         }
 
-        if (!in_array($sesiMansoskul->status_sesi, ['selesai', 'timeout'])) {
+        if (!in_array($sesiMansoskul->status_sesi, ['selesai', 'timeout', 'disubmit_paksa'])) {
             return redirect()->route('ujikom-online.ujian', $sesiMansoskul->id);
         }
 
@@ -301,7 +298,7 @@ class UjikomOnlineController extends Controller
 
         // Jika sesi sudah selesai/timeout → redirect ke hasil (sesi tunggal) atau ke index (sesi 2-sesi,
         // supaya tombol "Lanjutkan Ujian" di index yang menentukan langkah berikutnya via mulai())
-        if (in_array($sesi->status_sesi, ['selesai', 'timeout'])) {
+        if (in_array($sesi->status_sesi, ['selesai', 'timeout', 'disubmit_paksa'])) {
             return $sesi->jenis_sesi === 'tunggal'
                 ? redirect()->route('ujikom-online.hasil', $sesi->id)
                 : redirect()->route('ujikom-online.index')->with('info', 'Sesi ini sudah selesai. Silakan lanjutkan dari daftar ujian.');
@@ -427,8 +424,16 @@ class UjikomOnlineController extends Controller
             return back()->with('error', 'Sesi sudah berakhir.');
         }
 
+        // Tentukan status akhir berdasar waktu server (bukan timer JS) — request submit ini bisa
+        // datang dari tombol "Submit Ujian" (manual) MAUPUN dari auto-submit saat timer JS mencapai
+        // 0 (client-side, tidak bisa dipercaya sepenuhnya). Kalau batas_waktu sudah lewat saat
+        // request diterima server, ini genuine timeout, bukan submit manual.
+        $statusAkhir = ($sesi->batas_waktu && Carbon::now()->gte($sesi->batas_waktu))
+            ? 'timeout'
+            : 'selesai';
+
         // Hitung nilai dan selesaikan
-        $this->selesaikanSesi($sesi, 'selesai');
+        $this->selesaikanSesi($sesi, $statusAkhir);
 
         // Log
         UjikomSesiLog::create([
@@ -467,7 +472,7 @@ class UjikomOnlineController extends Controller
         $this->authorizeAksesSesi($sesi);
 
         // Pastikan sesi sudah selesai
-        if (!in_array($sesi->status_sesi, ['selesai', 'timeout'])) {
+        if (!in_array($sesi->status_sesi, ['selesai', 'timeout', 'disubmit_paksa'])) {
             return redirect()->route('ujikom-online.ujian', $sesiId);
         }
 
@@ -544,7 +549,8 @@ class UjikomOnlineController extends Controller
 
         $autoSubmit = $jumlahSaatIni >= 3;
         if ($autoSubmit) {
-            $this->selesaikanSesi($sesi, 'timeout');
+            // 'disubmit_paksa' — bukan 'timeout', supaya tidak tertukar dengan makna "waktu habis"
+            $this->selesaikanSesi($sesi, 'disubmit_paksa');
         }
 
         return response()->json([
@@ -732,7 +738,7 @@ class UjikomOnlineController extends Controller
             'total'       => $sesiList->count(),
             'menunggu'    => $sesiList->where('status_sesi', 'menunggu')->count(),
             'berlangsung' => $sesiList->where('status_sesi', 'berlangsung')->count(),
-            'selesai'     => $sesiList->whereIn('status_sesi', ['selesai', 'timeout'])->count(),
+            'selesai'     => $sesiList->whereIn('status_sesi', ['selesai', 'timeout', 'disubmit_paksa'])->count(),
         ];
 
         return view('ujikom.online.monitoring', compact('jadwal', 'sesiList', 'statistik'));

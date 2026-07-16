@@ -76,6 +76,56 @@
         </div>
         @endif
 
+        {{-- Sesi Ujian Online --}}
+        @hasanyrole('super_admin|admin')
+        @php
+          $paketAktifOnline = \App\Models\PaketUjian::where('ujikom_jadwal_id', $jadwal->id)
+              ->where('status', 'aktif')->latest()->first();
+          $modeSesiTaksonomi = $paketAktifOnline && $paketAktifOnline->mode_pemilihan === 'sesi_taksonomi';
+          $sesiDibuka = \App\Models\UjikomSesi::where('ujikom_jadwal_id', $jadwal->id)->exists();
+          $sesiAktifCount = \App\Models\UjikomSesi::where('ujikom_jadwal_id', $jadwal->id)
+              ->whereIn('status_sesi', ['berlangsung', 'menunggu'])->count();
+        @endphp
+        <hr>
+        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+          <span class="text-muted small font-weight-bold mr-1">SESI UJIAN ONLINE:</span>
+          @if ($modeSesiTaksonomi)
+            <span class="badge badge-info">Otomatis (2 Sesi CAT) — tidak perlu dibuka manual</span>
+          @elseif (!$sesiDibuka)
+            <span class="badge badge-secondary">Belum Dibuka</span>
+          @elseif ($sesiAktifCount > 0)
+            <span class="badge badge-primary">Sedang Berlangsung</span>
+          @else
+            <span class="badge badge-dark">Ditutup</span>
+          @endif
+
+          @if ($jadwal->status === 'published' && $paketAktifOnline && !$modeSesiTaksonomi)
+            @if (!$sesiDibuka)
+            <form action="{{ route('ujikom-online.admin.buka-sesi', $jadwal->id) }}" method="POST" class="d-inline"
+                  onsubmit="return confirm('Buka sesi ujian online untuk semua peserta jadwal ini?')">
+              @csrf
+              <button type="submit" class="btn btn-success btn-sm">
+                <i class="fas fa-play mr-1"></i> Buka Sesi Ujian Online
+              </button>
+            </form>
+            @elseif ($sesiAktifCount > 0)
+            <form action="{{ route('ujikom-online.admin.tutup-sesi', $jadwal->id) }}" method="POST" class="d-inline"
+                  onsubmit="return confirm('Tutup sesi ujian online? Semua sesi aktif akan di-submit otomatis.')">
+              @csrf
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-stop mr-1"></i> Tutup Sesi
+              </button>
+            </form>
+            @endif
+            <a href="{{ route('ujikom-online.admin.monitoring', $jadwal->id) }}" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-tv mr-1"></i> Monitoring
+            </a>
+          @elseif (!$paketAktifOnline)
+            <span class="small text-muted">(belum ada paket ujian aktif)</span>
+          @endif
+        </div>
+        @endhasanyrole
+
         {{-- Tombol Aksi Admin --}}
         @hasanyrole('super_admin|admin')
         <hr>

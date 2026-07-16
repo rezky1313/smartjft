@@ -14,6 +14,9 @@
     @can('create formasi')
     <a href="{{ route('user.formasi.create') }}" class="btn btn-primary">+ Tambah Formasi</a>
     <a href="{{ route('user.formasi.import-pivot.form') }}" class="btn btn-primary">+ Import Excel</a>
+    <a href="{{ route('user.formasi.template') }}" class="btn btn-outline-primary">
+      <i class="fas fa-file-excel mr-1"></i> Download Template
+    </a>
     @endcan
 
     {{-- <a href="{{ route('user.formasi.trash') }}" class="btn btn-outline-secondary">

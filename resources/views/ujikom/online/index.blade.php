@@ -66,6 +66,18 @@
                   @endif
                 </td>
                 <td class="text-center">
+                  @php
+                    // Status sesi online per jadwal — diturunkan dari data ujikom_sesi yang sudah ada,
+                    // BUKAN kolom terpisah, supaya tidak ada 2 sumber kebenaran yang bisa tidak sinkron.
+                    if (!$j->sesi_dibuka) {
+                      $statusSesiOnline = ['label' => 'Belum Dibuka', 'badge' => 'secondary'];
+                    } elseif (($j->stat_sesi['berlangsung'] ?? 0) > 0 || ($j->stat_sesi['menunggu'] ?? 0) > 0) {
+                      $statusSesiOnline = ['label' => 'Sedang Berlangsung', 'badge' => 'primary'];
+                    } else {
+                      $statusSesiOnline = ['label' => 'Ditutup', 'badge' => 'dark'];
+                    }
+                  @endphp
+                  <span class="badge badge-{{ $statusSesiOnline['badge'] }} d-block mb-1">{{ $statusSesiOnline['label'] }}</span>
                   @if (!$j->sesi_dibuka)
                     <form action="{{ route('ujikom-online.admin.buka-sesi', $j->id) }}" method="POST" class="d-inline"
                           onsubmit="return confirm('Buka sesi ujian untuk semua peserta jadwal ini?')">
@@ -133,7 +145,7 @@
                   @if ($j->mode_sesi_taksonomi)
                     {{-- Mode 2 Sesi CAT: Teknis lalu Mansoskul --}}
                     @php
-                      $keduaSelesai = $j->sesi_mansoskul && in_array($j->sesi_mansoskul->status_sesi, ['selesai', 'timeout']);
+                      $keduaSelesai = $j->sesi_mansoskul && in_array($j->sesi_mansoskul->status_sesi, ['selesai', 'timeout', 'disubmit_paksa']);
                       $sesiAktif = null;
                       if ($j->sesi_teknis && $j->sesi_teknis->status_sesi === 'berlangsung') $sesiAktif = $j->sesi_teknis;
                       elseif ($j->sesi_mansoskul && $j->sesi_mansoskul->status_sesi === 'berlangsung') $sesiAktif = $j->sesi_mansoskul;

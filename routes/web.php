@@ -132,8 +132,14 @@ Route::get('laporan/pemangku-simple',
 
         Route::get ('sdm/import', [\App\Http\Controllers\SdmController::class, 'importForm'])->name('sdm.import.form');
         Route::post('sdm/import', [\App\Http\Controllers\SdmController::class, 'importStore'])->name('sdm.import.store');
+        Route::get ('sdm/template', [\App\Http\Controllers\SdmController::class, 'downloadTemplate'])->name('sdm.template');
 
-             
+        Route::get ('unitkerja/import', [UnitKerjaController::class, 'importPage'])->name('unitkerja.import');
+        Route::post('unitkerja/import', [UnitKerjaController::class, 'import'])->name('unitkerja.import.store');
+        Route::get ('unitkerja/template', [UnitKerjaController::class, 'downloadTemplate'])->name('unitkerja.template');
+
+        Route::get ('formasi/template', [FormasiJabatanController::class, 'downloadTemplate'])->name('formasi.template');
+
         Route::resource('formasi', \App\Http\Controllers\FormasiJabatanController::class) -> except(['show']);
         Route::resource('unitkerja', \App\Http\Controllers\UnitKerjaController::class);
         Route::resource('sdm', \App\Http\Controllers\SdmController::class);

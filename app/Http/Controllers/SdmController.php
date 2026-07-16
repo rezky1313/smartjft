@@ -277,6 +277,16 @@ public function importForm()
     return view('sdm.import');
 }
 
+/**
+ * Download template Excel Pegawai JFT (SDM).
+ */
+public function downloadTemplate()
+{
+    return Excel::download(
+        new \App\Exports\PegawaiTemplateExport(), 'template_pegawai_jft.xlsx'
+    );
+}
+
 // Ekstrak level di akhir teks formasi (opsional)
 private function splitFormasiAndLevel(string $text): array
 {
