@@ -3,82 +3,126 @@
 @section('title','Pusbin JFT - ADMIN')
 @section('isi')
 
-<div class="container-fluid px-4">
-    <div class="card mb-4">
-        <div class="card-body">
-           <h3>Edit Data Unit Kerja</h3>
-        </div>
+<div class="preview-card">
+  <div class="preview-header">
+    <span class="preview-header-title">Edit Unit Kerja</span>
+    <span class="preview-header-subtitle d-block">Lengkapi data di bawah ini</span>
+  </div>
+  <div class="preview-body">
+
+    @if ($errors->any())
+    <div class="alert alert-danger">
+      <strong>Whoops!</strong> Ada masalah dengan inputanmu.<br><br>
+      <ul class="mb-0">
+        @foreach ($errors->all() as $error)
+        <li>{{ $error }}</li>
+        @endforeach
+      </ul>
     </div>
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="fas fa-table me-1"></i>
-            Data Unit Kerja
+    @endif
+
+    <form action="{{ route('user.unitkerja.update', $unitkerja) }}" method="POST" enctype="multipart/form-data">
+      @csrf
+      @method('PUT')
+      <div class="form-row">
+        <div class="col-md-6">
+
+          <span class="subsection-label">Informasi Dasar</span>
+          <div class="form-group">
+            <label for="nama_unit_kerja" class="font-weight-bold">Nama Unit Kerja <span class="text-danger">*</span></label>
+            <input type="text" name="nama_unit_kerja" id="nama_unit_kerja" value="{{ $unitkerja->nama_unit_kerja }}" required class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="alamat" class="font-weight-bold">Alamat <span class="text-danger">*</span></label>
+            <input type="text" name="alamat" id="alamat" value="{{ $unitkerja->alamat }}" required class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="no_telp" class="font-weight-bold">No. Telepon <span class="text-danger">*</span></label>
+            <input type="text" name="no_telp" id="no_telp" value="{{ $unitkerja->no_telp }}" required class="form-control">
+          </div>
+
+          <hr class="my-4">
+
+          <span class="subsection-label">Lokasi</span>
+          <div class="form-group">
+            <label class="font-weight-bold">Provinsi</label>
+            <select id="provinsiSelect" class="form-control">
+              <option value="">-- Pilih Provinsi --</option>
+              @foreach($provinces as $p)
+                <option value="{{ $p->id }}" @selected(optional($unitkerja->regency->province ?? null)->id == $p->id)>
+                  {{ $p->name }}
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="font-weight-bold">Kabupaten/Kota <span class="text-danger">*</span></label>
+            <select name="regency_id" id="regencySelect" class="form-control" required>
+              @if(isset($regencies) && $regencies->count())
+                @foreach($regencies as $r)
+                  <option value="{{ $r->id }}" @selected(old('regency_id', $unitkerja->regency_id ?? '') == $r->id)>
+                    {{ $r->type }} {{ $r->name }}
+                  </option>
+                @endforeach
+              @else
+                <option value="">-- Pilih kab/kota --</option>
+              @endif
+            </select>
+            @error('regency_id') <small class="text-danger">{{ $message }}</small> @enderror
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label class="font-weight-bold">Matra <span class="text-danger">*</span></label>
+              <select name="matra" class="form-control" required>
+                <option value="">-- Pilih Matra --</option>
+                @foreach (['Darat','Laut','Udara','Kereta'] as $opt)
+                  <option value="{{ $opt }}" @selected(old('matra', $unitkerja->matra)===$opt)>{{ $opt }}</option>
+                @endforeach
+              </select>
+              @error('matra') <small class="text-danger">{{ $message }}</small> @enderror
+            </div>
+            <div class="form-group col-md-6">
+              <label class="font-weight-bold">Instansi <span class="text-danger">*</span></label>
+              <select name="instansi" class="form-control" required>
+                <option value="">-- Pilih Instansi --</option>
+                @foreach (['Pusat','Daerah'] as $opt)
+                  <option value="{{ $opt }}" @selected(old('instansi', $unitkerja->instansi)===$opt)>{{ $opt }}</option>
+                @endforeach
+              </select>
+              @error('instansi') <small class="text-danger">{{ $message }}</small> @enderror
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-md-6">
+              <label for="latitude" class="font-weight-bold">Latitude</label>
+              <input type="text" name="latitude" id="latitude" value="{{ $unitkerja->latitude }}" required class="form-control">
+            </div>
+            <div class="form-group col-md-6">
+              <label for="longitude" class="font-weight-bold">Longitude</label>
+              <input type="text" name="longitude" id="longitude" value="{{ $unitkerja->longitude }}" required class="form-control">
+            </div>
+          </div>
+
         </div>
 
-        @if ($errors->any())
-            <div class="alert alert-danger mt-4">
-                <strong>Whoops!</strong> Ada masalah dengan inputanmu.<br><br>
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
+        <div class="col-md-6">
+          <span class="subsection-label">Klik Peta untuk Isi Koordinat</span>
+          <div id="leafletMap-registration" style="height:400px; border-radius:8px; overflow:hidden;"></div>
+        </div>
+      </div>
 
-        <form action="{{ route('user.unitkerja.update', $unitkerja) }}" method="POST" enctype="multipart/form-data" class="mt-4">
-            @csrf
-            @method('PUT')
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group ms-2">
-                    <label for="nama_unit_kerja" class="form-label">Nama Unit Kerja:</label>
-                    <input type="text" name="nama_unit_kerja" id="nama_unit_kerja" value="{{ $unitkerja->nama_unit_kerja }}" required class="form-control">
-                    </div>
-            <div class="form-group ms-2">
-                <label for="alamat" class="form-label">Alamat:</label>
-                <input type="text" name="alamat" id="alamat" value="{{ $unitkerja->alamat }}" required class="form-control">
-            </div>
-            <div class="form-group ms-2">
-                <label for="no_telp" class="form-label">No. Telepon:</label>
-                <input type="text" name="no_telp" id="no_telp" value="{{ $unitkerja->no_telp }}" required class="form-control">
-            </div>
-            {{-- <div class="form-group ms-2">
-                <label for="jam_kerja" class="form-label">Jumlah JFT:</label>
-                <input type="text" name="jam_kerja" id="jam_kerja" value="{{ $unitkerja->jam_kerja }}" required class="form-control">
-            </div> --}}
-            {{-- <div class="form-group ms-2">
-                <label for="fasilitas" class="form-label">Kabupaten/Kota:</label>
-                <input type="text" name="fasilitas" id="fasilitas" value="{{ $unitkerja->fasilitas }}" required class="form-control">
-            </div> --}}
+      <div class="d-flex justify-content-end mt-4">
+        <a href="{{ route('user.unitkerja.index') }}" class="btn btn-outline-secondary mr-2">Batal</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save"></i> Simpan
+        </button>
+      </div>
+    </form>
 
-
-            <div class="ms-2">
-  <label class="form-label">Provinsi</label>
-  <select id="provinsiSelect" class="form-select">
-    <option value="">-- Pilih Provinsi --</option>
-    @foreach($provinces as $p)
-      <option value="{{ $p->id }}" @selected(optional($unitkerja->regency->province ?? null)->id == $p->id)>
-        {{ $p->name }}
-      </option>
-    @endforeach
-  </select>
-</div>
-
-<div class="ms-2">
-  <label class="form-label">Kabupaten/Kota</label>
-  <select name="regency_id" id="regencySelect" class="form-select" required>
-    @if(isset($regencies) && $regencies->count())
-      @foreach($regencies as $r)
-        <option value="{{ $r->id }}" @selected(old('regency_id', $unitkerja->regency_id ?? '') == $r->id)>
-          {{ $r->type }} {{ $r->name }}
-        </option>
-      @endforeach
-    @else
-      <option value="">-- Pilih kab/kota --</option>
-    @endif
-  </select>
-  @error('regency_id') <small class="text-danger">{{ $message }}</small> @enderror
+  </div>
 </div>
 
 @push('scripts')
@@ -102,61 +146,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-
-<div class="ms-2">
-  <label class="form-label">Matra</label>
-  <select name="matra" class="form-select" required>
-    <option value="">-- Pilih Matra --</option>
-    @foreach (['Darat','Laut','Udara','Kereta'] as $opt)
-      <option value="{{ $opt }}" @selected(old('matra', $unitkerja->matra)===$opt)>{{ $opt }}</option>
-    @endforeach
-  </select>
-  @error('matra') <small class="text-danger">{{ $message }}</small> @enderror
-</div>
-
-<div class="ms-2">
-  <label class="form-label">Instansi</label>
-  <select name="instansi" class="form-select" required>
-    <option value="">-- Pilih Instansi --</option>
-    @foreach (['Pusat','Daerah'] as $opt)
-      <option value="{{ $opt }}" @selected(old('instansi', $unitkerja->instansi)===$opt)>{{ $opt }}</option>
-    @endforeach
-  </select>
-  @error('instansi') <small class="text-danger">{{ $message }}</small> @enderror
-</div>
-
-
-
-            <div class="form-group ms-2">
-                <label for="latitude" class="form-label">Latitude:</label>
-                <input type="text" name="latitude" id="latitude" value="{{ $unitkerja->latitude }}" required class="form-control">
-            </div>
-            <div class="form-group ms-2">
-                <label for="longitude" class="form-label">Longitude:</label>
-                <input type="text" name="longitude" id="longitude" value="{{ $unitkerja->longitude }}" required class="form-control">
-            </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <div class="col-md-12">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                            <div id="leafletMap-registration"></div>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-mb-4">
-            <div class="row justify-content-center mt-3">
-                <div class="com-md-6">
-                    <div class="form-group text-center">
-                        <button type="submit" class="btn btn-primary">Simpan</button>
-                    </div>
-            </div>
-        </div>
-        </form>
-    </div>
-    </div>
-
 
 @endsection

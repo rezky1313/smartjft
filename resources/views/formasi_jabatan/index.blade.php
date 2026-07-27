@@ -3,71 +3,74 @@
 
 @section('isi')
 <div class="container-fluid">
-  <h4 class="mb-3">Data Formasi</h4>
 
   @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
   @endif
 
-  {{-- Toolbar --}}
-  <div class="d-flex flex-wrap gap-2 mb-3">
-    @can('create formasi')
-    <a href="{{ route('user.formasi.create') }}" class="btn btn-primary">+ Tambah Formasi</a>
-    <a href="{{ route('user.formasi.import-pivot.form') }}" class="btn btn-primary">+ Import Excel</a>
-    <a href="{{ route('user.formasi.template') }}" class="btn btn-outline-primary">
-      <i class="fas fa-file-excel mr-1"></i> Download Template
-    </a>
-    @endcan
+  <div class="preview-card mb-4">
+    <div class="preview-header d-flex justify-content-between align-items-center flex-wrap">
+      <div>
+        <span class="preview-header-title">Data Formasi</span>
+        <span class="preview-header-subtitle d-block">Kelola kuota formasi JFT per unit kerja</span>
+      </div>
+      @can('create formasi')
+      <div>
+        <a href="{{ route('user.formasi.create') }}" class="btn btn-primary btn-sm mr-1">+ Tambah Formasi</a>
+        <a href="{{ route('user.formasi.import-pivot.form') }}" class="btn btn-primary btn-sm mr-1">+ Import Excel</a>
+        <a href="{{ route('user.formasi.template') }}" class="btn btn-outline-primary btn-sm">
+          <i class="fas fa-file-excel mr-1"></i> Download Template
+        </a>
+      </div>
+      @endcan
+    </div>
 
-    {{-- <a href="{{ route('user.formasi.trash') }}" class="btn btn-outline-secondary">
-      Sampah @if(!empty($trashed)) <span class="badge bg-secondary">{{ $trashed }}</span>@endif
-    </a> --}}
+    <div class="preview-body">
+      {{-- Filter --}}
+      <form method="get" class="d-flex flex-wrap align-items-stretch">
+        <select name="province_id" id="provFilter" class="form-control mr-2 mb-2" style="width:auto;">
+          <option value="">Semua Provinsi</option>
+          @foreach($provinces ?? [] as $p)
+            <option value="{{ $p->id }}" @selected(($filter['province_id'] ?? '') == $p->id)>{{ $p->name }}</option>
+          @endforeach
+        </select>
 
-    {{-- Filter --}}
-{{-- Filter --}}
-<form method="get" class="ms-auto d-flex flex-wrap gap-2 align-items-stretch">
-  <select name="province_id" id="provFilter" class="form-select">
-    <option value="">Semua Provinsi</option>
-    @foreach($provinces ?? [] as $p)
-      <option value="{{ $p->id }}" @selected(($filter['province_id'] ?? '') == $p->id)>{{ $p->name }}</option>
-    @endforeach
-  </select>
+        <select name="regency_id" id="regFilter" class="form-control mr-2 mb-2" style="width:auto;">
+          <option value="">Semua Kab/Kota</option>
+          @foreach($regencies ?? [] as $r)
+            <option value="{{ $r->id }}" @selected(($filter['regency_id'] ?? '') == $r->id)>{{ $r->type }} {{ $r->name }}</option>
+          @endforeach
+        </select>
 
-  <select name="regency_id" id="regFilter" class="form-select">
-    <option value="">Semua Kab/Kota</option>
-    @foreach($regencies ?? [] as $r)
-      <option value="{{ $r->id }}" @selected(($filter['regency_id'] ?? '') == $r->id)>{{ $r->type }} {{ $r->name }}</option>
-    @endforeach
-  </select>
+        <select name="unit_kerja_id" id="unitFilter" class="form-control mr-2 mb-2" style="width:auto;">
+          <option value="">Semua Unit Kerja</option>
+          @foreach($units as $u)
+            <option value="{{ $u->id }}" data-regency="{{ $u->regency_id ?? '' }}" @selected(($filter['unit_kerja_id']??'')==$u->id)>
+              {{ $u->nama_unit_kerja }}
+            </option>
+          @endforeach
+        </select>
 
-  <select name="unit_kerja_id" id="unitFilter" class="form-select">
-    <option value="">Semua Unit Kerja</option>
-    @foreach($units as $u)
-      <option value="{{ $u->id }}" data-regency="{{ $u->regency_id ?? '' }}" @selected(($filter['unit_kerja_id']??'')==$u->id)>
-        {{ $u->nama_unit_kerja }}
-      </option>
-    @endforeach
-  </select>
+        <select name="tahun" class="form-control mr-2 mb-2" style="width:auto;">
+          <option value="">Semua Tahun</option>
+          @foreach($tahuns as $t)
+            <option value="{{ $t }}" @selected(($filter['tahun']??'')==$t)>{{ $t }}</option>
+          @endforeach
+        </select>
 
-  <select name="tahun" class="form-select">
-    <option value="">Semua Tahun</option>
-    @foreach($tahuns as $t)
-      <option value="{{ $t }}" @selected(($filter['tahun']??'')==$t)>{{ $t }}</option>
-    @endforeach
-  </select>
+        <button class="btn btn-outline-primary mr-2 mb-2">Terapkan</button>
+        <a href="{{ route('user.formasi.index') }}" class="btn btn-outline-secondary mb-2">Reset</a>
+      </form>
 
-  <button class="btn btn-outline-primary">Terapkan</button>
-  <a href="{{ route('user.formasi.index') }}" class="btn btn-outline-secondary">Reset</a>
-</form>
-
-
-@can('edit formasi')
-<div class="mb-3">
-  <button id="btn-edit-group" type="button" class="btn btn-warning">
-    Edit Grup: Unit & Tahun Terpilih
-  </button>
-</div>
-@endcan
+      @can('edit formasi')
+      <div>
+        <button id="btn-edit-group" type="button" class="btn btn-warning btn-sm">
+          <i class="fas fa-edit mr-1"></i> Edit Grup: Unit & Tahun Terpilih
+        </button>
+      </div>
+      @endcan
+    </div>
+  </div>
 
 
  {{-- Tabel Pivot per Unit Kerja --}}
@@ -231,9 +234,9 @@
     // Gunakan tahun yang difilter, atau tahun pertama dari metadata, atau null
     $editTahun = $filter['tahun'] ?? ($meta['tahuns'][0] ?? null);
   @endphp
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="card-title mb-0">{{ $unitName }}</h5>
+  <div class="preview-card mb-4">
+    <div class="card-header-custom">
+      <span class="card-header-title-custom">{{ $unitName }}</span>
     </div>
     <div class="card-body p-0">
       <div class="row g-0">

@@ -1,0 +1,78 @@
+/* ── SMART JFT — Override warna primer di atas tema E-Kinerja ──
+   Project ini masih memakai Bootstrap 4 di semua halaman (bukan Bootstrap 5),
+   jadi custom property --bs-btn-* / --bs-primary tidak otomatis dibaca oleh
+   komponen Bootstrap 4 (BS4 tidak dibangun di atas CSS variable untuk warna
+   tombol). Variable tetap dideklarasikan di bawah untuk forward-compat kalau
+   suatu saat project ini migrasi ke Bootstrap 5, TAPI efek visual sungguhan
+   di BS4 didapat dari override langsung (background-color/border-color) yang
+   ditulis setelahnya. */
+
+:root {
+    --bs-primary: #0c2d47;
+    --bs-primary-rgb: 12, 45, 71;
+    --bs-link-color: #0c2d47;
+    --bs-link-hover-color: #0a2439;
+}
+
+.btn-primary {
+    --bs-btn-bg: #0c2d47;
+    --bs-btn-border-color: #0c2d47;
+    --bs-btn-hover-bg: #0a2439;
+    --bs-btn-hover-border-color: #0a2439;
+    --bs-btn-active-bg: #081c2d;
+    --bs-btn-active-border-color: #081c2d;
+}
+
+.btn-warning {
+    --bs-btn-bg: #F5A623;
+    --bs-btn-border-color: #F5A623;
+    --bs-btn-color: #1f2937;
+}
+
+.badge.bg-primary { background-color: #0c2d47 !important; }
+
+/* ── Override efektif untuk Bootstrap 4 (dipakai di seluruh halaman project) ── */
+a { color: #0c2d47; }
+a:hover { color: #0a2439; }
+
+.btn-primary {
+    background-color: #0c2d47;
+    border-color: #0c2d47;
+}
+.btn-primary:hover,
+.btn-primary:not(:disabled):not(.disabled):active,
+.btn-primary:not(:disabled):not(.disabled).active {
+    background-color: #0a2439;
+    border-color: #0a2439;
+}
+.btn-primary:focus,
+.btn-primary.focus {
+    box-shadow: 0 0 0 0.2rem rgba(12, 45, 71, 0.5);
+}
+.btn-outline-primary {
+    color: #0c2d47;
+    border-color: #0c2d47;
+}
+.btn-outline-primary:hover {
+    background-color: #0c2d47;
+    border-color: #0c2d47;
+}
+
+.btn-warning {
+    background-color: #F5A623;
+    border-color: #F5A623;
+    color: #1f2937;
+}
+.btn-warning:hover,
+.btn-warning:not(:disabled):not(.disabled):active {
+    background-color: #e0951a;
+    border-color: #e0951a;
+    color: #1f2937;
+}
+
+.badge-primary { background-color: #0c2d47 !important; }
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding-top: 64px; /* ruang untuk topbar fixed E-Kinerja, tinggi 64px */
+}

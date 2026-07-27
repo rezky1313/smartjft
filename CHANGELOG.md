@@ -5,6 +5,78 @@
 
 ---
 
+## Versi 1.20.0 - Tema UI Digital Office (E-Kinerja) & Rangkuman Progres Menyeluruh
+**Tanggal:** 16 Juli 2026
+**Status:** Sebagian teruji — Tahap 5 Bagian 1 (base layout & sidebar) sudah dicek user langsung di browser dan dikonfirmasi berfungsi. Bagian 2A-2C (tabel, form, detail/trash) BELUM ditest end-to-end oleh user, jangan anggap selesai sampai ada konfirmasi.
+
+---
+
+## Ringkasan
+
+Mencatat progres UI/UX besar yang belum pernah didokumentasikan di root CHANGELOG — implementasi tema visual baru "E-Kinerja" (Digital Office Kemenhub) sebagai lapisan di atas AdminLTE + Bootstrap 4 yang sudah berjalan, tanpa mengubah identitas SMART JFT/Pusbin JFT — sekaligus merangkum arah besar pekerjaan pada rentang v1.12.0-v1.19.0 sebagai satu narasi utuh untuk referensi cepat.
+
+---
+
+## Perubahan
+
+### A. Tema UI/UX — Digital Office "E-Kinerja" (BARU, belum tercatat sebelumnya)
+
+- **Tahap 5 Bagian 1 — Base Layout & Sidebar** *(sudah dicek user, berfungsi)*
+  - `resources/views/layouts/users/master.blade.php` direstrukturisasi total: topbar baru bergaya Digital Office (identitas SMART JFT, bukan SSO asli), sidebar direstrukturisasi memakai kelas dari `do-layout.css` (`sidebar-header-custom`, `nav-link`, `nav-sub-link`, `category-header-custom`, dst.), font Plus Jakarta Sans + Bootstrap Icons ditambahkan
+  - Semua route/menu/`@can`/`@hasanyrole`/`@role` dipertahankan 100% — murni perubahan visual/struktur HTML
+  - JS baru `toggleSidebar()`/`toggleSubmenu()` menggantikan widget `data-widget="pushmenu"`/`"treeview"` bawaan AdminLTE (tidak relevan lagi karena struktur DOM sidebar berubah total)
+  - **BARU** `public/library/dist/css/smartjft-theme.css` — override warna primer (`#0c2d47`) di atas tema E-Kinerja
+  - **Penyesuaian penting:** markup contoh tema E-Kinerja yang diterima mengasumsikan Bootstrap 5 (`data-bs-*`, `dropdown-menu-end`, utility `gap-*`) — seluruh project ini murni Bootstrap 4, sehingga semua markup baru disesuaikan (`data-toggle`, `dropdown-menu-right`, `mr-*`/`ml-*`) agar tidak merusak halaman lain yang sudah ada
+- **Tahap 5 Bagian 2A — Tabel Index** *(belum ditest)*
+  - `resources/views/users/index.blade.php`, `formasi_jabatan/index.blade.php`, `sdm/index.blade.php` dibungkus kartu `preview-card`/`preview-header`/`preview-body`, badge status memakai `do-badge`, tombol aksi dirapikan jadi grup kecil konsisten
+  - Semua `id` DataTables, variabel filter, dan `@can`/route dipertahankan persis
+- **Tahap 5 Bagian 2B — Form Tambah/Edit** *(belum ditest)*
+  - `users/create.blade.php`, `users/edit.blade.php`, `formasi_jabatan/create.blade.php`, `sdm/form.blade.php` dibungkus `preview-card` dengan label subseksi (`subsection-label`); `sdm/create.blade.php`/`edit.blade.php` ikut disesuaikan karena tag `<form>` ada di situ, bukan di partial `sdm/form.blade.php`
+  - Semua `name` input, `old()`/`@error()`, dan JS cascading (provinsi→kab/kota, toggle Formasi/Unit Kerja di SDM, tambah/hapus baris dinamis di Formasi) dipertahankan persis
+- **Tahap 5 Bagian 2C — Detail & Trash** *(belum ditest)*
+  - `users/show.blade.php` dan 3 halaman Trash (`users`, `formasi_jabatan`, `sdm`) dibungkus pola `preview-card` yang sama; tombol Restore/Hapus Permanen dirapikan jadi grup ikon kecil
+
+### B. Bug Tersembunyi yang Ditemukan & Diperbaiki Selama Proses Restyle (BARU)
+
+- `users/show.blade.php`: judul halaman memakai `Auth::user()->role` — kolom itu **sudah tidak ada** di tabel `users` sejak migrasi ke Spatie Permission (v1.1.0), sehingga kondisi selalu `false` dan judul selalu menampilkan "USER" walau yang login admin. Diperbaiki ke `Auth::user()->hasAnyRole(['admin','super_admin'])`
+- `users/show.blade.php`: peta Leaflet di halaman Detail Unit Kerja kemungkinan besar **tidak pernah render** — skrip `L.map(...)` ditulis inline di posisi yang dieksekusi sebelum library Leaflet dimuat (Leaflet baru dimuat lewat `@stack('leaflet')` dekat akhir `<body>`). Diperbaiki dengan memindahkan skrip ke `@push('scripts')`
+- `users/create.blade.php`: elemen `<div id="leafletMap-registration">` sebelumnya dibungkus `<table>` — HTML tidak valid (div langsung di dalam table tanpa tr/td). Diperbaiki jadi div biasa, ID peta dipertahankan persis agar binding JS tidak putus
+- `users/edit.blade.php`: 2 field mati ter-comment (`jam_kerja`, `fasilitas`) yang mereferensikan kolom yang tidak pernah ada di tabel `unit_kerja` — dihapus
+- `sdm/form.blade.php`: 89 baris pertama file adalah blok komentar berisi duplikat persis dari form aktif di bawahnya (kode mati total) — dihapus
+- `sdm/create.blade.php`/`edit.blade.php`: sebelumnya tidak ada alert ringkasan error (`@if($errors->any())`), hanya error per-field — ditambahkan, konsisten dengan modul lain
+- `formasi_jabatan/index.blade.php`: `<div>` toolbar filter yang tidak pernah ditutup dengan `</div>` (browser otomatis "memperbaiki" secara visual selama ini) — diperbaiki strukturnya
+
+### C. Ringkasan Progres Sebelumnya (sudah tercatat lengkap di versi masing-masing, direkap di sini untuk konteks)
+
+1. **Pengangkatan JFT — Penyederhanaan Alur** *(detail lengkap: v1.14.0)*
+   - Ranking otomatis berbasis nilai ujikom dihapus total
+   - Alur baru 4 tahap: Draft → Diajukan → Menunggu TTD → Selesai (dari 6 tahap sebelumnya)
+   - Validasi kuota formasi dilakukan di awal saat Admin Unit mengajukan peserta, bukan setelah diproses Pusbin
+   - Admin Pusbin kini hanya generate surat rekomendasi + konfirmasi TTD, tanpa proses seleksi/ranking manual
+2. **Modul Ujian — Restrukturisasi Menyeluruh** *(detail lengkap: v1.15.0-v1.18.0)*
+   - Bank Soal: `tingkat_kesulitan` dihapus total, istilah Umum/Spesifik → Mansoskul/Teknis, tambah kolom `matra` + `nilai_pilihan_a-d` (skala 1-5, khusus soal Mansoskul)
+   - Kategori Bank Soal kini murni khusus untuk soal Teknis
+   - Paket Ujian: mode baru "2 Sesi CAT" (Teknis + Mansoskul dalam 1 paket), komposisi taksonomi Bloom dihitung otomatis berbobot berjenjang
+   - Jadwal Ujikom: konfigurasi aspek penilaian (CAT/Wawancara/Presentasi) per kompetensi
+   - Ujikom Online: alur 2 sesi CAT berurutan, skoring Mansoskul skala 1-5, sistem anti-kecurangan (deteksi pindah tab/minimize/kamera mati, batas 3x pelanggaran, auto-submit — status auto-submit ini dipisah jadi `disubmit_paksa` di v1.19.0 supaya tidak tertukar makna dengan "waktu habis")
+   - Hasil Ujikom: struktur nilai berlapis (per aspek → per kompetensi → nilai akhir), indikator status kecurangan
+3. **Fitur Import Excel & Template** *(detail lengkap: v1.19.0)*
+   - Unit Kerja: antarmuka web Import Excel + download template (baru — sebelumnya hanya bisa lewat Artisan command)
+   - Formasi & Pegawai JFT: download template Excel (fitur import-nya sendiri sudah ada sebelum v1.19.0)
+4. **Rename Penamaan "RumahSakit" → "UnitKerja"** *(detail lengkap: v1.13.0)*
+   - Model, Controller, tabel, kolom, primary key (`no_rs` → `id`) di-rename menyeluruh di seluruh lapisan aplikasi
+   - File mati/backup dipindahkan ke folder `_archive/`, bukan dihapus
+
+---
+
+## Catatan Teknis
+
+- Bagian A "Tahap 5 Bagian 1" sudah dicek user langsung di browser dan dikonfirmasi berfungsi. Bagian 2A/2B/2C **belum** dikonfirmasi user — status tetap dianggap belum final sampai ada konfirmasi test dari user.
+- Semua perbaikan di Bagian B diverifikasi lewat render langsung (tinker, bukan cuma compile check `view:cache`) sebelum dianggap selesai.
+- Bagian C murni rekap untuk konteks — TIDAK menggantikan detail asli di versi yang dirujuk, lihat versi masing-masing untuk rincian penuh (file, migration, dan catatan teknis lengkap).
+
+---
+
 ## Versi 1.19.0 - Perbaikan Anti-Cheat, Gerbang Buka Sesi, Dashboard Pemangku & Import Excel
 **Tanggal:** 16 Juli 2026
 **Status:** ⚠️ BELUM DITEST — kode sudah diverifikasi lewat tinker/unit-level (tidak ada error, alur data benar), tapi BELUM dicoba end-to-end di browser oleh user. Jangan anggap selesai sampai user mengonfirmasi hasil test.
