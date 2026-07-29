@@ -5,6 +5,62 @@
 
 ---
 
+## Versi 1.21.0 - Fix Modul Laporan Terpadu (LAP-01) & Ekspansi 3 Tab Transaksional
+**Tanggal:** 26 Juli 2026
+**Status:** ✅ Ditest end-to-end di browser sungguhan (Chrome, login Super Admin) — ke-7 tab dicek satu per satu, render benar, tidak ada error console tersisa. Export PDF/Excel belum diklik langsung di browser (baru diverifikasi via Tinker), lihat Catatan Teknis.
+
+---
+
+## Ringkasan
+
+Diagnosa menyeluruh terhadap modul "Laporan Terpadu" (4 tab: Dashboard/Unit Kerja/Formasi/Pegawai JFT) yang sebelumnya dibangun di sesi tanpa dokumentasi CHANGELOG (gap serupa dengan yang ditemukan untuk tema UI di v1.20.0). Hasil diagnosa: data & fitur ekspor PDF/Excel sudah berfungsi penuh, masalah murni ketidakkonsistenan tema (sintaks Bootstrap 5 belum dikonversi ke Bootstrap 4 + `do-layout.css`). Selain itu ditemukan dan diperbaiki bug fatal aktif yang tidak terkait Laporan, lalu ditambahkan 3 tab baru untuk data transaksional (Uji Kompetensi, Pengangkatan JFT, Pendaftaran Ujikom).
+
+---
+
+## Perubahan
+
+### A. Bug Fatal Tersembunyi — Ditemukan & Diperbaiki di Luar Scope Awal
+
+- **Root cause:** `app/Models/PengangkatanPermohonan_lama.php`, `PengangkatanSurat_lama.php`, `PengangkatanPeserta_lama.php`, dan `app/Http/Controllers/PengangkatanController_lama.php` adalah file mati peninggalan rombak v1.14.0 yang tertinggal langsung di `app/` (bukan `_archive/` sesuai konvensi v1.13.0). 2 di antaranya (`PengangkatanPermohonan_lama`, `PengangkatanSurat_lama`) mendeklarasikan nama class **persis sama** dengan model aktif. Dikombinasikan dengan `"optimize-autoloader": true` di `composer.json`, ini menyebabkan fatal error intermiten `Cannot declare class ... because the name is already in use` — terekam berulang kali di `laravel.log`, termasuk beberapa kali pada 26 Juli 2026 sebelum sesi ini.
+- **Fix:** ke-4 file dipindahkan ke `_archive/models_controllers_lama_pengangkatan/` (bukan dihapus). Diverifikasi tidak ada referensi aktif ke file-file ini di `routes/web.php` atau tempat lain sebelum dipindah; `php artisan route:list` dan instansiasi model dicek ulang setelahnya, bersih.
+
+### B. Perbaikan 4 Tab Lama (Dashboard, Unit Kerja, Formasi, Pegawai JFT)
+
+- **Diagnosa:** logika data controller (`LaporanController`) sudah benar dan berfungsi — bukan bug fungsional. Log error lama soal Laporan (`Target class does not exist`, `syntax error =>`, dsb.) semuanya bertanggal Maret 2026, sudah usang. Fitur ekspor PDF (DomPDF, 4 view `laporan/pdf/*.blade.php`) dan Excel (`LaporanExcelExport` dengan `WithMultipleSheets`) **sudah ada dan berfungsi penuh** sebelum sesi ini — tidak dibuat ulang.
+- **UBAH** `resources/views/laporan/index.blade.php` — reskin total ke Bootstrap 4 + tema `do-layout.css` (`preview-card`/`preview-header`/`preview-body`/`do-badge`/`subsection-label`), konsisten dengan Users/Formasi/SDM (v1.20.0). Sintaks Bootstrap 5 yang sebelumnya terpakai (`form-select`, `gap-2`, `ms-2`, `fw-bold`, `row g-3`, badge `bg-success`/`bg-danger`) dikonversi ke padanan Bootstrap 4 (`form-control`, `mr-*`/`ml-*`, `font-weight-bold`, `do-badge` inline-style). Semua `name` input, route, dan `@can` dipertahankan persis — nav-tabs bertambah dari 4 menjadi 7 item.
+
+### C. Tab Baru — Data Transaksional
+
+- **Tab 5 — Uji Kompetensi:** filter Jadwal Ujikom/Tahun/Jenjang/Unit Kerja. Ringkasan (total jadwal, total peserta, tingkat kelulusan %, jumlah sesi terindikasi kecurangan), grafik tren kelulusan per tahun (Chart.js line), breakdown rata-rata nilai per aspek (CAT/Wawancara/Presentasi) dan per kompetensi (Teknis/Mansoskul), tabel rekap per jadwal.
+- **Tab 6 — Pengangkatan JFT:** filter Tahun/Unit Kerja/Jabatan. Ringkasan (total permohonan, total diangkat, rata-rata waktu proses dari `tanggal_permohonan` ke `tanggal_disetujui`), grafik tren jumlah pengangkatan per tahun, tabel rekap per unit kerja/jabatan/jenjang. **Filter & breakdown "Jalur Pengangkatan" (7 jalur) TIDAK dibuat** — lihat Catatan Teknis.
+- **Tab 7 — Pendaftaran Ujikom:** filter Tahun/Unit Kerja. Ringkasan (total permohonan, breakdown 8 status, tingkat penolakan %), tabel permohonan belum selesai diurutkan dari paling lama menunggu, tabel catatan penolakan (teks bebas). **Rata-rata waktu verifikasi per tahap TIDAK dihitung** — lihat Catatan Teknis.
+- **BARU** `resources/views/laporan/pdf/ujikom.blade.php`, `pengangkatan.blade.php`, `pendaftaran.blade.php` — mengikuti pola existing (kop surat, filter info, tabel).
+- **UBAH** `app/Exports/LaporanExcelExport.php` — tambah 3 sheet class: `UjikomSheet`, `PengangkatanSheet`, `PendaftaranSheet`.
+- **UBAH** `app/Http/Controllers/LaporanController.php` — tambah `getUjikomData()`, `getPengangkatanData()`, `getPendaftaranData()`, `jenjangTujuanOptions()`; extend `getPdfData()`/`getTabTitle()`/`getFilterParams()` untuk 3 tab baru. Tidak ada perubahan route baru (tab 5-7 memakai route `export-pdf`/`export-excel` yang sama dengan parameter `{tab}` berbeda).
+
+### D. Bug Ditemukan Saat Test Browser Sungguhan & Diperbaiki
+
+- **Root cause:** kedua chart di Tab 1 Dashboard (bar Kuota vs Terisi & pie Distribusi Jenjang) gagal render total — canvas kosong tanpa error PHP apapun. Console browser menunjukkan `SyntaxError: Unexpected token ':'`. Penyebab: baris `const baseUrl = {{ route('user.wilayah.regencies', [...]) }};` di blok `@push('scripts')` menghasilkan URL mentah tanpa tanda kutip di JS (`const baseUrl = http://...;`), yang secara sintaksis invalid — titik dua setelah `http` dibaca sebagai token tak terduga. Ini menyebabkan seluruh `<script>` block gagal di-parse browser, termasuk kode inisialisasi Chart.js yang berada di atasnya dalam file yang sama.
+- **Penting:** bug ini **sudah ada di kode original sebelum sesi ini** (persis sama, 3 kali, di baris yang identik untuk tab Dashboard/Unit Kerja/Formasi) — bukan regresi baru. Lolos dari diagnosa Tahap A/Tinker sebelumnya karena Tinker hanya mengecek compile PHP & render HTML, tidak menjalankan JavaScript di browser sungguhan.
+- **Fix:** `resources/views/laporan/index.blade.php` — baris di-ubah jadi `const baseUrl = @json(route('user.wilayah.regencies', ['province' => '__PID__']));` (satu baris, karena ketiga blok cascading provinsi→kab/kota sudah dikonsolidasi jadi satu helper `wireCascade()` saat reskin Tahap B). Diverifikasi ulang di browser: kedua chart render normal setelah `php artisan view:clear`, console bersih dari error aplikasi.
+
+---
+
+## Catatan Teknis
+
+- **Keterbatasan data (dilaporkan, bukan dipaksakan):**
+  - **Jalur Pengangkatan (Tab 6):** kolom `jalur` sudah dihapus total dari `pengangkatan_permohonan`/`pengangkatan_kandidat` sejak penyederhanaan alur v1.14.0 (tanpa ranking, 4 status saja). Field ini masih ada di model mati `PengangkatanPermohonan_lama.php` (7 nilai enum) tapi tidak pernah dipakai lagi di skema aktif. **Disepakati dengan user (26 Juli 2026): skip filter/breakdown ini tanpa migration baru**, bukan diasumsikan/dipaksakan.
+  - **Rata-rata waktu verifikasi per tahap (Tab 7):** `ujikom_pendaftaran` hanya menyimpan status **terakhir** + `created_at`/`updated_at`, tanpa timestamp per transisi status (Draft→Diajukan Admin Unit→Diverifikasi Admin Unit→dst, 8 status total). Metrik ini secara eksplisit dilaporkan tidak bisa dihitung akurat, ditampilkan sebagai alert keterbatasan di UI dan PDF, bukan dipaksakan jadi angka palsu.
+  - **Alasan penolakan terbanyak (Tab 7):** `catatan_admin_unit`/`catatan_pusbin` adalah teks bebas, bukan kolom enum terstruktur — sehingga tidak dibuat ranking kategori otomatis (berisiko salah kategorisasi). Ditampilkan sebagai daftar catatan mentah per permohonan ditolak.
+  - Sebaliknya, **rata-rata waktu proses Pengangkatan JFT (Tab 6) bisa dihitung akurat** karena `tanggal_permohonan` dan `tanggal_disetujui` tersimpan lengkap di `pengangkatan_permohonan`.
+- **Gap dokumentasi ditemukan:** modul Laporan Terpadu (4 tab + ekspor PDF/Excel) ternyata sudah dibangun penuh di sesi sebelumnya tanpa pernah masuk root CHANGELOG.md — sama seperti gap yang dicatat untuk tema UI di v1.20.0. Versi lama "Laporan Terpadu" yang tercatat di riwayat dokumentasi lama (v1.3.0, "PAUSED — Error belum teridentifikasi") adalah implementasi berbeda yang sudah lama digantikan.
+- Diverifikasi lewat Tinker: instansiasi & render penuh `LaporanController::index()` (dengan dan tanpa query filter) sebagai user Super Admin, render langsung ke-3 view PDF baru, panggilan langsung `exportPdf()`/`exportExcel()` untuk ketiga tab baru (hasil: `Illuminate\Http\Response` dan `Symfony\Component\HttpFoundation\BinaryFileResponse`, tidak ada exception), serta `php artisan route:list` dan re-render ulang setelah `php artisan optimize:clear`.
+- **Diverifikasi lewat browser sungguhan (Chrome, via Claude in Chrome, 26 Juli 2026):** login sebagai Super Admin, buka `/user/laporan`, klik satu per satu ke-7 tab (Dashboard, Unit Kerja, Formasi, Pegawai JFT, Uji Kompetensi, Pengangkatan JFT, Pendaftaran Ujikom). Semua tab menampilkan data asli dengan benar, filter dropdown terisi, kedua chart Dashboard dan chart Tab 5/6 render sempurna, notice keterbatasan data (jalur pengangkatan & timestamp verifikasi) tampil sesuai rancangan, console browser bersih dari error aplikasi (hanya warning tak terkait dari ekstensi Chrome pihak ketiga). Server sementara `php artisan serve` (port 8123) dipakai selama testing karena Apache/nginx Laragon belum aktif saat itu — sudah dimatikan (PID 10100) setelah user mengaktifkan Laragon kembali.
+- **BELUM diuji:** klik langsung tombol Export PDF/Excel di browser dan verifikasi isi file unduhan (baru diverifikasi via Tinker bahwa response type-nya benar, belum dibuka manual filenya), tampilan responsif do-layout theme di ukuran layar mobile/tablet.
+- MySQL Laragon sempat tidak aktif di awal sesi ini — dinyalakan manual (`mysqld.exe`) untuk keperluan diagnosa & testing; sudah kembali dikelola Laragon setelah user mengaktifkannya ulang.
+
+---
+
 ## Versi 1.20.0 - Tema UI Digital Office (E-Kinerja) & Rangkuman Progres Menyeluruh
 **Tanggal:** 16 Juli 2026
 **Status:** Sebagian teruji — Tahap 5 Bagian 1 (base layout & sidebar) sudah dicek user langsung di browser dan dikonfirmasi berfungsi. Bagian 2A-2C (tabel, form, detail/trash) BELUM ditest end-to-end oleh user, jangan anggap selesai sampai ada konfirmasi.

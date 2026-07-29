@@ -2,7 +2,39 @@
   "permissions": {
     "allow": [
       "Bash(composer require:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(ls /c/laragon/www/smartjft/resources/views/*.blade.php)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(sort -t: -k2 -n -r)",
+      "Bash(grep *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git restore *)",
+      "Bash(git push *)",
+      "Bash(php -l /c/laragon/www/smartjft/app/Http/Controllers/PengangkatanController.php)",
+      "Bash(php -l /c/laragon/www/smartjft/app/Models/PengangkatanPermohonan.php)",
+      "Bash(php -l /c/laragon/www/smartjft/app/Http/Controllers/BankSoalController.php)",
+      "Bash(php -l /c/laragon/www/smartjft/app/Models/BankSoal.php)",
+      "Bash(php -l /c/laragon/www/smartjft/app/Models/BankSoalPilihan.php)",
+      "Bash(php -l /c/laragon/www/smartjft/app/Models/PaketUjian.php)",
+      "Bash(php *)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /tmp/origview/paket_ujian)",
+      "Bash(cp /tmp/orig_edit.blade.php \"/tmp/origview/paket_ujian/edit_orig.blade.php\")",
+      "Bash(powershell -NoProfile -Command \"Get-Process -Name mysqld -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\" 2>&1)",
+      "Bash(git commit *)",
+      "Bash(awk 'NR>=96848 && NR<=96852' storage/logs/laravel.log)",
+      "Bash(tasklist)",
+      "Bash(mkdir -p _archive/models_controllers_lama_pengangkatan)",
+      "Bash(git mv *)",
+      "Read(//c/laragon/bin/apache/**)",
+      "Read(//c/laragon/bin/nginx/**)",
+      "Read(//c/laragon/etc/apps/**)",
+      "Read(//c/laragon/usr/tmp/**)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 10100 //F)",
+      "Bash(echo \"---exit code: $?---\")"
     ]
   }
 }

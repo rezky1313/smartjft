@@ -9,6 +9,10 @@ use App\Models\Province;
 use App\Models\Regency;
 use App\Models\UnitKerja;
 use App\Models\Sdmmodels;
+use App\Models\UjikomHasil;
+use App\Models\UjikomJadwal;
+use App\Models\UjikomPendaftaran;
+use App\Models\PengangkatanPermohonan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -79,6 +83,37 @@ class LaporanController extends Controller
         $jenjangs = Jenjangjabatan::orderBy('kategori')->orderBy('nama_jenjang')
             ->get(['id', 'nama_jenjang']);
 
+        // Data for Tab 5: Uji Kompetensi
+        $ujikomData = $this->getUjikomData(
+            $request->tahun_ujikom,
+            $request->jadwal_id,
+            $request->jenjang_ujikom,
+            $request->unit_kerja_id
+        );
+
+        // Data for Tab 6: Pengangkatan JFT
+        $pengangkatanData = $this->getPengangkatanData(
+            $request->tahun_pengangkatan,
+            $request->unit_kerja_id,
+            $request->jabatan
+        );
+
+        // Data for Tab 7: Pendaftaran Ujikom
+        $pendaftaranData = $this->getPendaftaranData(
+            $request->tahun_pendaftaran,
+            $request->unit_kerja_id
+        );
+
+        // Filter helpers for Tab 5-7
+        $jadwalList = UjikomJadwal::orderByDesc('tanggal_mulai')->get(['id', 'judul']);
+        $jenjangUjikomOptions = $this->jenjangTujuanOptions();
+        $tahunsUjikom = UjikomJadwal::whereNotNull('tanggal_mulai')
+            ->selectRaw('YEAR(tanggal_mulai) as th')->distinct()->orderByDesc('th')->pluck('th');
+        $tahunsPengangkatan = PengangkatanPermohonan::whereNotNull('tanggal_permohonan')
+            ->selectRaw('YEAR(tanggal_permohonan) as th')->distinct()->orderByDesc('th')->pluck('th');
+        $tahunsPendaftaran = UjikomPendaftaran::selectRaw('YEAR(created_at) as th')
+            ->distinct()->orderByDesc('th')->pluck('th');
+
         return view('laporan.index', compact(
             'provinces',
             'regencies',
@@ -89,6 +124,14 @@ class LaporanController extends Controller
             'unitKerjaData',
             'formasiData',
             'pegawaiData',
+            'ujikomData',
+            'pengangkatanData',
+            'pendaftaranData',
+            'jadwalList',
+            'jenjangUjikomOptions',
+            'tahunsUjikom',
+            'tahunsPengangkatan',
+            'tahunsPendaftaran',
         ));
     }
 
@@ -390,6 +433,282 @@ class LaporanController extends Controller
     }
 
     /**
+     * Get data for Uji Kompetensi tab (Tab 5)
+     */
+    private function getUjikomData($tahun = null, $jadwalId = null, $jenjang = null, $unitKerjaId = null)
+    {
+        $q = UjikomHasil::with([
+            'jadwal:id,judul,jenis_ujian,jenjang_tujuan,tanggal_mulai,tanggal_selesai',
+            'peserta:id,ujikom_pendaftaran_id,pegawai_id',
+            'peserta.pendaftaran:id,unit_kerja_id',
+            'peserta.pendaftaran.unitKerja:id,nama_unit_kerja',
+            'peserta.pegawai:id,nama_lengkap',
+        ]);
+
+        if ($jadwalId) {
+            $q->where('ujikom_jadwal_id', $jadwalId);
+        }
+
+        if ($tahun) {
+            $q->whereHas('jadwal', fn($jq) => $jq->whereYear('tanggal_mulai', $tahun));
+        }
+
+        if ($jenjang) {
+            $q->whereHas('jadwal', fn($jq) => $jq->where('jenjang_tujuan', $jenjang));
+        }
+
+        if ($unitKerjaId) {
+            $q->whereHas('peserta.pendaftaran', fn($pq) => $pq->where('unit_kerja_id', $unitKerjaId));
+        }
+
+        $rows = $q->get();
+
+        $lulus = $rows->where('status_kelulusan', 'lulus')->count();
+        $tidakLulus = $rows->where('status_kelulusan', 'tidak_lulus')->count();
+        $belumDinilai = $rows->where('status_kelulusan', 'belum_dinilai')->count();
+        $sudahDinilai = $lulus + $tidakLulus;
+        $tingkatKelulusan = $sudahDinilai > 0 ? round(($lulus / $sudahDinilai) * 100, 1) : 0;
+
+        // Rekap per jadwal
+        $perJadwal = [];
+        foreach ($rows->groupBy('ujikom_jadwal_id') as $jid => $group) {
+            $jadwal = $group->first()->jadwal;
+            $perJadwal[] = [
+                'jadwal' => $jadwal?->judul ?? "Jadwal #{$jid}",
+                'jenjang' => $jadwal?->label_jenjang_tujuan ?? '-',
+                'jumlah_peserta' => $group->count(),
+                'lulus' => $group->where('status_kelulusan', 'lulus')->count(),
+                'tidak_lulus' => $group->where('status_kelulusan', 'tidak_lulus')->count(),
+                'belum_dinilai' => $group->where('status_kelulusan', 'belum_dinilai')->count(),
+                'rata_nilai' => round($group->avg('nilai') ?? 0, 2),
+                'kecurangan' => $group->where('status_kecurangan', 'terindikasi')->count(),
+            ];
+        }
+
+        // Tren kelulusan per periode (tahun jadwal)
+        $tren = [];
+        foreach ($rows->groupBy(fn($r) => optional($r->jadwal?->tanggal_mulai)->format('Y') ?? '-') as $periode => $group) {
+            if ($periode === '-') continue;
+            $l = $group->where('status_kelulusan', 'lulus')->count();
+            $tl = $group->where('status_kelulusan', 'tidak_lulus')->count();
+            $sudah = $l + $tl;
+            $tren[$periode] = $sudah > 0 ? round(($l / $sudah) * 100, 1) : 0;
+        }
+        ksort($tren);
+
+        return [
+            'summary' => [
+                'total_jadwal' => $rows->pluck('ujikom_jadwal_id')->unique()->count(),
+                'total_peserta' => $rows->count(),
+                'lulus' => $lulus,
+                'tidak_lulus' => $tidakLulus,
+                'belum_dinilai' => $belumDinilai,
+                'tingkat_kelulusan' => $tingkatKelulusan,
+                'terindikasi_kecurangan' => $rows->where('status_kecurangan', 'terindikasi')->count(),
+            ],
+            'per_jadwal' => $perJadwal,
+            'tren' => $tren,
+            'aspek' => [
+                'teknis_cat' => round($rows->avg('nilai_teknis_cat') ?? 0, 2),
+                'teknis_wawancara' => round($rows->avg('nilai_teknis_wawancara') ?? 0, 2),
+                'teknis_presentasi' => round($rows->avg('nilai_teknis_presentasi') ?? 0, 2),
+                'mansoskul_cat' => round($rows->avg('nilai_mansoskul_cat') ?? 0, 2),
+                'mansoskul_wawancara' => round($rows->avg('nilai_mansoskul_wawancara') ?? 0, 2),
+                'mansoskul_presentasi' => round($rows->avg('nilai_mansoskul_presentasi') ?? 0, 2),
+            ],
+            'kompetensi' => [
+                'teknis' => round($rows->avg('nilai_teknis') ?? 0, 2),
+                'mansoskul' => round($rows->avg('nilai_mansoskul') ?? 0, 2),
+            ],
+        ];
+    }
+
+    /**
+     * Get data for Pengangkatan JFT tab (Tab 6)
+     *
+     * CATATAN: Filter/breakdown "Jalur Pengangkatan" TIDAK dibuat -- kolom
+     * jalur sudah dihapus total dari skema sejak penyederhanaan alur v1.14.0
+     * (lihat CHANGELOG v1.14.0). Disepakati dengan user untuk di-skip tanpa
+     * migration baru, lihat CHANGELOG v1.21.0.
+     */
+    private function getPengangkatanData($tahun = null, $unitKerjaId = null, $jabatan = null)
+    {
+        $q = PengangkatanPermohonan::with([
+            'unitKerja:id,nama_unit_kerja',
+            'kandidat:id,pengangkatan_permohonan_id,jabatan_tujuan_id,jenjang_tujuan,status_kandidat',
+            'kandidat.jabatanTujuan:id,nama_formasi',
+        ]);
+
+        if ($tahun) {
+            $q->whereYear('tanggal_permohonan', $tahun);
+        }
+
+        if ($unitKerjaId) {
+            $q->where('unit_kerja_id', $unitKerjaId);
+        }
+
+        if ($jabatan) {
+            $q->whereHas('kandidat.jabatanTujuan', fn($jq) => $jq->where('nama_formasi', 'like', "%{$jabatan}%"));
+        }
+
+        $permohonan = $q->get();
+
+        $totalDiangkat = 0;
+        $rekapUnit = [];
+        $waktuProses = [];
+        $tren = [];
+
+        foreach ($permohonan as $p) {
+            $kandidatDiangkat = $p->status === 'selesai'
+                ? $p->kandidat->where('status_kandidat', 'direkomendasikan')
+                : collect();
+
+            $totalDiangkat += $kandidatDiangkat->count();
+
+            $unitName = $p->unitKerja?->nama_unit_kerja ?? 'Tidak Diketahui';
+            if (!isset($rekapUnit[$unitName])) {
+                $rekapUnit[$unitName] = ['unit_kerja' => $unitName, 'jumlah_diangkat' => 0, 'rincian' => []];
+            }
+
+            foreach ($kandidatDiangkat as $k) {
+                $rekapUnit[$unitName]['jumlah_diangkat']++;
+                $namaJabatan = $k->jabatanTujuan?->nama_formasi ?? '-';
+                $jenjangTujuan = $k->jenjang_tujuan ?? '-';
+                $key = $namaJabatan . '|' . $jenjangTujuan;
+
+                if (!isset($rekapUnit[$unitName]['rincian'][$key])) {
+                    $rekapUnit[$unitName]['rincian'][$key] = [
+                        'jabatan' => $namaJabatan,
+                        'jenjang' => $jenjangTujuan,
+                        'jumlah' => 0,
+                    ];
+                }
+                $rekapUnit[$unitName]['rincian'][$key]['jumlah']++;
+            }
+
+            if ($p->status === 'selesai' && $p->tanggal_permohonan && $p->tanggal_disetujui) {
+                $waktuProses[] = $p->tanggal_permohonan->diffInDays($p->tanggal_disetujui);
+
+                $tahunKe = $p->tanggal_disetujui->format('Y');
+                $tren[$tahunKe] = ($tren[$tahunKe] ?? 0) + $kandidatDiangkat->count();
+            }
+        }
+
+        foreach ($rekapUnit as &$u) {
+            $u['rincian'] = array_values($u['rincian']);
+        }
+        unset($u);
+
+        ksort($tren);
+
+        return [
+            'summary' => [
+                'total_permohonan' => $permohonan->count(),
+                'total_diangkat' => $totalDiangkat,
+                'rata_waktu_proses_hari' => count($waktuProses) > 0
+                    ? round(array_sum($waktuProses) / count($waktuProses), 1)
+                    : null,
+            ],
+            'rekap_unit' => array_values($rekapUnit),
+            'tren' => $tren,
+        ];
+    }
+
+    /**
+     * Get data for Pendaftaran Ujikom tab (Tab 7)
+     *
+     * KETERBATASAN DATA: tabel ujikom_pendaftaran hanya menyimpan status
+     * TERAKHIR + created_at/updated_at, tanpa timestamp per transisi status.
+     * Karena itu "rata-rata waktu verifikasi per tahap (Admin Unit vs Pusbin)"
+     * tidak bisa dihitung akurat -- lihat flag 'keterbatasan_waktu_verifikasi'
+     * yang dipakai view untuk menampilkan catatan ini secara eksplisit.
+     */
+    private function getPendaftaranData($tahun = null, $unitKerjaId = null)
+    {
+        $q = UjikomPendaftaran::with(['unitKerja:id,nama_unit_kerja', 'jadwal:id,judul']);
+
+        if ($tahun) {
+            $q->whereYear('created_at', $tahun);
+        }
+
+        if ($unitKerjaId) {
+            $q->where('unit_kerja_id', $unitKerjaId);
+        }
+
+        $rows = $q->orderBy('created_at')->get();
+        $total = $rows->count();
+
+        $statusList = [
+            'draft', 'diajukan_admin_unit', 'diverifikasi_admin_unit',
+            'diajukan_pusbin', 'diverifikasi_pusbin',
+            'ditolak_admin_unit', 'ditolak_pusbin', 'selesai',
+        ];
+
+        $perStatus = [];
+        foreach ($statusList as $s) {
+            $perStatus[$s] = [
+                'label' => (new UjikomPendaftaran(['status' => $s]))->label_status,
+                'jumlah' => $rows->where('status', $s)->count(),
+            ];
+        }
+
+        $statusPending = ['draft', 'diajukan_admin_unit', 'diverifikasi_admin_unit', 'diajukan_pusbin', 'diverifikasi_pusbin'];
+        $statusDitolak = ['ditolak_admin_unit', 'ditolak_pusbin'];
+
+        $nyangkut = $rows->whereIn('status', $statusPending)
+            ->sortBy('created_at')
+            ->map(fn($r) => [
+                'kode' => $r->kode_pendaftaran,
+                'unit_kerja' => $r->unitKerja?->nama_unit_kerja ?? '-',
+                'jadwal' => $r->jadwal?->judul ?? '-',
+                'status' => $r->label_status,
+                'badge' => $r->badge_status,
+                'menunggu_sejak' => $r->created_at,
+                'jumlah_hari' => (int) $r->created_at->diffInDays(now()),
+            ])->values();
+
+        $totalDitolak = $rows->whereIn('status', $statusDitolak)->count();
+
+        $catatanPenolakan = $rows->whereIn('status', $statusDitolak)
+            ->filter(fn($r) => !empty($r->catatan_admin_unit) || !empty($r->catatan_pusbin))
+            ->map(fn($r) => [
+                'kode' => $r->kode_pendaftaran,
+                'unit_kerja' => $r->unitKerja?->nama_unit_kerja ?? '-',
+                'status' => $r->label_status,
+                'catatan' => $r->catatan_pusbin ?: $r->catatan_admin_unit,
+            ])->values();
+
+        return [
+            'summary' => [
+                'total_permohonan' => $total,
+                'total_ditolak' => $totalDitolak,
+                'tingkat_penolakan' => $total > 0 ? round(($totalDitolak / $total) * 100, 1) : 0,
+            ],
+            'per_status' => $perStatus,
+            'nyangkut' => $nyangkut,
+            'catatan_penolakan' => $catatanPenolakan,
+            'keterbatasan_waktu_verifikasi' => true,
+        ];
+    }
+
+    /**
+     * Helper: Opsi jenjang tujuan (enum string) untuk filter Tab 5
+     */
+    private function jenjangTujuanOptions(): array
+    {
+        return [
+            'pemula' => 'Pemula',
+            'terampil' => 'Terampil',
+            'mahir' => 'Mahir',
+            'penyelia' => 'Penyelia',
+            'ahli_pertama' => 'Ahli Pertama',
+            'ahli_muda' => 'Ahli Muda',
+            'ahli_madya' => 'Ahli Madya',
+            'ahli_utama' => 'Ahli Utama',
+        ];
+    }
+
+    /**
      * Export PDF
      */
     public function exportPdf(Request $request, $tab)
@@ -455,6 +774,30 @@ class LaporanController extends Controller
                     $request->get('status_formasi')
                 );
                 break;
+
+            case 'ujikom':
+                $data['ujikom'] = $this->getUjikomData(
+                    $request->get('tahun_ujikom'),
+                    $request->get('jadwal_id'),
+                    $request->get('jenjang_ujikom'),
+                    $request->get('unit_kerja_id')
+                );
+                break;
+
+            case 'pengangkatan':
+                $data['pengangkatan'] = $this->getPengangkatanData(
+                    $request->get('tahun_pengangkatan'),
+                    $request->get('unit_kerja_id'),
+                    $request->get('jabatan')
+                );
+                break;
+
+            case 'pendaftaran':
+                $data['pendaftaran'] = $this->getPendaftaranData(
+                    $request->get('tahun_pendaftaran'),
+                    $request->get('unit_kerja_id')
+                );
+                break;
         }
 
         return $data;
@@ -503,6 +846,9 @@ class LaporanController extends Controller
             'unit_kerja' => 'Laporan Unit Kerja',
             'formasi' => 'Laporan Formasi',
             'pegawai' => 'Laporan Pegawai JFT',
+            'ujikom' => 'Laporan Uji Kompetensi',
+            'pengangkatan' => 'Laporan Pengangkatan JFT',
+            'pendaftaran' => 'Laporan Pendaftaran Ujikom',
         ];
 
         return $titles[$tab] ?? 'Laporan';
@@ -545,6 +891,27 @@ class LaporanController extends Controller
 
         if ($request->get('status_formasi')) {
             $params['Status Formasi'] = $request->get('status_formasi') === 'terpenuhi' ? 'Terpenuhi' : 'Di Luar Formasi';
+        }
+
+        if ($request->get('jadwal_id')) {
+            $jadwal = UjikomJadwal::find($request->get('jadwal_id'));
+            $params['Jadwal Ujikom'] = $jadwal?->judul ?? $request->get('jadwal_id');
+        }
+
+        if ($request->get('jenjang_ujikom')) {
+            $params['Jenjang'] = $this->jenjangTujuanOptions()[$request->get('jenjang_ujikom')] ?? $request->get('jenjang_ujikom');
+        }
+
+        if ($request->get('tahun_ujikom')) {
+            $params['Tahun'] = $request->get('tahun_ujikom');
+        }
+
+        if ($request->get('tahun_pengangkatan')) {
+            $params['Tahun'] = $request->get('tahun_pengangkatan');
+        }
+
+        if ($request->get('tahun_pendaftaran')) {
+            $params['Tahun'] = $request->get('tahun_pendaftaran');
         }
 
         return $params;
