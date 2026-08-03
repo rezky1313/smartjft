@@ -5,6 +5,45 @@
 
 ---
 
+## Versi 1.22.0 - Fix Dashboard "Perlu Tindakan" (DASH-02)
+**Tanggal:** 3 Agustus 2026
+**Status:** ✅ Ditest end-to-end di browser sungguhan (Chrome via `smartjft.test`, Laragon) untuk ketiga role — Super Admin, Admin Pusbin, Admin Unit. Semua widget "Perlu Tindakan" tampil benar, angka konsisten dengan data DB, dan link kartu diklik langsung untuk memastikan mengarah ke halaman yang tepat. Ditemukan 1 bug pra-eksisting tak terkait (lihat Catatan Teknis) — dicatat, tidak diperbaiki karena di luar scope DASH-02.
+
+---
+
+## Ringkasan
+
+Diagnosa & perbaikan widget "Perlu Tindakan" di dashboard Super Admin/Admin Pusbin dan Admin Unit. Ditemukan 2 masalah berbeda sifat: satu widget under-count (nilai status tidak lengkap pasca-restrukturisasi Pengangkatan JFT v1.14.0), satu widget belum pernah dibuat sama sekali untuk Admin Unit. Tidak ditemukan nilai status basi/lama peninggalan sebelum restrukturisasi — seluruh nilai status lain yang dipakai dashboard sudah valid dan sesuai alur controller aktual.
+
+---
+
+## Perubahan
+
+### A. Fix Under-count: Permohonan Pengangkatan Pending (Super Admin / Admin Pusbin)
+
+- **UBAH** `app/Http/Controllers/PetaDashboardController.php` — `index()`: query `permohonan_pengangkatan_pending` sebelumnya cuma `where('status', 'diajukan')`, mengabaikan status `'menunggu_ttd'` yang juga tahap "perlu tindakan Pusbin" (generate surat rekomendasi + konfirmasi TTD, sesuai alur 4-tahap Pengangkatan JFT sejak v1.14.0: Draft→Diajukan→Menunggu TTD→Selesai). Diperbaiki jadi `whereIn('status', ['diajukan', 'menunggu_ttd'])`.
+- **UBAH** `resources/views/users/dashboard.blade.php` — link kartu disesuaikan: sebelumnya `route('pengangkatan.index', ['status' => 'diajukan'])` (cuma tampilkan sebagian dari yang dihitung), diubah jadi `route('pengangkatan.index')` tanpa filter status karena route itu cuma dukung filter status tunggal, sementara angka baru mewakili 2 status sekaligus. Label ditambah keterangan "(Diajukan/TTD)" agar jelas cakupannya.
+
+### B. Fix Widget Hilang: Permohonan Pengangkatan Berjalan (Admin Unit)
+
+- **Diagnosa:** `dashboardAdminUnit()` sebelumnya sama sekali tidak query data Pengangkatan JFT — hanya ada 4 stat card soal Ujikom (Total Pemangku, Menunggu Verifikasi, Diproses Pusbin, Selesai). Padahal Admin Unit adalah pihak yang mengajukan permohonan Pengangkatan (lihat `PengangkatanController::create()` — form otomatis terikat ke `unit_kerja_id` Admin Unit yang login), sehingga wajar mereka perlu melihat status permohonannya sendiri di dashboard.
+- **UBAH** `app/Http/Controllers/PetaDashboardController.php` — `dashboardAdminUnit()`: tambah query `$pengangkatanBerjalan = PengangkatanPermohonan::where('unit_kerja_id', $unitKerjaId)->whereNotIn('status', ['selesai', 'ditolak'])->count()`, dikirim ke view.
+- **UBAH** `resources/views/users/dashboard.blade.php` — tambah stat card ke-5 "Permohonan Pengangkatan Berjalan" di blok `@role('admin_unit')`, link ke `route('pengangkatan.index')` (sudah otomatis terfilter ke unit sendiri lewat scoping di controller).
+
+---
+
+## Catatan Teknis
+
+- **Bukan bug nilai status basi** — ditelusuri sampai ke migration & alur controller nyata: `ujikom_pendaftaran.status`, `ujikom_hasil.status_kelulusan`, `ujikom_sesi.status_sesi`, `ujikom_jadwal.status` semuanya sudah dipakai dengan nilai yang valid dan sesuai alur aktual (termasuk temuan bahwa status `diverifikasi_admin_unit` di enum `ujikom_pendaftaran` adalah status mati — endpoint `ajukanPusbin()` yang membutuhkannya terdaftar di route tapi tidak pernah dipanggil dari view manapun; alur nyata `verifikasiAdminUnit()` langsung lompat dari `diajukan_admin_unit` ke `diajukan_pusbin`). Hanya `pengangkatan_permohonan.status` yang punya masalah, dan itu bukan nilai salah — cuma daftar status di query yang tidak lengkap pasca migration `2026_07_13_000001_simplify_pengangkatan_status_and_ranking.php`.
+- **`hasil_belum_dinilai` (Super Admin/Admin Pusbin) dikonfirmasi SUDAH benar** — ditelusuri ke `UjikomOnlineController::cobaFinalisasiHasil()`: status `belum_dinilai` di-set persis saat sesi CAT+Mansoskul selesai tapi masih menunggu nilai manual Wawancara/Presentasi yang aktif di jadwal (bukan status generik "belum dinilai apa-apa").
+- Diverifikasi lewat Tinker (sebelum test browser): render penuh `PetaDashboardController::index()` untuk Super Admin, Admin Pusbin (role `admin`), dan Admin Unit (user dengan `unit_kerja_id` terisi — ditemukan ada user ber-role `admin_unit` tanpa `unit_kerja_id` di database, dihindari untuk test ini karena tidak representatif). Karena data pengujian di database cuma ada 1 record `pengangkatan_permohonan` (status `selesai`), dibuat 2 record uji sementara (status `menunggu_ttd` & `diajukan`) di dalam transaksi DB (`DB::beginTransaction()` ... `DB::rollBack()`) untuk membuktikan angka di kedua widget baru benar-benar bertambah sesuai ekspektasi, lalu di-rollback — jumlah record di tabel kembali ke 1 setelah verifikasi.
+- **Diverifikasi lewat browser sungguhan (Chrome, via Claude in Chrome, 3 Agustus 2026):**
+  - Login sebagai Super Admin & Admin Pusbin (akun default) — kartu "Permohonan Pengangkatan Menunggu (Diajukan/TTD)" tampil 0 (cocok dengan DB, karena 1 record asli berstatus `selesai`), diklik → mendarat di `/pengangkatan` dengan angka Total Permohonan=1 yang konsisten. Console bersih tanpa error.
+  - Login sebagai Admin Unit — karena tidak ada kredensial default untuk role ini dan user ber-`unit_kerja_id` yang ada adalah akun pribadi user (bukan akun uji), dibuatkan **akun uji sementara** (`temp.admin.unit.test@smartjft.local`, `unit_kerja_id=1700`) khusus untuk login browser, **dihapus permanen (`forceDelete`) setelah testing selesai** — dikonfirmasi jumlah user kembali seperti semula. Kartu ke-5 "Permohonan Pengangkatan Berjalan" tampil benar (0, layout wrap ke baris baru secara wajar di grid Bootstrap 4), diklik → mendarat di `/pengangkatan` dengan daftar kosong khusus unit tersebut (terpisah dari data unit lain), sesuai scoping.
+  - **Ditemukan bug pra-eksisting tak terkait DASH-02** (bukan regresi dari perubahan sesi ini): console browser Admin Unit menunjukkan `Error: Map container not found` dari Leaflet — script inisialisasi peta (`resources/views/users/dashboard.blade.php`, `@push('scripts')` sekitar baris 795) berjalan tanpa syarat untuk semua role, padahal div `#leafletMap-dashboard` cuma dirender di dalam blok `@hasanyrole('super_admin|admin|viewer')`. Untuk role `admin_unit`/`pemangku`, script coba `L.map()` ke elemen yang tidak ada di DOM. Tidak menghalangi rendering dashboard atau widget "Perlu Tindakan" (keduanya tetap tampil normal), tapi tercatat di sini sebagai temuan terpisah untuk sesi berikutnya — **belum diperbaiki, di luar scope DASH-02**.
+
+---
+
 ## Versi 1.21.0 - Fix Modul Laporan Terpadu (LAP-01) & Ekspansi 3 Tab Transaksional
 **Tanggal:** 26 Juli 2026
 **Status:** ✅ Ditest end-to-end di browser sungguhan (Chrome, login Super Admin) — ke-7 tab dicek satu per satu, render benar, tidak ada error console tersisa. Export PDF/Excel belum diklik langsung di browser (baru diverifikasi via Tinker), lihat Catatan Teknis.

@@ -369,10 +369,17 @@ private function buildJftJenjangMatrix(?string $fMatra, ?string $fFormasi, ?int 
         $jadwalAktif = UjikomJadwal::where('status', 'published')
             ->orderBy('tanggal_mulai')->take(5)->get();
 
+        // Permohonan Pengangkatan JFT dari unit kerja ini yang masih berjalan (belum
+        // selesai/ditolak) -- sebelumnya tidak ada widget ini sama sekali di dashboard
+        // Admin Unit, padahal Admin Unit-lah yang mengajukan permohonan Pengangkatan.
+        $pengangkatanBerjalan = PengangkatanPermohonan::where('unit_kerja_id', $unitKerjaId)
+            ->whereNotIn('status', ['selesai', 'ditolak'])
+            ->count();
+
         return view('users.dashboard', compact(
             'unitKerja', 'totalPegawai', 'formasiUnit', 'terisiMap',
             'permohonanMenunggu', 'permohonanDiproses', 'permohonanSelesai',
-            'jadwalAktif'
+            'jadwalAktif', 'pengangkatanBerjalan'
         ));
     }
 
@@ -696,7 +703,11 @@ foreach ($levels as $lvl) {
                 'jadwal_aktif'                 => UjikomJadwal::where('status', 'published')->count(),
                 'sesi_berlangsung'             => UjikomSesi::where('status_sesi', 'berlangsung')->count(),
                 'hasil_belum_dinilai'          => UjikomHasil::where('status_kelulusan', 'belum_dinilai')->count(),
-                'permohonan_pengangkatan_pending' => PengangkatanPermohonan::where('status', 'diajukan')->count(),
+                // 'diajukan' & 'menunggu_ttd' sama-sama tahap "perlu tindakan Pusbin" pasca
+                // penyederhanaan alur v1.14.0 (generate surat rekomendasi + konfirmasi TTD) —
+                // sebelumnya cuma 'diajukan' yang dihitung, meng-under-count permohonan yang
+                // sudah lolos verifikasi tapi masih menunggu TTD.
+                'permohonan_pengangkatan_pending' => PengangkatanPermohonan::whereIn('status', ['diajukan', 'menunggu_ttd'])->count(),
             ];
         }
 
