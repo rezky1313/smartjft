@@ -27,6 +27,7 @@ class UnitKerja extends Model
         'regency_id',
         'matra',
         'instansi',
+        'jenis_instansi',
     ];
 
     public function formasis()

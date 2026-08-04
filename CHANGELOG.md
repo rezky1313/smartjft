@@ -5,6 +5,173 @@
 
 ---
 
+## Versi 1.25.0 - RF-1C: Verifikasi, Berita Acara (TTD Digital), & Surat Rekomendasi Formasi
+**Tanggal:** 4 Agustus 2026
+**Status:** ✅ Diverifikasi lewat Tinker — skenario penuh 1 usulan dari `verifikasi_disepakati` → TTD kedua pihak → `ba_selesai` → terbit surat → konfirmasi TTD final → `selesai`, dijalankan dalam satu transaksi DB dan di-rollback. Kuota Formasi per jenjang dikonfirmasi bertambah **match persis** sesuai `formasi_final` (Pemula +4, Terampil +22, Mahir +7, Penyelia +6). Juga diverifikasi terpisah: `kembalikanKeDraft()` (override Bagian 2), blokir TTD dobel, blokir TTD lintas-unit (403), blokir `updateHasilFinal()` setelah `ba_selesai`. **Belum ditest di browser oleh user.**
+
+---
+
+## Ringkasan
+
+Melengkapi modul Rekomendasi Formasi (RF-01) dengan alur verifikasi offline (dicatat manual oleh Admin Pusbin, pertemuannya sendiri di luar sistem), Berita Acara dengan tanda tangan digital Opsi B (jejak audit, bukan TTE bersertifikat), dan penerbitan Surat Rekomendasi Formasi yang otomatis menambah kuota Formasi. Pola generate PDF & update Formasi mengikuti persis yang sudah terbukti jalan di modul Pengangkatan JFT (`generateSurat()`/`konfirmasiTtd()`), termasuk 1 penyimpangan disengaja dari pseudocode awal yang dijelaskan di Bagian C.
+
+---
+
+## Perubahan
+
+### A. Struktur Database Baru
+
+- **BARU** `database/migrations/2026_08_04_000001_create_rekomendasi_formasi_surat_table.php` — tabel `rekomendasi_formasi_surat` (mirroring `pengangkatan_surat`: `nomor_surat` nullable — TIDAK di-generate otomatis, diisi lewat proses persuratan institusi di luar sistem, sama seperti `pengangkatan_surat`; `tanggal_surat`; `ditandatangani`), unique per usulan.
+- **BARU** `database/migrations/2026_08_04_000002_add_catatan_override_to_rekomendasi_formasi_usulan.php` — kolom `catatan_override` (text, nullable) di `rekomendasi_formasi_usulan`, audit trail sederhana untuk fitur "kembalikan ke Draft" (Bagian 2).
+- **BARU** `app/Models/RekomendasiFormasiBeritaAcara.php`, `RekomendasiFormasiSurat.php` — model untuk 2 tabel di atas (tabel `rekomendasi_formasi_berita_acara` sendiri sudah ada sejak RF-1A tapi belum punya model Eloquent).
+- **UBAH** `app/Models/RekomendasiFormasiUsulan.php` — tambah relasi `beritaAcara()` (hasOne), `surat()` (hasOne), `catatan_override` ke fillable.
+- **UBAH** `app/helpers.php` — tambah `formatNomorBeritaAcaraRekomendasiFormasi()`, format `BA-RF/{romawi-bulan}/{tahun}/{no-urut}`, konsisten dengan `formatNomorPermohonanPengangkatan()` yang sudah ada.
+
+### B. Verifikasi & Berita Acara TTD Digital
+
+- **BARU** `RekomendasiFormasiController::tandaiVerifikasiDisepakati()` — `diajukan`/`menunggu_verifikasi` → `verifikasi_disepakati`, membuat record BA dengan nomor otomatis. Sistem HANYA mencatat hasil kesepakatan pertemuan (Zoom/tatap muka) yang terjadi di luar sistem — tidak menjadwalkan/memfasilitasi pertemuannya.
+- **BARU** `tandaTanganBA()` — TTD digital Opsi B (jejak audit: user, waktu, IP — bukan TTE bersertifikat). Pihak Pusbin **hanya role `kabid_perencanaan_jft`** yang berwenang (SENGAJA tidak termasuk admin/super_admin — TTD ini merepresentasikan identitas personal Kepala Bidang, bukan hak administratif umum). Pihak pengusul: `admin_unit` dari unit kerja yang sama dengan usulan. Kedua pihak TTD → status otomatis `ba_selesai`.
+- **BARU** `cetakBeritaAcara()` — PDF format Lampiran IV PM 4/2024 (2 pihak penandatangan), `resources/views/rekomendasi_formasi/pdf/berita_acara.blade.php`.
+- **UBAH** `RekomendasiFormasiController::updateHasilFinal()` (RF-1B) — tambah blokir status: TIDAK bisa diedit lagi setelah `ba_selesai`/`menunggu_ttd_rekomendasi`/`selesai` (sebelumnya cuma dicek role, tanpa cek status).
+
+### C. Surat Rekomendasi Formasi & Update Kuota Formasi
+
+- **BARU** `terbitkanSuratRekomendasi()` — **menyimpang dari pseudocode prompt yang cuma `redirect()` tanpa PDF**, diimplementasikan mengikuti pola NYATA `PengangkatanController::generateSurat()`: 1 request GET sekaligus transisi status (`ba_selesai`→`menunggu_ttd_rekomendasi`) DAN download PDF, bisa diunduh ulang berkali-kali tanpa duplikasi status/record. Ini sesuai instruksi eksplisit prompt sendiri ("pola identik PengangkatanController@generateSurat, JANGAN dibuat beda pola tanpa alasan kuat") — pseudocode contoh yang diberikan tidak match pola aslinya, saya ikuti pola asli yang terbukti jalan.
+- **BARU** `konfirmasiTtdRekomendasi()` — `menunggu_ttd_rekomendasi` → `selesai`. Menambahkan `formasi_final` ke kuota `formasi_jabatan` per jenjang lewat `firstOrCreate()` (kriteria: `unit_kerja_id` + `nama_formasi='Penguji Kendaraan Bermotor'` + `jenjang_id` dari `jenjang_jabatan` + `tahun_formasi=$usulan->tahun` — **PENTING**: `tahun_formasi` WAJIB masuk kriteria match karena `formasi_jabatan` menyimpan 1 baris per tahun per unit+jenjang, bukan 1 baris kumulatif) `->increment('kuota', ...)`. Jenjang dengan `formasi_final <= 0` dilewati (tidak bikin baris kosong).
+- **BARU** `resources/views/rekomendasi_formasi/pdf/surat_rekomendasi.blade.php` — mirroring `pengangkatan/pdf/surat_rekomendasi.blade.php`, TTD Kapusbin JFT tetap manual/fisik (belum ada TTE resmi), nomor surat resmi TIDAK auto-generate (sama seperti Pengangkatan, diisi lewat proses persuratan institusi).
+
+### D. Kunci Data & Override (Bagian 2)
+
+- `edit()`/`update()` (RF-1B) — pengecekan status `in_array($usulan->status, ['draft', 'diajukan'])` **sudah otomatis memenuhi** requirement "kunci data setelah verifikasi_disepakati" tanpa perlu perubahan (status apapun setelah `diajukan` sudah terblokir). Pesan error diperjelas menyebut jalur override yang tersedia.
+- **BARU** `kembalikanKeDraft()` — override eksplisit Admin Pusbin (`admin`/`super_admin` saja, TIDAK termasuk `kabid_perencanaan_jft`), WAJIB isi alasan (validasi min 5 karakter), dicatat ke `catatan_override` (append, bukan overwrite, supaya riwayat override sebelumnya tidak hilang kalau terjadi berkali-kali). Diblokir kalau status sudah `selesai` (kuota Formasi sudah bertambah sungguhan di titik itu, butuh penanganan manual terpisah — di luar scope).
+
+### E. Timeline/Stepper & Route
+
+- **UBAH** `resources/views/rekomendasi_formasi/show.blade.php` — stepper visual (pola CSS/HTML sama persis dengan `ujikom/show.blade.php`), 6 langkah: Draft → Diajukan → Verifikasi Disepakati → BA Ditandatangani (2 Pihak) → Menunggu TTD Rekomendasi → Selesai. Tombol "Tandai Verifikasi Telah Disepakati" & TTD digital pakai **SweetAlert2** (bukan `confirm()` native, sesuai instruksi eksplisit) — library sudah dimuat global di `layouts/users/master.blade.php` tapi RF-01 adalah pemakaian `Swal.fire()` PERTAMA di seluruh project (belum ada preseden lain untuk dicontoh). Tombol konfirmasi surat rekomendasi tetap pakai `confirm()` native, mengikuti pola asli `pengangkatan/show.blade.php` persis.
+- **UBAH** `routes/web.php` — 6 route baru di dalam grup `user.` (`verifikasi-disepakati`, `tanda-tangan-ba`, `berita-acara` [GET, cetak PDF], `surat-rekomendasi` [GET, cetak PDF + transisi status], `konfirmasi-ttd-rekomendasi`, `kembalikan-draft`), masing-masing middleware role sesuai pihak yang berwenang.
+
+---
+
+## Catatan Teknis
+
+- **Bug ditemukan & diperbaiki di skrip verifikasi saya sendiri (bukan di kode aplikasi):** percobaan pertama skenario penuh melaporkan kuota Formasi TIDAK bertambah — root cause-nya query verifikasi "sebelum/sesudah" tidak memfilter `tahun_formasi`, jadi membaca baris formasi tahun lain (data existing, tahun 2025) alih-alih baris baru yang dibuat `konfirmasiTtdRekomendasi()` untuk tahun 2027. Setelah skrip verifikasi diperbaiki, hasilnya match persis. Dicatat di sini karena polanya relevan: `formasi_jabatan` SELALU butuh `tahun_formasi` sebagai bagian kriteria pencarian/pembanding, tidak cukup unit+jenjang saja.
+- Diverifikasi lewat PHP script standalone (bootstrap Laravel manual, BUKAN `php artisan tinker` — ditemukan `tinker --execute` dengan multi-line script kompleks berisi `try/catch`+`foreach` bersarang tidak reliable dieksekusi utuh lewat CLI argument maupun stdin pada sesi ini; script mandiri via `require bootstrap/app.php` jauh lebih stabil untuk skenario panjang bertahap seperti ini) — skenario lengkap 6 langkah + 4 pengecekan tambahan (TTD dobel, TTD lintas-unit, blokir `updateHasilFinal`, `kembalikanKeDraft` lengkap dengan validasi) semua dijalankan dalam SATU `DB::beginTransaction()`, di-`rollBack()` di akhir. Dikonfirmasi ulang: 0 usulan/BA/surat/formasi tahun-2027 tersisa, 0 user uji tersisa setelah rollback.
+- **BELUM diuji:** interaksi sungguhan di browser (klik tombol SweetAlert2, isi form alasan kembalikan-draft, download PDF BA/surat rekomendasi sungguhan, tampilan stepper visual).
+
+---
+
+## Versi 1.24.0 - RF-1B: Form Usulan Rekomendasi Formasi & Mesin Kalkulasi Otomatis
+**Tanggal:** 3-4 Agustus 2026
+**Status:** ✅ Diverifikasi lewat Tinker — kalkulasi ΣWpv match PERSIS ke Excel referensi untuk seluruh 4 jenjang (data uji Kabupaten Bandung), pembulatan ROUNDUP-untuk-semua + fitur override manual `formasi_final` ditest (lihat Bagian D), full flow store()/show()/edit()/update()/updateHasilFinal() ditest untuk skenario Kemenhub & Dishub (termasuk upload pegawai, dijalankan dalam transaksi & di-rollback), otorisasi antar-unit & antar-role ditest. **Belum ditest di browser oleh user.**
+
+---
+
+## Ringkasan
+
+Membangun alur pembuatan usulan Rekomendasi Formasi PKB: form 3-bagian (JF & unit kerja, variabel beban kerja, upload pegawai khusus Dishub), dan mesin kalkulasi otomatis Kebutuhan Formasi. **Sebelum bisa dipercaya, mesin kalkulasi divalidasi ketat terhadap file Excel referensi** — proses ini membongkar 5 bug tersembunyi di data `formula_rf_master` (hasil ekstraksi RF-1A) yang HARUS diperbaiki dulu, karena kalau tidak, hasil kalkulasi akan salah tanpa terlihat error apapun secara teknis.
+
+---
+
+## Perubahan
+
+### A. Koreksi Menyeluruh Ekstraksi Formula (menggantikan pendekatan RF-1A-FIX yang ternyata masih keliru)
+
+RF-1A memberi fallback `kb_diuji_total` ke semua baris tanpa formula Volume. Sesi sebelumnya (RF-1A-FIX) mencoba memperbaiki dengan aturan "per sub_unsur" (2 sub_unsur tertentu dijadikan NULL, sisanya tetap fallback) — **atas persetujuan Product Owner saat itu**. Saat RF-1B mencoba merekonstruksi angka ΣWpv Excel dari data itu, ditemukan pendekatan "per sub_unsur" itu sendiri salah: sifat "boleh berkontribusi atau tidak" adalah **properti per-baris** (ada/tidaknya formula di sel Volume baris itu sendiri), bukan properti kategori sub_unsur — dibuktikan lewat 2 baris kontra-contoh nyata (1 baris kategori "PENGUJIAN TIPE" yang justru PUNYA formula asli & seharusnya tetap kb_diuji_total; 1 baris kategori "ANALISIS DAN PENETAPAN HASIL" yang PALING TIDAK punya formula & seharusnya NULL).
+
+- **UBAH** `app/Console/Commands/ImportFormulaRfPkb.php` — dirombak total:
+  1. Hapus SEMUA fallback `kb_diuji_total` — sumber_volume murni hasil resolusi sel Volume baris itu sendiri, NULL kalau kosong (tanpa peduli sub_unsur).
+  2. Tambah dukungan **baris agregat**: 2 baris di TERAMPIL_DISHUB ("Mengukur dimensi kendaraan bermotor, meliputi:" & "Memeriksa visual fisik kendaraan bermotor, meliputi:") punya kolom "jam" berisi `SUM(...)` yang mengagregasi child-nya, bukan sel waktu tunggal — sebelumnya baris ini ter-skip total dari ekstraksi (tidak ada equivalent di Pemula/Mahir/Penyelia).
+  3. Waktu SELALU diambil dari **nilai terhitung kolom helper "jam"** (bukan dibaca mentah dari kolom waktu) — ditemukan 1 baris Terampil ("...alat uji Kebisingan") yang kolom waktu-nya menampilkan 1.5 tapi formula jam-nya di-hardcode `=1/60` (bukan mengikuti nilai 1.5) — inkonsistensi input manual di file sumber. Excel sendiri memakai hasil formula itu untuk kalkulasi Wpv, jadi sistem ikut itu juga.
+  4. Nilai konstanta literal (`sumber_volume=konstanta_hari_kerja`) disimpan **apa adanya per baris**, tidak lagi diasumsikan selalu 240 — 1 baris Mahir ternyata literalnya 10, beda dari 14 baris lain yang literalnya 240.
+- **BARU** `database/migrations/2026_08_10_000002_add_volume_konstanta_to_formula_rf_master.php` — kolom `volume_konstanta` (decimal, nullable) untuk mendukung poin 4 di atas.
+- **UBAH** `app/Models/FormulaRfMaster.php` — tambah `volume_konstanta` ke fillable/casts.
+- Command `formula-rf:import-pkb` dijalankan ulang (idempotent, replace `kode_jf=pkb`) — hasil: 118 baris (naik dari 116, +2 baris agregat Terampil).
+
+**Hasil validasi ΣWpv (data Kabupaten Bandung, KBWU=43639, Uji Pertama=1073, Uji Reguler=33471, Numpang Masuk=2002, Mutasi Masuk=989, BBM Bensin=15491, BBM Solar=21919) — validasi tahap ini HANYA membuktikan rumus ΣWpv (Waktu×Volume) sudah benar, BUKAN aturan pembulatan (lihat Bagian C untuk pembulatan produksi):**
+
+| Jenjang | ΣWpv Sistem | ΣWpv Excel (native) | Match? |
+|---|---|---|---|
+| Pemula | 5646.05 | 5646.05 | ✅ |
+| Terampil | 26311.43 | 26311.43 | ✅ |
+| Mahir | 7549.4167 | 7549.4167 | ✅ |
+| Penyelia | 6255.8333 | 6255.8333 | ✅ |
+
+Match persis untuk keempat jenjang. Angka ΣWpv Excel di atas diperoleh lewat `getCalculatedValue()` milik PhpSpreadsheet — engine parser+evaluator formula Excel independen (kode pihak ketiga, terpisah dari `hitungKebutuhanFormasi()`), BUKAN LibreOffice/Excel sungguhan (tidak terpasang di sistem ini) dan BUKAN dihitung manual oleh Claude. Kategorisasi per-baris (`sumber_volume`) sendiri tetap hasil interpretasi manual terhadap teks formula — divalidasi secara tidak langsung lewat kecocokan total 4 desimal di atas, bukan diverifikasi otomatis oleh engine.
+
+**Klarifikasi penting (ditanyakan user 4 Agustus 2026, lihat Bagian C):** laporan awal RF-1B sempat mengubah kode produksi ke pembulatan CAMPURAN (ROUNDUP Pemula, ROUNDDOWN 3 jenjang lain) supaya `kebutuhan_bulat` sistem match 1:1 ke angka native Excel `Sheet1!V4:Y4` (5/21/6/5) — ini **menyimpang diam-diam dari keputusan eksplisit RF-1B ("ROUNDUP sesuai keputusan, berlaku SEMUA jenjang")** tanpa dikonfirmasi dulu ke user. Sudah dikembalikan ke ROUNDUP-untuk-semua, lihat Bagian C.
+
+### B. Kolom `jenis_instansi` di Unit Kerja
+
+- **BARU** `database/migrations/2026_08_10_000001_add_jenis_instansi_to_unit_kerja.php` — kolom `jenis_instansi` (enum kemenhub/dishub, nullable) + **backfill otomatis** untuk seluruh 539 baris `unit_kerja` yang sudah ada, dari kolom `instansi` yang sudah ada sebelumnya (`Daerah`→`dishub`, `Pusat`→`kemenhub`). Backfill ini deterministik, bukan tebakan — ditelusuri dulu: seluruh 136 baris `instansi='Daerah'` namanya diawali persis "Dinas Perhubungan ..." tanpa kecuali.
+- **UBAH** `app/Models/UnitKerja.php` — tambah `jenis_instansi` ke fillable.
+
+### C. Modul Rekomendasi Formasi — Controller, Route, View
+
+- **BARU** `app/Http/Controllers/RekomendasiFormasiController.php` — `index/create/store/show/edit/update`. Mesin kalkulasi (`hitungKebutuhanFormasi()`) memakai `volume_konstanta` per baris (bukan hardcode 240).
+- **BARU** `app/Models/RekomendasiFormasiUsulan.php`, `RekomendasiFormasiVariabel.php`, `RekomendasiFormasiHasil.php`, `RekomendasiFormasiPegawaiExisting.php`.
+- **UBAH** `routes/web.php` — `Route::resource('rekomendasi-formasi', ...)` di dalam grup `user.` (route `user.rekomendasi-formasi.*`), `->only([...])` tanpa `destroy` (belum diminta/belum masuk akal untuk usulan yang sudah masuk alur verifikasi), middleware `role:admin_unit|admin|super_admin|kabid_perencanaan_jft|viewer` sesuai pembagian RF-1A.
+- **UBAH** `resources/views/layouts/users/master.blade.php` — tambah menu sidebar "Rekomendasi Formasi", gated `@can('view rekomendasi formasi')`.
+- **BARU** `resources/views/rekomendasi_formasi/{index,create,show,edit}.blade.php`.
+
+**Bezetting Kemenhub** dihitung dari data Pegawai JFT existing yang tertaut `formasi_jabatan` JF "Penguji Kendaraan Bermotor" + jenjang terkait di unit kerja itu (bukan kolom "jenjang" langsung di `sumber_daya_manusia` — kolom itu tidak ada, jenjang selalu ditelusuri lewat `formasi_jabatan.jenjang_id` → `jenjang_jabatan.nama_jenjang`, formatnya gabungan "Nama JF + Jenjang").
+
+**Data pegawai Dishub** yang diupload di Step 3 form disimpan permanen ke `sumber_daya_manusia` (real, `nama_lengkap` bukan `nama` — nama kolom sungguhan beda dari sketsa awal), ditautkan ke `formasi_jabatan` PKB unit itu KALAU sudah ada; kalau belum ada (Dishub yang belum tertib administrasi formasi), disimpan tanpa tautan formasi dengan `status_formasi='di_luar_formasi'` — TIDAK mengarang record formasi baru.
+
+### D. Aturan Pembulatan — Dikembalikan ke ROUNDUP-untuk-Semua + Fitur Override Manual (4 Agustus 2026)
+
+Menindaklanjuti klarifikasi user: laporan RF-1B awal sempat diam-diam mengubah kode produksi ke pembulatan campuran (ROUNDUP Pemula, ROUNDDOWN 3 jenjang lain) demi mengejar kecocokan validasi ke angka native Excel — ini bertentangan dengan keputusan eksplisit yang sudah tertulis di prompt RF-1B ("ROUNDUP sesuai keputusan, berlaku SEMUA jenjang") dan diterapkan tanpa konfirmasi dulu. Keputusan final user: kembali ke ROUNDUP-untuk-semua sebagai default sistem, DAN tambahkan fitur override manual per jenjang untuk mengantisipasi kalau pimpinan menghendaki ROUNDDOWN pada kasus tertentu.
+
+- **UBAH** `app/Http/Controllers/RekomendasiFormasiController.php`:
+  - `hitungKebutuhanFormasi()`: pembulatan dikembalikan ke `ceil()` (ROUNDUP) untuk keempat jenjang, tanpa pengecualian.
+  - **BARU** `updateHasilFinal()` — override manual `formasi_final` per jenjang, khusus role Pusbin (`admin`, `super_admin`, `kabid_perencanaan_jft`; `admin_unit` diblokir eksplisit dengan 403 di level controller, bukan cuma middleware). `formasi_sistem` (hasil murni sistem, ROUNDUP) TIDAK PERNAH ikut berubah — tetap audit trail terpisah dari `formasi_final` (angka final yang dipakai/ditampilkan).
+  - `update()` (edit variabel beban kerja oleh Admin Unit): diperbaiki supaya TIDAK diam-diam menimpa balik `formasi_final` yang sudah di-override manual Pusbin sebelumnya — override dipertahankan meski variabel diedit ulang & kalkulasi dijalankan ulang.
+- **UBAH** `routes/web.php` — route baru `PUT rekomendasi-formasi/{id}/hasil-final` (`user.rekomendasi-formasi.hasil-final.update`), middleware `role:admin|super_admin|kabid_perencanaan_jft` (admin_unit tidak disertakan).
+- **UBAH** `resources/views/rekomendasi_formasi/show.blade.php` — tabel hasil kalkulasi menampilkan kolom **Kebutuhan (Raw)** (angka sebelum dibulatkan, 4 desimal) supaya pimpinan bisa menimbang sendiri sebelum override; kolom **Formasi Final** jadi input editable khusus role Pusbin (form terpisah, submit ke route `hasil-final.update`), tetap read-only untuk role lain.
+
+**Konsekuensi:** dengan ROUNDUP-untuk-semua, hasil sistem untuk data Kabupaten Bandung menjadi Pemula=5, Terampil=**22** (bukan 21 versi native Excel/ROUNDDOWN), Mahir=**7** (bukan 6), Penyelia=**6** (bukan 5) — sengaja berbeda dari angka native Excel untuk 3 jenjang tsb, sesuai keputusan produk yang berlaku sekarang.
+
+---
+
+## Catatan Teknis
+
+- **Kenapa validasi ΣWpv tetap penting** meski keputusan pembulatan akhirnya beda dari Excel: rumus inti (Waktu × Volume, penjumlahan, sumber volume per baris) tetap harus benar dulu sebelum pembulatan apapun diterapkan — validasi ΣWpv membuktikan bagian ITU sudah benar, terlepas dari aturan pembulatan yang dipilih di atasnya.
+- **Metodologi validasi ΣWpv (diklarifikasi 4 Agustus 2026):** angka "Excel native" dipakai sebagai pembanding diperoleh lewat `PhpSpreadsheet::getCalculatedValue()` — sebuah *engine* parser+evaluator formula Excel pihak ketiga yang independen dari kode `hitungKebutuhanFormasi()`, BUKAN dengan membuka file di LibreOffice/Excel sungguhan (tidak terpasang di sistem ini) dan BUKAN dihitung manual oleh Claude memakai pemahaman yang sama dengan implementasi PHP-nya. Namun kategorisasi per-baris (`sumber_volume`, hasil `ImportFormulaRfPkb.php`) tetap murni interpretasi manual terhadap teks formula — divalidasi secara TIDAK LANGSUNG lewat kecocokan ΣWpv total 4 desimal di 4 sheet sekaligus (kecocokan kebetulan sedetail itu di 4 dataset independen secara statistik sangat tidak mungkin kalau kategorisasinya salah), bukan diverifikasi otomatis oleh engine manapun.
+- Diverifikasi lewat Tinker: `hitungKebutuhanFormasi()` dipanggil langsung lewat reflection dengan data Kabupaten Bandung, ΣWpv match persis ke Excel untuk 4 jenjang, kebutuhan_bulat terkonfirmasi ROUNDUP semua jenjang (Pemula 5, Terampil 22, Mahir 7, Penyelia 6). Full `store()` ditest 2 skenario (Kemenhub unit id=1700 tanpa upload pegawai; Dishub unit id=1701 dengan upload 2 pegawai + 1 baris kosong yang harus ter-skip) di dalam `DB::beginTransaction()`...`DB::rollBack()`. `show()`/`edit()`/`update()`/`updateHasilFinal()` ditest berurutan: override manual `formasi_final` (22→21) tersimpan tanpa mengubah `formasi_sistem`; admin_unit dipastikan 403 saat mencoba `updateHasilFinal()`; override dipastikan BERTAHAN setelah `update()` (edit variabel) dijalankan ulang oleh admin_unit. Otorisasi admin_unit lintas-unit ditest (403 terkonfirmasi). Gating UI tombol "+ Buat Usulan" ditest untuk role `kabid_perencanaan_jft` & `viewer`.
+- **BELUM diuji:** interaksi sungguhan di browser (isi form, klik submit, lihat hasil kalkulasi tampil di halaman show, toggle Step 3 saat pilih unit kerja Dishub vs Kemenhub lewat dropdown Admin Pusbin, klik submit form override Formasi Final).
+- `RekomendasiFormasiController::update()` sengaja TIDAK mengubah data pegawai yang sudah diupload (itu sudah permanen di modul Pegawai JFT terpisah) — edit usulan hanya mengubah variabel beban kerja & angka usulan admin unit, lalu hitung ulang.
+
+---
+
+## Versi 1.23.0 - RF-1A: Fondasi Database, Digitalisasi Rumus PKB, Role Baru
+**Tanggal:** 3 Agustus 2026
+**Status:** ⚠️ Sebagian diverifikasi saat itu (lihat catatan RF-1B di atas — sebagian hasil ekstraksi ternyata masih keliru, sudah diperbaiki di v1.24.0). Dicatat retroaktif -- sempat terlewat masuk CHANGELOG saat sesi RF-1A berlangsung.
+
+---
+
+## Ringkasan
+
+Fondasi modul baru **Rekomendasi Formasi (RF-01)** — unit kerja (Kemenhub maupun Dinas Perhubungan) mengusulkan penambahan formasi, dimulai dari rumus JF Penguji Kendaraan Bermotor (PKB). Desain dibuat extensible untuk JF lain di masa depan.
+
+---
+
+## Perubahan
+
+### A. Struktur Database
+
+- **BARU** `database/migrations/2026_08_03_000001_create_rekomendasi_formasi_tables.php` — 6 tabel: `formula_rf_master` (rumus per JF, extensible), `rekomendasi_formasi_usulan` (induk), `rekomendasi_formasi_variabel` (input beban kerja), `rekomendasi_formasi_hasil` (hasil kalkulasi per jenjang), `rekomendasi_formasi_pegawai_existing` (audit trail upload Dishub), `rekomendasi_formasi_berita_acara` (TTD digital, belum dipakai sampai fase verifikasi/BA dibangun).
+
+### B. Digitalisasi Rumus PKB dari Excel
+
+- **BARU** `app/Console/Commands/ImportFormulaRfPkb.php`, `app/Models/FormulaRfMaster.php` — baca 4 sheet (PEMULA/TERAMPIL/MAHIR/PENYELIA_DISHUB) dari `database/seeders/data/formula_rf_pkb_referensi.xlsx`, ekstrak butir kegiatan + waktu + pemetaan sumber volume (uji_pertama/uji_reguler/kb_diuji_total/bbm_bensin/bbm_solar/konstanta_hari_kerja).
+- Hasil awal: 116 baris. **Lihat v1.24.0 untuk koreksi menyeluruh** — beberapa aspek ekstraksi awal ini (fallback volume, asumsi kolom, asumsi pembulatan) ternyata perlu direvisi setelah divalidasi ketat terhadap angka resmi Excel.
+
+### C. Role Baru
+
+- Role `kabid_perencanaan_jft` dibuat (representasi Kepala Bidang Perencanaan & Pembentukan JFT Pusbin, penanda tangan Berita Acara pihak Pusbin).
+- **UBAH** `database/seeders/RolePermissionUpdateSeeder.php` — tambah 5 permission baru (`view/create/edit/verifikasi/ttd rekomendasi formasi`), dibagi ke role terkait (admin_unit: view+create+edit; admin: view+verifikasi; kabid_perencanaan_jft: view+verifikasi+ttd; viewer: view).
+
+---
+
 ## Versi 1.22.0 - Fix Dashboard "Perlu Tindakan" (DASH-02)
 **Tanggal:** 3 Agustus 2026
 **Status:** ✅ Ditest end-to-end di browser sungguhan (Chrome via `smartjft.test`, Laragon) untuk ketiga role — Super Admin, Admin Pusbin, Admin Unit. Semua widget "Perlu Tindakan" tampil benar, angka konsisten dengan data DB, dan link kartu diklik langsung untuk memastikan mengarah ke halaman yang tepat. Ditemukan 1 bug pra-eksisting tak terkait (lihat Catatan Teknis) — dicatat, tidak diperbaiki karena di luar scope DASH-02.

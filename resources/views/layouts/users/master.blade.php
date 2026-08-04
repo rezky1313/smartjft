@@ -184,6 +184,16 @@
             </li>
             @endcan
 
+            {{-- Rekomendasi Formasi (RF-01) --}}
+            @can('view rekomendasi formasi')
+            <li>
+              <a href="{{ route('user.rekomendasi-formasi.index') }}" class="nav-link {{ request()->routeIs('user.rekomendasi-formasi.*') ? 'active' : '' }}" onclick="pindah(event)">
+                <span class="nav-icon"><i class="bi bi-calculator"></i></span>
+                Rekomendasi Formasi
+              </a>
+            </li>
+            @endcan
+
             {{-- Kompetensi JFT: semua role kecuali viewer --}}
             @hasanyrole('super_admin|admin|admin_unit|pemangku')
             @php

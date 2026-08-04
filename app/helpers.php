@@ -81,3 +81,28 @@ if (!function_exists('formatNomorPermohonanPengangkatan')) {
     }
 }
 
+if (!function_exists('formatNomorBeritaAcaraRekomendasiFormasi')) {
+    /**
+     * Generate nomor Berita Acara Hasil Verifikasi Penghitungan Formasi (RF-01)
+     * Format: BA-RF/[ROMAWI-BULAN]/[TAHUN]/[NO-URUT]
+     * Contoh: BA-RF/VIII/2026/0001
+     *
+     * @param int $noUrut Nomor urut Berita Acara
+     * @param string|null $tanggal Tanggal verifikasi (Y-m-d) atau null untuk tanggal sekarang
+     * @return string Nomor Berita Acara terformat
+     */
+    function formatNomorBeritaAcaraRekomendasiFormasi($noUrut, $tanggal = null)
+    {
+        if ($tanggal === null) {
+            $tanggal = date('Y-m-d');
+        }
+
+        $date = \Carbon\Carbon::parse($tanggal);
+        $romawi = toRoman((int)$date->format('m'));
+        $tahun = $date->format('Y');
+        $noUrutFormatted = str_pad($noUrut, 4, '0', STR_PAD_LEFT);
+
+        return "BA-RF/{$romawi}/{$tahun}/{$noUrutFormatted}";
+    }
+}
+

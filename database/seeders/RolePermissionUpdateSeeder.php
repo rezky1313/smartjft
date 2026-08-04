@@ -41,6 +41,14 @@ class RolePermissionUpdateSeeder extends Seeder
 
             // Manajemen User
             'manage users',
+
+            // Rekomendasi Formasi (RF-01) -- fondasi permission, belum ada
+            // controller/route yang memakainya di fase ini (RF-1A)
+            'view rekomendasi formasi',
+            'create rekomendasi formasi',
+            'edit rekomendasi formasi',
+            'verifikasi rekomendasi formasi',
+            'ttd rekomendasi formasi',
         ];
 
         foreach ($allPermissions as $perm) {
@@ -62,6 +70,7 @@ class RolePermissionUpdateSeeder extends Seeder
             'view ujikom permohonan',
             'verifikasi ujikom permohonan pusbin',
             'view laporan', 'export laporan',
+            'view rekomendasi formasi', 'verifikasi rekomendasi formasi',
         ]);
 
         // ── ADMIN UNIT ──
@@ -79,6 +88,19 @@ class RolePermissionUpdateSeeder extends Seeder
             'view ujikom permohonan',
             'create ujikom permohonan',
             'verifikasi ujikom permohonan admin unit',
+
+            // Rekomendasi Formasi (RF-01) -- unit kerja/dishub adalah pengusul
+            'view rekomendasi formasi', 'create rekomendasi formasi', 'edit rekomendasi formasi',
+        ]);
+
+        // ── KABID PERENCANAAN & PEMBENTUKAN JFT (Pusbin) ──
+        // Penanda tangan digital pihak Pusbin pada Berita Acara Rekomendasi Formasi.
+        $kabidPerencanaanJft = Role::findOrCreate('kabid_perencanaan_jft');
+        $kabidPerencanaanJft->syncPermissions([
+            'view dashboard',
+            'view rekomendasi formasi',
+            'verifikasi rekomendasi formasi',
+            'ttd rekomendasi formasi',
         ]);
 
         // ── PEMANGKU JFT ──
@@ -98,6 +120,7 @@ class RolePermissionUpdateSeeder extends Seeder
             'view formasi',
             'view pegawai',
             'view ujikom jadwal',
+            'view rekomendasi formasi',
         ]);
 
         // ── HAPUS ROLE OPERATOR — konversi ke admin_unit ──

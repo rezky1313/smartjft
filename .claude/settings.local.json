@@ -36,7 +36,9 @@
       "Bash(taskkill //PID 10100 //F)",
       "Bash(echo \"---exit code: $?---\")",
       "Bash(awk 'NR==625,NR==635' resources/views/users/dashboard.blade.php)",
-      "Bash(awk 'NR==788,NR==800' resources/views/users/dashboard.blade.php)"
+      "Bash(awk 'NR==788,NR==800' resources/views/users/dashboard.blade.php)",
+      "Bash(composer show *)",
+      "Bash(echo \"Sisa usulan skrg: $\\(php artisan tinker --execute='echo App\\\\Models\\\\RekomendasiFormasiUsulan::count\\(\\);' 2>&1\\)\")"
     ]
   }
 }

@@ -19,6 +19,7 @@ use App\Http\Controllers\UjikomPendaftaranController;
 use App\Http\Controllers\BankSoalController;
 use App\Http\Controllers\SoalKategoriController;
 use App\Http\Controllers\PaketUjianController;
+use App\Http\Controllers\RekomendasiFormasiController;
 
 
 /*
@@ -193,6 +194,48 @@ Route::get('laporan/pemangku-simple',
         Route::get('export-pdf/{tab}', [LaporanController::class, 'exportPdf'])->name('export-pdf');
         Route::get('export-excel/{tab}', [LaporanController::class, 'exportExcel'])->name('export-excel');
     });
+
+    // Rekomendasi Formasi (RF-01) -- pembagian akses sesuai RF-1A:
+    // admin_unit = create+edit usulan, admin = verifikasi, kabid_perencanaan_jft = verifikasi+ttd, viewer = view
+    // ->only(...) karena RF-1B belum mengimplementasikan destroy() (belum diminta -- usulan yang sudah
+    // masuk alur verifikasi semestinya tidak dihapus begitu saja, bukan oversight).
+    Route::resource('rekomendasi-formasi', RekomendasiFormasiController::class)
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update'])
+        ->middleware('role:admin_unit|admin|super_admin|kabid_perencanaan_jft|viewer');
+
+    // Override manual angka Formasi Final per jenjang (antisipasi pimpinan
+    // ingin ROUNDDOWN alih-alih default sistem ROUNDUP) -- khusus Pusbin,
+    // sengaja TIDAK menyertakan admin_unit (juga dicek ulang di controller).
+    Route::put('rekomendasi-formasi/{id}/hasil-final', [RekomendasiFormasiController::class, 'updateHasilFinal'])
+        ->name('rekomendasi-formasi.hasil-final.update')
+        ->middleware('role:admin|super_admin|kabid_perencanaan_jft');
+
+    // RF-1C -- Verifikasi, Berita Acara (TTD digital), Surat Rekomendasi
+    Route::post('rekomendasi-formasi/{id}/verifikasi-disepakati', [RekomendasiFormasiController::class, 'tandaiVerifikasiDisepakati'])
+        ->name('rekomendasi-formasi.verifikasi-disepakati')
+        ->middleware('role:admin|super_admin|kabid_perencanaan_jft');
+
+    // TTD digital: hanya penandatangan sungguhan (kabid = pihak Pusbin, admin_unit = pihak pengusul).
+    Route::post('rekomendasi-formasi/{id}/tanda-tangan-ba', [RekomendasiFormasiController::class, 'tandaTanganBA'])
+        ->name('rekomendasi-formasi.tanda-tangan-ba')
+        ->middleware('role:kabid_perencanaan_jft|admin_unit');
+
+    // Cetak PDF BA: dibuka role yang sama dengan resource utama (viewer termasuk, cuma baca).
+    Route::get('rekomendasi-formasi/{id}/berita-acara', [RekomendasiFormasiController::class, 'cetakBeritaAcara'])
+        ->name('rekomendasi-formasi.berita-acara')
+        ->middleware('role:admin_unit|admin|super_admin|kabid_perencanaan_jft|viewer');
+
+    Route::get('rekomendasi-formasi/{id}/surat-rekomendasi', [RekomendasiFormasiController::class, 'terbitkanSuratRekomendasi'])
+        ->name('rekomendasi-formasi.surat-rekomendasi')
+        ->middleware('role:admin|super_admin');
+
+    Route::post('rekomendasi-formasi/{id}/konfirmasi-ttd-rekomendasi', [RekomendasiFormasiController::class, 'konfirmasiTtdRekomendasi'])
+        ->name('rekomendasi-formasi.konfirmasi-ttd-rekomendasi')
+        ->middleware('role:admin|super_admin');
+
+    Route::post('rekomendasi-formasi/{id}/kembalikan-draft', [RekomendasiFormasiController::class, 'kembalikanKeDraft'])
+        ->name('rekomendasi-formasi.kembalikan-draft')
+        ->middleware('role:admin|super_admin');
 
 });
 
