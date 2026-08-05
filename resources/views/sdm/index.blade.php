@@ -91,6 +91,9 @@
               </td>
               <td class="text-center">
                 <div class="d-flex justify-content-center">
+                  <a href="{{ route('user.pkr.show', $row->id) }}" class="btn btn-sm btn-outline-info mr-1" title="Pengembangan Karir">
+                    <i class="fas fa-id-card"></i>
+                  </a>
                   @can('edit pegawai')
                   <a href="{{ route('user.sdm.edit', $row->id) }}" class="btn btn-sm btn-outline-warning mr-1" title="Edit">
                     <i class="fas fa-edit"></i>

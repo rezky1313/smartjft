@@ -97,7 +97,7 @@ class SdmController extends Controller
             }
         }
 
-        Sdmmodels::create([
+        $sdmBaru = Sdmmodels::create([
             'nip'                 => $validated['nip'] ?? null,
             'nik'                 => $validated['nik'] ?? null,
             'nama_lengkap'        => $validated['nama_lengkap'],
@@ -111,6 +111,7 @@ class SdmController extends Controller
             'aktif'               => (bool)($validated['aktif'] ?? true),
             'status_formasi'      => $statusFormasi,
         ]);
+        $sdmBaru->syncJenjangKode(); // PKR-01 Bagian 3: jaga kolom jenjang_kode tetap sinkron
 
         // Recalculate status untuk pegawai lain di formasi yang sama
         if (!empty($formasiJabatanId)) {
@@ -199,6 +200,7 @@ class SdmController extends Controller
             'aktif'               => (bool)($validated['aktif'] ?? $sdm->aktif),
             'status_formasi'      => $statusFormasi,
         ]);
+        $sdm->syncJenjangKode(); // PKR-01 Bagian 3: jaga kolom jenjang_kode tetap sinkron
 
         // Recalculate status untuk formasi lama (jika berubah)
         if ($oldFormasiId && $oldFormasiId != $formasiJabatanId) {
@@ -543,13 +545,16 @@ $jk    = $this->normalizeJK($jkRaw); // hasilnya 'L', 'P', atau null
                 $sdm = \App\Models\Sdmmodels::where('nip', $nip)->first();
                 if ($sdm) {
                     $sdm->update(array_merge($payload, ['nip' => $nip]));
+                    $sdm->syncJenjangKode(); // PKR-01 Bagian 3
                     $updated++;
                 } else {
-                    \App\Models\Sdmmodels::create(array_merge($payload, ['nip' => $nip]));
+                    $sdmBaru = \App\Models\Sdmmodels::create(array_merge($payload, ['nip' => $nip]));
+                    $sdmBaru->syncJenjangKode(); // PKR-01 Bagian 3
                     $inserted++;
                 }
             } else {
-                \App\Models\Sdmmodels::create($payload);
+                $sdmBaru = \App\Models\Sdmmodels::create($payload);
+                $sdmBaru->syncJenjangKode(); // PKR-01 Bagian 3
                 $inserted++;
             }
         }

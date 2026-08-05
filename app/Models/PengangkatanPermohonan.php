@@ -108,6 +108,8 @@ class PengangkatanPermohonan extends Model
                 'formasi_jabatan_id' => $kandidat->jabatan_tujuan_id,
                 'tmt_pengangkatan'   => now()->toDateString(),
             ]);
+            // PKR-01 Bagian 3 (v1.28.0): jaga kolom jenjang_kode tetap sinkron pasca kenaikan jenjang.
+            $pegawai->syncJenjangKode();
         }
 
         $this->update(['status' => 'selesai']);

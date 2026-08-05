@@ -5,6 +5,203 @@
 
 ---
 
+## Versi 1.30.0 - PKR-03: Analitik & Tren Pengembangan Karir JFT
+**Tanggal:** 5 Agustus 2026
+**Status:** ✅ Diverifikasi lewat request HTTP nyata dgn data produksi penuh (waktu respons + cross-check aritmatika manual). **Belum ditest browser interaktif.** Kemungkinan modul PKR terakhir yang direncanakan — Dokumen Acuan Kerja menyusul setelah ini.
+
+### Ringkasan
+
+Modul level agregat/nasional (beda dari PKR-01 yang per-individu): (1) tren jumlah pengangkatan per tahun, breakdown per jenjang & per moda transportasi; (2) analisis ketersediaan formasi nasional + drill-down per unit kerja. Controller baru `PkrAnalitikController` (terpisah dari `PkrController`) — semua angka murni hasil `GROUP BY`/aggregate SQL, PHP cuma merapikan format output, sesuai instruksi eksplisit prompt.
+
+### A. Diagnostik & Koreksi Asumsi
+
+- **Tidak ada field "tanggal SK Pengangkatan selesai"**. 3 kandidat dicek: `pengangkatan_permohonan.tanggal_disetujui` (ada di kolom tapi **tidak pernah ditulis kode manapun** — vestigial, cuma 1 baris terisi dari seed lama), `pengangkatan_surat` (tidak ada kolom tanggal, cuma flag `ditandatangani`), `sumber_daya_manusia.tmt_pengangkatan` (**aktif di-set** oleh `PengangkatanPermohonan::selesaikan()`, tapi baru 15/3.940 pegawai terisi). **Keputusan user**: pakai `tmt_pengangkatan` — semantik paling sesuai meski datanya masih sepi.
+- **Field moda transportasi** = `unit_kerja.matra`, 4 nilai bersih: Darat/Laut/Udara/Kereta.
+- **Route placeholder ditemukan & di-reuse**: `karir.analitik.index` (`/karir/analitik`), sebelumnya closure `coming_soon`, sekarang diarahkan ke `PkrAnalitikController@index` — nama route & middleware (`auth` saja) TIDAK diubah supaya sidebar tidak perlu disentuh dan akses tidak diam-diam dipersempit.
+- **Chart Dashboard yang sudah ada** (`PetaDashboardController.php`, chart "Tren per Tahun") ternyata group by `formasi_jabatan.tahun_formasi` (tahun anggaran formasi), **bukan** tanggal pengangkatan — pola rendering Chart.js-nya diikuti (data `@json()` langsung ke Blade, bukan AJAX), tapi grouping tahunnya **tidak** disamakan karena beda makna dari yang diminta.
+- **`formasi_final` dikonfirmasi ulang tidak ada** di `formasi_jabatan` (cuma `kuota`) — sama seperti temuan PKR-01 Bagian 2, dipakai `kuota - terisi`.
+- **Tahun formasi default BUKAN `now()->year`**: `tahun_formasi=2026` cuma 4 baris/1 unit kerja (kuota 14) — hampir kosong; **2025** yang jadi tahun operatif nyata (1.136 baris, 455 unit kerja, kuota 5.740, 99,8% SDM aktif-berformasi terikat ke sini). Halaman default ke tahun dengan SDM terbanyak (dihitung dinamis via query, bukan hardcode), tahun tetap bisa dipilih manual lewat dropdown.
+
+### B. Bug ditemukan & diperbaiki SEBELUM dilaporkan (bukan pre-existing, ditemukan saat menulis Task 2 sendiri)
+
+Query agregat awal Task 2 (SUM kuota per unit+jenjang) sempat menghasilkan **5.818** padahal `Formasijabatan::sum('kuota')` Eloquent memberi **5.740** — selisih 78 ditelusuri sampai ketemu: `formasi_jabatan`/`sumber_daya_manusia`/`unit_kerja` semua pakai `SoftDeletes`, tapi query `DB::table()` (query builder mentah) **tidak otomatis exclude baris `deleted_at`** (beda dari Eloquent model yang punya global scope otomatis) — 16 baris formasi soft-deleted ikut kehitung. Diperbaiki dengan `whereNull('deleted_at')` eksplisit di **semua** query raw controller ini, lalu diverifikasi ulang match persis (5.740).
+
+### C. File Baru
+
+- `app/Http/Controllers/PkrAnalitikController.php` — `index()`, `trenPerTahun()`, `analisisFormasi()` + helper privat.
+- `resources/views/pkr/analitik.blade.php` — Chart.js line toggle per-Jenjang/per-Moda (tanpa reload), filter tahun range, card ringkas nasional per jenjang, tabel unit kerja collapse Bootstrap 4 + search client-side.
+
+### D. Diubah
+
+- `routes/web.php` — `karir.analitik.index` diarahkan ke controller (bukan `coming_soon`).
+- `resources/views/layouts/users/master.blade.php` — sidebar "Analitik Pengembangan" diaktifkan (sebelumnya placeholder "Segera").
+
+### E. Hasil Verifikasi (request HTTP nyata, data produksi penuh, bukan browser)
+
+```
+GET /karir/analitik (default: tren 2020-2026, formasi tahun 2025)
+  -> 108ms (setelah cold-start pertama ~5,5s krn compile Blade view sekali; normal),
+     ~1.000.000 bytes (455 unit kerja x breakdown jenjang, semua tersembunyi via collapse)
+GET /karir/analitik?tahun_formasi=2026
+  -> 28ms, 26.795 bytes
+GET /karir/analitik?dari=2022&sampai=2026
+  -> 61ms, ~1.000.000 bytes
+```
+
+**Cross-check aritmatika** (bukan cuma "tidak error"): SUM tersedia nasional 2025 = 5.740 (match persis `Formasijabatan::sum('kuota')`); SUM terisi nasional = 3.636 vs 3.638 SDM aktif-berformasi-2025 (selisih 2 = SDM dengan `formasi_jabatan_id` dangling/soft-deleted, temuan lama PKR-01 Bagian 3, konsisten). `trenPerTahun()` per-jenjang & per-moda dicocokkan manual terhadap 15 baris `tmt_pengangkatan` satu-per-satu — match persis semua.
+
+**Catatan payload**: default page ~1MB HTML (455 unit kerja, jauh lebih kecil dari masalah ~4MB PKR-01 Bagian 2 yang sudah diperbaiki, tapi tetap perlu diperhatikan pas browser-test — beri tahu kalau terasa berat, bisa dikonversi ke server-side seperti `/user/pkr`).
+
+---
+
+## Versi 1.29.0 - Fix: Sinkronisasi jenjang_kode Pasca Pengangkatan JFT + Audit Read-Only
+**Tanggal:** 5 Agustus 2026
+**Status:** ✅ Diverifikasi: (1) audit read-only benar-benar dijalankan atas data produksi (bukan simulasi) — 0 mismatch ditemukan; (2) fix wiring diverifikasi lewat transaksi-rollback (kolom jenjang_kode sengaja dirusak lalu dikonfirmasi `selesaikan()` memperbaikinya balik ke nilai accessor yang benar, lalu rollback bersih). **Belum ditest browser interaktif.**
+
+### Koreksi laporan sebelumnya (v1.28.0)
+
+Klaim di CHANGELOG v1.28.0 bahwa "`PengangkatanController` tidak pernah update `formasi_jabatan_id`" **SALAH** — waktu itu cuma grep controller, logic sesungguhnya ada di model `PengangkatanPermohonan::selesaikan()` yang **SUDAH** meng-update `formasi_jabatan_id` (dan `tmt_pengangkatan`) sejak lama. Gap sebenarnya jauh lebih sempit: cuma `syncJenjangKode()` (baru ada sejak v1.28.0, dibuat SETELAH `selesaikan()` ditulis) yang belum pernah dipanggil dari titik ini.
+
+### A. Diagnostik
+
+- **Hanya SATU titik** status Pengangkatan JFT berubah jadi "selesai": `PengangkatanController::konfirmasiTtd()` → `PengangkatanPermohonan::selesaikan()`. Tidak ada controller/route "pengangkatan_lama" yang hidup (view ada, tapi orphan — tidak ada route mengarah ke sana).
+- `selesaikan()` pakai `foreach` + `->update()` PER INSTANCE Eloquent (bukan bulk `query builder ->update()`) — event Eloquent normal terpicu, TIDAK ada pola bypass seperti 4 blok di `FormasiJabatanController` (v1.28.0).
+- Field formasi tujuan: `PengangkatanKandidat.jabatan_tujuan_id` → FK ke `formasi_jabatan.id`, difilter `status_kandidat = 'direkomendasikan'` (kandidat `antrian`/menunggu SENGAJA tidak diproses `selesaikan()`, jadi bukan mismatch kalau formasinya belum berubah).
+
+### B. Task 1 — Fix Wiring
+
+- **UBAH** `app/Models/PengangkatanPermohonan.php::selesaikan()` — tambah `$pegawai->syncJenjangKode();` tepat setelah `$pegawai->update([...])` di dalam loop.
+
+### C. Task 2 — Audit Read-Only
+
+- **BARU** `app/Console/Commands/AuditJenjangMismatch.php` (`php artisan pkr:audit-jenjang-mismatch`) — bandingkan `formasi_jabatan_id` SDM saat ini vs formasi tujuan dari kandidat `direkomendasikan` di permohonan `selesai` **TERBARU per pegawai** (kalau pegawai naik jenjang >1x, permohonan lama tidak dianggap mismatch). Output: tabel console + CSV di `storage/app/`. TIDAK mengubah data apapun.
+
+### D. Hasil Audit (data produksi, 5 Agustus 2026)
+
+```
+Permohonan Pengangkatan JFT berstatus 'selesai': 1
+Pegawai unik yang pernah diangkat: 7
+0 mismatch ditemukan.
+```
+
+Seluruh 7 pegawai yang pernah diangkat lewat 1 permohonan "selesai" yang ada di produksi sudah punya `formasi_jabatan_id` yang cocok persis dengan formasi tujuan pengangkatannya — **tidak ada data historis yang perlu dikoreksi**. Backfill/koreksi TIDAK dijalankan (sesuai instruksi, dan juga tidak ada yang perlu dikoreksi).
+
+---
+
+## Versi 1.28.0 - PKR-01 Bagian 3: Server-Side DataTables (perbaikan performa /user/pkr)
+**Tanggal:** 4 Agustus 2026
+**Status:** ✅ Diverifikasi lewat request HTTP nyata (bukan cuma smoke test kernel) dengan pengukuran waktu respons & ukuran payload untuk semua kombinasi filter, plus verifikasi silang status_komposit filter vs `prediksiKenaikanJenjang()` langsung (skenario simulasi transaksi-rollback, match persis). **Masih perlu ditest interaktif di browser oleh user sebelum lanjut Bagian 4.**
+
+### Ringkasan
+
+Mengonversi `/user/pkr` dari client-side DataTables (load semua ~3.940 baris tiap page-load, payload ~4MB) jadi server-side DataTables AJAX. Payload halaman utama turun dari ~4MB jadi ~15KB per page-load tabel (index shell sendiri ~78KB, hanya chrome halaman).
+
+### A. Diagnostik
+
+- Index DB yang relevan (FK `sdm_id`/`peserta_id`, kolom filter `unit_kerja_id`/`formasi_jabatan_id`) **sudah ada semua** sejak awal — tidak perlu migration index tambahan di luar kolom baru `jenjang_kode`.
+- Tabel-tabel terkait masih sangat kecil di produksi saat diagnostik: `ujikom_jadwal`=3 baris, `ujikom_hasil`=1 baris, `pkr_angka_kredit_riwayat`=0 baris.
+- **Bug pre-existing ditemukan (DI LUAR SCOPE, TIDAK diperbaiki)**: alur "Pengangkatan JFT" yang sudah `selesai` **tidak pernah meng-update `formasi_jabatan_id`** pegawai di `sumber_daya_manusia` — jadi `jenjang_kode` (accessor maupun kolom fisik baru) tetap mencerminkan formasi lama untuk siapa pun yang naik jenjang lewat alur itu. `PromotionController.php` (modul "Promosi Jabatan") juga menyentuh `formasi_jabatan_id` tapi diabaikan sesuai CLAUDE.md.
+
+### B. Task 1 — Materialize `jenjang_kode`
+
+- **BARU** `database/migrations/2026_08_04_000005_add_jenjang_kode_to_sumber_daya_manusia.php` — kolom `jenjang_kode` (string, nullable, indexed) di `sumber_daya_manusia`.
+- **BARU** `app/Console/Commands/SyncJenjangKode.php` (`php artisan pkr:sync-jenjang-kode`) — backfill, memanggil accessor `getJenjangKodeAttribute()` yang SAMA (tanpa duplikasi logic). Hasil: **3.644/3.940 terisi, 296 NULL** (294 pegawai memang tanpa `formasi_jabatan_id` + 2 baris dengan `formasi_jabatan_id` yang **dangling/tidak ada padanan di `formasi_jabatan`** — data kotor pre-existing, bukan bug baru).
+- **UBAH** `app/Models/Sdmmodels.php` — tambah `syncJenjangKode()` (instance) & `syncJenjangKodeForIds()` (batch static). **PENTING**: karena nama kolom fisik SAMA dengan accessor, Eloquent tetap mendahulukan accessor — `$sdm->jenjang_kode` di PHP TIDAK PERNAH membaca kolom fisik (selalu live-compute dari relasi seperti sebelumnya). Kolom fisik hanya berguna lewat query builder mentah (`WHERE jenjang_kode = ...`). Sengaja tidak dimasukkan `$fillable`.
+- **UBAH** 6 titik nyata di mana `formasi_jabatan_id` SDM berubah, ditambah pemanggilan sync (bukan observer — sebagian titik pakai bulk `query builder ->update()` yang TIDAK memicu event Eloquent sama sekali):
+  `SdmController::store()`, `::update()`, loop Import Excel (3 sub-titik); `FormasiJabatanController` blok delete/reassign formasi tahun sama + `remapSdmToNewFormasi()` (4 blok bulk update, 2 di antaranya null-kan `jenjang_kode` langsung dalam update yang sama, 1 blok pakai `syncJenjangKodeForIds()` karena assignment ke formasi nyata); `RekomendasiFormasiController::simpanPegawaiDishub()`.
+
+### C. Task 2 — Endpoint Server-Side `PkrController::data()`
+
+- **BARU** route `user.pkr.data` (GET `/user/pkr/data`).
+- Filter `search`/`unit_kerja_id`/`jenjang_kode` dieksekusi murni SQL (WHERE langsung, memakai kolom fisik baru).
+- **Filter `status_komposit` TIDAK diimplementasi sebagai WHERE SQL murni** — dievaluasi, dilaporkan ke user, dan disepakati sebagai keputusan sadar (bukan dipaksakan): status komposit adalah ladder 4-kondisi berurutan-prioritas (AK/ujikom/predikat/formasi, salah satunya butuh suffix-mapping PHP-only untuk cocokkan nama JF+jenjang ke `formasi_jabatan`) — menerjemahkan ini jadi satu CASE WHEN SQL bersarang beresiko drift dari `tentukanStatusKomposit()`. Solusi dipakai: reuse `batchStatusKomposit()` **PERSIS SAMA** dengan Bagian 2 (bukan logic baru), dijalankan atas subset yang sudah dipersempit search/unit/jenjang oleh SQL, baru difilter+diurutkan+dipaginasi di PHP.
+- Sorting native SQL untuk kolom Nama/NIP/Unit Kerja (via join `unit_kerja`)/Jenjang; kolom Prediksi Pangkat & Status Komposit non-orderable (dihitung per-baris hasil paginasi saja, sesuai instruksi).
+
+### D. Task 3 — View `pkr/index.blade.php`
+
+- Diganti total ke `serverSide: true`, filter dropdown trigger `ajax.reload()` (bukan reload halaman/GET form lagi).
+- Checkbox working-list pakai event delegation (baris diganti tiap draw AJAX) + teks eksplisit "centang hanya berlaku untuk baris yang sedang tampil di halaman ini" (paginasi server-side, TIDAK ada fitur "pilih semua yang cocok filter").
+
+### E. Task 4 — Verifikasi Fitur Lain Tidak Rusak
+
+- `exportWorkingList()` dan `hitungLulusBelumDiangkat()` (alert 6-bulan) **tidak berubah sama sekali** — keduanya sudah independen dari pagination sejak Bagian 2 (ambil `sdm_ids` eksplisit / query agregat penuh), dikonfirmasi lewat code review, tidak butuh penyesuaian.
+
+### F. Task 5 — Hasil Verifikasi (request HTTP nyata, BUKAN browser)
+
+```
+Tanpa filter (page 1):              200ms,  15.2 KB, recordsTotal=3940, recordsFiltered=3940
+Filter unit_kerja_id:                50ms,  15.5 KB, recordsFiltered=31
+Filter jenjang_kode=terampil:        62ms,  15.7 KB, recordsFiltered=1622
+Filter status_komposit=AK Kurang:  3762ms,  15.2 KB, recordsFiltered=3245  <- jalur PHP batch-compute, LAMBAT
+Search nama (1 match):               33ms,   0.7 KB, recordsFiltered=1
+Index shell (bukan lagi 4MB):        278ms, 77.6 KB
+```
+
+**⚠️ Filter `status_komposit` TANPA filter unit/jenjang lain makan ~3,7 detik** (batch-compute atas hampir seluruh 3.940 baris) — jauh lebih lambat dari filter SQL murni lainnya. Ini konsekuensi sadar dari keputusan di atas (status komposit sengaja TIDAK di-cache karena volatil, beda dari `jenjang_kode` yang stabil). Perlu did-diskusikan apakah ini cukup dapat diterima atau butuh optimasi lanjutan (mis. materialized status dgn refresh berkala) di fase berikutnya.
+
+Verifikasi silang: skenario simulasi (SDM Ahli Pertama asli, AK/ujikom-lulus/formasi disuntik via transaksi-rollback) — `prediksiKenaikanJenjang()` langsung mengembalikan **"Siap Diangkat"**, endpoint `/user/pkr/data?status_komposit=Siap Diangkat` mengembalikan **recordsFiltered=1** dengan SDM yang SAMA persis. Transaksi di-rollback bersih (dikonfirmasi 0 baris tersisa di `pkr_angka_kredit_riwayat`, `ujikom_pendaftaran` kode simulasi, dan `formasi_jabatan` id yang dibuat).
+
+---
+
+## Versi 1.27.0 - PKR-01 Bagian 2: Prediksi Pangkat/Jenjang, Status Komposit & Tabel Listing
+**Tanggal:** 4 Agustus 2026
+**Status:** ✅ Diverifikasi lewat script standalone (transaksi DB di-rollback utk skenario simulasi) + smoke test HTTP nyata (GET `/user/pkr`, `/user/pkr/{sdm}`, `/user/sdm` semua HTTP 200 tanpa exception). **Belum ditest interaktif di browser oleh user** (sesuai instruksi eksplisit: dilaporkan dulu sebelum lanjut Bagian 3).
+
+### Ringkasan
+
+Melengkapi PKR-01 dengan prediksi kenaikan pangkat (siklus reguler 4 tahun, estimasi dari NIP), prediksi kenaikan jenjang + status kesiapan komposit (AK/ujikom/predikat/formasi), dan halaman listing seluruh pegawai dengan working-list export. **Diagnostik awal menemukan beberapa asumsi prompt tidak cocok dengan struktur data riil** — dikoreksi setelah konfirmasi user, didokumentasikan detail di bawah dan di memory.
+
+### A. Diagnostik & Koreksi Asumsi (dikonfirmasi user sebelum implementasi)
+
+- **Tidak ada kolom "TMT Pangkat Terakhir"** — hanya `tmt_pengangkatan` (TMT masuk jenjang JFT, bukan TMT kenaikan pangkat/golongan), kosong di 3.925/3.940 (99,6%) data. **Keputusan user**: prediksi kenaikan pangkat SELALU pakai estimasi dari NIP, `tmt_pengangkatan` tidak dipakai sebagai proxy sama sekali (beda makna).
+- **Tidak ada kolom golongan/ruang terpisah** — `pangkat_golongan` field teks bebas campuran ("Nama Pangkat (III/b)" ATAU golongan polos "III/b" ATAU sampah tanpa garis miring "VII"/"IX"/"IId"), kosong di 3.011/3.940 (76%). Dari 929 baris terisi, 624 (67%) berhasil diparse via regex, sisanya (termasuk 305 baris "V"/"VI"/"VII"/"IX"/"IId") sengaja di-treat sebagai tidak dapat ditentukan (bukan ditebak).
+- **Format NIP pakai spasi** (`"19680905 198903 1 003"`, 21 karakter) — di-strip dulu sebelum ekstrak segmen TMT CPNS. 10/3.940 NIP dummy (12 digit) terdeteksi & ditandai `data_tidak_lengkap`. **699/3.930 (17,7%) NIP standar punya segmen "bulan" bernilai 21** (bukan 01-12, kemungkinan kode jalur rekrutmen khusus) — divalidasi & ditandai `data_tidak_lengkap`, bukan dipaksa jadi tanggal.
+- **Kolom ledger AK** yang benar adalah `angka_kredit_diperoleh` (bukan `nilai_ak` seperti disebut prompt).
+- **"formasi_final" tidak berlaku umum** — kolom itu spesifik modul RF-01 (usulan PKB), bukan kapasitas slot pegawai eksisting. Dipakai `Formasijabatan::sisa` (accessor yang sudah ada, sudah dipakai `PengangkatanController`) untuk cek `formasi_tersedia`.
+- **Tidak ada pola server-side DataTables** di codebase manapun untuk diikuti (semua modul load-all + client-side). **Keputusan user**: tabel index PKR tetap client-side (konsisten modul lain), status komposit di-BATCH-compute (~6 query total, bukan query per-baris) supaya tetap wajar untuk ~3.940 pegawai.
+- **Spec status komposit tidak lengkap** — 2 kombinasi kondisi tidak terdefinisi eksplisit di prompt (predikat gagal sendirian; AK & ujikom dua-duanya belum), diisi dengan status baru `Predikat Belum Terpenuhi` dan default `AK Kurang` — didokumentasikan di kode (`PkrController::tentukanStatusKomposit()`).
+
+### B. File Baru
+
+- `database/migrations/2026_08_04_000004_create_pkr_referensi_pangkat_table.php` — tabel `pkr_referensi_pangkat` (17 baris urutan pangkat I/a s.d. IV/e).
+- `database/seeders/PkrReferensiPangkatSeeder.php`
+- `app/Models/PkrReferensiPangkat.php` — `next()`, `cari()`, `normalisasiGolongan()`, cache statis per-request (tabel kecil, dipanggil ribuan kali di halaman index).
+- `app/Exports/PkrWorkingListExport.php` — export Excel working list kenaikan pangkat.
+- `resources/views/pkr/index.blade.php` — tabel listing seluruh pegawai aktif: filter Unit Kerja/Jenjang/Status Komposit, checkbox working-list (baris prediksi pangkat ≤3 bulan ditandai kuning), tombol export (SweetAlert2), alert lulus ujikom >6 bulan belum diangkat.
+
+### C. Diubah
+
+- `app/Http/Controllers/PkrController.php` — tambah `prediksiKenaikanPangkat()`, `prediksiKenaikanJenjang()`, `index()`, `exportWorkingList()`, plus helper privat (`ekstrakGolongan()`, `cekFormasiTersedia()`, `tentukanStatusKomposit()`, `batchStatusKomposit()`, `kodeDariNamaJenjang()`, `hitungLulusBelumDiangkat()`).
+- `routes/web.php` — tambah `user.pkr.index` (GET), `user.pkr.working-list.export` (POST).
+- `resources/views/layouts/users/master.blade.php` — aktifkan link sidebar "Tabel Pengembangan Karir" (sebelumnya placeholder "Segera") ke `user.pkr.index`.
+- `resources/views/sdm/index.blade.php` — tambah tombol "Karir" (ikon id-card) di kolom Aksi, link ke `user.pkr.show`.
+
+### D. Bug Pre-existing Ditemukan (DI LUAR SCOPE, TIDAK diperbaiki, dilaporkan sesuai instruksi)
+
+- `app/Exports/UjikomHasilExcelExport.php` baris 50 pakai `$p->pegawai?->unitKerja?->nama_rs` — kolom `nama_rs` sudah tidak ada sejak rename v1.13.0 (kolom asli sekarang `nama_unit_kerja`). Kolom "Unit Kerja" di export itu kemungkinan selalu kosong sejak v1.13.0. Belum diperbaiki karena di luar scope PKR-01.
+
+---
+
+## Versi 1.26.0 - PKR-01 Bagian 1: Fondasi Database & Ledger Angka Kredit
+**Tanggal:** 4 Agustus 2026
+**Status:** ✅ Diverifikasi lewat script standalone (transaksi DB di-rollback) — kedua contoh perhitungan wajib match persis (Ahli Pertama/Baik/3 bulan = 3.125 AK; Mahir/Sangat Baik/12 bulan = 18.75 AK), termasuk uji end-to-end lewat `PkrController::storeAngkaKredit()` yang sesungguhnya (bukan cuma `hitungAK()` terisolasi). **Belum ditest di browser oleh user.**
+
+### Ringkasan
+
+Membangun fondasi modul baru **Pengembangan Karir JFT (PKR-01)** — command center data per pegawai untuk mencatat riwayat Angka Kredit (AK) periodik dan menghitung AK kumulatif terhadap ambang batas kenaikan jenjang, mengikuti PerBKN 3/2023. Bagian 1 ini fokus ke struktur database, model, dan form input riwayat AK — belum ke fitur prediksi kenaikan pangkat/jenjang otomatis (menyusul di bagian berikutnya).
+
+### Perubahan
+
+- **BARU** `database/migrations/2026_08_04_000003_create_pkr_tables.php` — 4 tabel: `pkr_referensi_koefisien` (koefisien AK tahunan per jenjang), `pkr_referensi_predikat` (persentase per predikat kinerja SKP), `pkr_ambang_batas_jenjang` (AK kumulatif minimal untuk naik jenjang, per kategori keterampilan/keahlian), `pkr_angka_kredit_riwayat` (ledger riwayat per pegawai — `persentase_predikat` & `koefisien_tahunan` disimpan **at time of entry**, bukan di-lookup ulang, supaya riwayat lama tidak berubah kalau tabel referensi diedit nanti).
+- **BARU** `database/seeders/PkrReferensiSeeder.php` — seed 3 tabel referensi sesuai nilai resmi PerBKN 3/2023 (8 jenjang, 5 predikat, 6 ambang batas jenjang).
+- **BARU** `app/Models/PkrAngkaKreditRiwayat.php` (relasi `sdm()`, `penilai()`, static `hitungAK($jumlahBulan, $persentase, $koefisien)`), `PkrReferensiKoefisien.php`, `PkrReferensiPredikat.php`, `PkrAmbangBatasJenjang.php`.
+- **BARU** `app/Http/Controllers/PkrController.php` — `show()` (halaman command center per pegawai: ringkasan AK kumulatif + ambang batas + form input + riwayat), `hitungAkKumulatif()`, `ambangBatasNaikJenjang()`, `storeAngkaKredit()`.
+- **BARU** `resources/views/pkr/show.blade.php` — form input riwayat AK dengan preview realtime (JS, tanpa AJAX — koefisien jenjang & persentase per predikat sudah tersedia di halaman lewat data attribute) + tabel riwayat.
+- **BARU** routes `user.pkr.show` (GET `user/pkr/{sdm}`, role admin/super_admin/admin_unit/kabid_perencanaan_jft/viewer) dan `user.pkr.angka-kredit.store` (POST, role admin/super_admin/admin_unit — "atasan langsung").
+- **UBAH** `app/Models/Sdmmodels.php` — tambah accessor `jenjang_kode` dan `jenjang_nama`. **Gotcha penting**: tabel `sumber_daya_manusia` **tidak punya kolom `jenjang` langsung** — harus diturunkan dari `formasi_jabatan_id` → `jenjang_jabatan.nama_jenjang` (format `"{Nama JF} {Jenjang}"`), dinormalisasi ke short-code (`ahli_pertama`, dst.) lewat pencocokan akhiran nama terhadap 8 nama jenjang resmi. Diverifikasi 100% cocok di seluruh 198 baris `jenjang_jabatan` (22 JF) sebelum dipakai di production code — pseudocode awal prompt (`$sdm->jenjang`) tidak match struktur data asli.
+
+---
+
 ## Versi 1.25.0 - RF-1C: Verifikasi, Berita Acara (TTD Digital), & Surat Rekomendasi Formasi
 **Tanggal:** 4 Agustus 2026
 **Status:** ✅ Diverifikasi lewat Tinker — skenario penuh 1 usulan dari `verifikasi_disepakati` → TTD kedua pihak → `ba_selesai` → terbit surat → konfirmasi TTD final → `selesai`, dijalankan dalam satu transaksi DB dan di-rollback. Kuota Formasi per jenjang dikonfirmasi bertambah **match persis** sesuai `formasi_final` (Pemula +4, Terampil +22, Mahir +7, Penyelia +6). Juga diverifikasi terpisah: `kembalikanKeDraft()` (override Bagian 2), blokir TTD dobel, blokir TTD lintas-unit (403), blokir `updateHasilFinal()` setelah `ba_selesai`. **Belum ditest di browser oleh user.**

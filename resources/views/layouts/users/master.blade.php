@@ -249,7 +249,7 @@
 
             {{-- Pengembangan Karir JFT: admin, super_admin, admin_unit --}}
             @hasanyrole('super_admin|admin|admin_unit')
-            @php $karirActive = request()->routeIs('pengangkatan.*'); @endphp
+            @php $karirActive = request()->routeIs('pengangkatan.*') || request()->routeIs('user.pkr.*') || request()->routeIs('karir.analitik.*'); @endphp
             <li>
               <button class="nav-sub-link" style="width:100%; justify-content:space-between; display:flex; align-items:center;" onclick="toggleSubmenu('karir')" type="button">
                 <span style="display:flex; align-items:center; gap:12px;">
@@ -260,10 +260,9 @@
               </button>
               <ul class="sidebar-nav-sub-list-custom {{ $karirActive ? '' : 'hidden' }}" id="submenu-karir">
                 <li>
-                  <span class="nav-sub-link" style="pointer-events:none; opacity:0.55;">
+                  <a href="{{ route('user.pkr.index') }}" class="nav-sub-link {{ request()->routeIs('user.pkr.*') ? 'active' : '' }}" onclick="pindah(event)">
                     <span class="nav-dot"></span> Tabel Pengembangan Karir
-                    <span class="do-badge" style="background:#fef3c7; color:#92400e; font-size:9px; padding:2px 8px;">Segera</span>
-                  </span>
+                  </a>
                 </li>
                 <li>
                   <span class="nav-sub-link" style="pointer-events:none; opacity:0.55;">
@@ -277,10 +276,9 @@
                   </a>
                 </li>
                 <li>
-                  <span class="nav-sub-link" style="pointer-events:none; opacity:0.55;">
+                  <a href="{{ route('karir.analitik.index') }}" class="nav-sub-link {{ request()->routeIs('karir.analitik.*') ? 'active' : '' }}" onclick="pindah(event)">
                     <span class="nav-dot"></span> Analitik Pengembangan
-                    <span class="do-badge" style="background:#fef3c7; color:#92400e; font-size:9px; padding:2px 8px;">Segera</span>
-                  </span>
+                  </a>
                 </li>
               </ul>
             </li>

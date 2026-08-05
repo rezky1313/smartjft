@@ -729,11 +729,14 @@ public function importPivotStore(Request $request)
                 })->pluck('id')->all();
 
                 if (!empty($toDeleteIds)) {
-                    // Lepaskan SDM dari formasi yang akan dihapus (unit_kerja_id tetap diisi)
+                    // Lepaskan SDM dari formasi yang akan dihapus (unit_kerja_id tetap diisi).
+                    // jenjang_kode ikut di-null-kan langsung (formasi_jabatan_id null -> jenjang_kode
+                    // pasti null juga, PKR-01 Bagian 3) -- tidak perlu query tambahan lewat syncJenjangKodeForIds().
                     \App\Models\Sdmmodels::whereIn('formasi_jabatan_id', $toDeleteIds)
                         ->update([
                             'formasi_jabatan_id' => null,
                             'unit_kerja_id'      => $unitId,
+                            'jenjang_kode'       => null,
                         ]);
 
                     // Hapus formasinya
@@ -782,11 +785,13 @@ protected function remapSdmToNewFormasi(int $unitId, string $fromYear, string $t
             ->all();
 
         if (!$new->has($key)) {
-            // Tidak ada padanan di set baru → lepas semua ke null, unit tetap diisi
+            // Tidak ada padanan di set baru → lepas semua ke null, unit tetap diisi.
+            // jenjang_kode ikut di-null-kan langsung (PKR-01 Bagian 3, sama alasan spot lain).
             if (!empty($allIds)) {
                 \App\Models\Sdmmodels::whereIn('id', $allIds)->update([
                     'formasi_jabatan_id' => null,
                     'unit_kerja_id'      => $unitId,
+                    'jenjang_kode'       => null,
                 ]);
             }
             continue;
@@ -801,6 +806,7 @@ protected function remapSdmToNewFormasi(int $unitId, string $fromYear, string $t
                 \App\Models\Sdmmodels::whereIn('id', $allIds)->update([
                     'formasi_jabatan_id' => null,
                     'unit_kerja_id'      => $unitId,
+                    'jenjang_kode'       => null,
                 ]);
             }
             continue;
@@ -815,11 +821,15 @@ protected function remapSdmToNewFormasi(int $unitId, string $fromYear, string $t
                 'formasi_jabatan_id' => $newForm->id,
                 'unit_kerja_id'      => $unitId, // redundan tapi aman
             ]);
+            // formasi_jabatan_id berubah ke formasi NYATA (bukan null) -- jenjang_kode wajib
+            // dihitung ulang lewat relasi (bukan diasumsikan sama), PKR-01 Bagian 3.
+            \App\Models\Sdmmodels::syncJenjangKodeForIds($idsMasuk);
         }
         if (!empty($idsSisa)) {
             \App\Models\Sdmmodels::whereIn('id', $idsSisa)->update([
                 'formasi_jabatan_id' => null,
                 'unit_kerja_id'      => $unitId,
+                'jenjang_kode'       => null,
             ]);
         }
     }

@@ -732,6 +732,7 @@ class RekomendasiFormasiController extends Controller
                 'status_formasi' => $formasiJabatanId ? 'terpenuhi' : 'di_luar_formasi',
                 'aktif' => true,
             ]);
+            $sdm->syncJenjangKode(); // PKR-01 Bagian 3: jaga kolom jenjang_kode tetap sinkron
 
             RekomendasiFormasiPegawaiExisting::create([
                 'usulan_id' => $usulan->id,

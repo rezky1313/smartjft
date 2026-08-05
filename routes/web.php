@@ -20,6 +20,8 @@ use App\Http\Controllers\BankSoalController;
 use App\Http\Controllers\SoalKategoriController;
 use App\Http\Controllers\PaketUjianController;
 use App\Http\Controllers\RekomendasiFormasiController;
+use App\Http\Controllers\PkrController;
+use App\Http\Controllers\PkrAnalitikController;
 
 
 /*
@@ -237,6 +239,30 @@ Route::get('laporan/pemangku-simple',
         ->name('rekomendasi-formasi.kembalikan-draft')
         ->middleware('role:admin|super_admin');
 
+    // Pengembangan Karir JFT (PKR-01) -- command center AK per pegawai + tabel listing (Bagian 2).
+    // PENTING: route index ('pkr') harus di atas route show ('pkr/{sdm}') -- meski secara
+    // teknis tidak bentrok (beda jumlah segmen), urutan ini konsisten dgn pola ujikom/jadwal.
+    Route::get('pkr', [PkrController::class, 'index'])
+        ->name('pkr.index')
+        ->middleware('role:admin|super_admin|admin_unit|kabid_perencanaan_jft|viewer');
+
+    Route::get('pkr/data', [PkrController::class, 'data'])
+        ->name('pkr.data')
+        ->middleware('role:admin|super_admin|admin_unit|kabid_perencanaan_jft|viewer');
+
+    Route::post('pkr/working-list/export', [PkrController::class, 'exportWorkingList'])
+        ->name('pkr.working-list.export')
+        ->middleware('role:admin|super_admin|admin_unit');
+
+    // Input riwayat AK: Admin Pusbin/super_admin/admin_unit (atasan langsung unit).
+    Route::get('pkr/{sdm}', [PkrController::class, 'show'])
+        ->name('pkr.show')
+        ->middleware('role:admin|super_admin|admin_unit|kabid_perencanaan_jft|viewer');
+
+    Route::post('pkr/{sdm}/angka-kredit', [PkrController::class, 'storeAngkaKredit'])
+        ->name('pkr.angka-kredit.store')
+        ->middleware('role:admin|super_admin|admin_unit');
+
 });
 
 // ─── Ujikom Jadwal (Pengumuman Jadwal Uji Kompetensi) ──────────────────────────
@@ -347,9 +373,10 @@ Route::middleware(['auth'])->group(function () {
         return view('coming_soon', ['judul' => 'Riwayat Diklat']);
     })->name('karir.diklat.index');
 
-    Route::get('/karir/analitik', function () {
-        return view('coming_soon', ['judul' => 'Analitik Pengembangan']);
-    })->name('karir.analitik.index');
+    // PKR-03: reuse route/nama placeholder ini (bukan bikin route baru) supaya sidebar tidak
+    // perlu diubah & tidak ada menu ganda. Middleware sengaja dibiarkan sama (auth saja, tanpa
+    // role tambahan) seperti placeholder aslinya -- tidak diam-diam mempersempit akses.
+    Route::get('/karir/analitik', [PkrAnalitikController::class, 'index'])->name('karir.analitik.index');
 });
 
 // Uji Kompetensi (semua role kecuali viewer)
