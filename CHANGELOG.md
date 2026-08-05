@@ -5,6 +5,19 @@
 
 ---
 
+## Catatan Dokumentasi — 5 Agustus 2026
+
+**Trim `CLAUDE.md`**: dipangkas dari 9.705 → 6.757 karakter (~2.900 karakter dihapus). Yang dihapus
+murni konten yang bisa diturunkan langsung dari kode (bukan aturan/instruksi kerja): tabel Tech
+Stack (framework/library — sudah ada di `composer.json`/`package.json`) dan tur fitur
+Dashboard/Unit Kerja/Formasi/Pegawai JFT (daftar kolom, tombol, form — semua terbaca langsung dari
+`resources/views/`). Gotcha non-obvious (penamaan `rumahsakit` = unit kerja, aturan matching Import
+Pegawai) dan seluruh larangan/instruksi kerja di "Catatan Penting untuk Claude" tetap utuh, tidak
+disentuh. Tujuannya mengurangi konteks yang dibaca ulang tiap sesi baru tanpa kehilangan informasi
+yang penting. Riwayat lengkap ada di `git log -p -- CLAUDE.md`.
+
+---
+
 ## Versi 1.30.0 - PKR-03: Analitik & Tren Pengembangan Karir JFT
 **Tanggal:** 5 Agustus 2026
 **Status:** ✅ Diverifikasi lewat request HTTP nyata dgn data produksi penuh (waktu respons + cross-check aritmatika manual). **Belum ditest browser interaktif.** Kemungkinan modul PKR terakhir yang direncanakan — Dokumen Acuan Kerja menyusul setelah ini.
