@@ -48,7 +48,8 @@
       "Read(//c/Program Files/ClaudeCode/**)",
       "Read(//c/ProgramData/claude-code/**)",
       "Read(//c/ProgramData/**)",
-      "Bash(npm view *)"
+      "Bash(npm view *)",
+      "Bash(find 'C:\\\\Users\\\\pusbi/.claude/agents' -iname *.md)"
     ]
   }
 }

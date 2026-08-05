@@ -20,88 +20,18 @@ yang hasilnya tercermin dalam dashboard nasional, grafik, dan peta persebaran.
 
 ## Tech Stack
 
-| Komponen | Teknologi |
-|---|---|
-| Backend Framework | Laravel (PHP) |
-| Database | MySQL / MariaDB |
-| Frontend Template | Blade (Laravel) |
-| CSS Framework | Bootstrap |
-| Peta Interaktif | Leaflet.js + OpenStreetMap |
-| Tabel Interaktif | DataTables |
-| Chart / Grafik | Chart.js atau library sejenis |
-| Import Excel | Laravel Excel / Maatwebsite |
-| Export | Excel & PDF |
-| Server Lokal | Laragon (Pretty URL: smartjft.test) |
-| Node.js | Vite (asset bundling) |
+Server lokal: Laragon, pretty URL `smartjft.test`. (Framework & library lain: lihat `composer.json`/`package.json`/`public/library`.)
 
 ---
 
 ## Struktur Menu Aplikasi
 
-### 1. Dashboard
-Halaman utama yang menampilkan ringkasan data JFT secara nasional.
+Menu: Dashboard, Unit Kerja, Formasi, Pegawai JFT, Manajemen User (lihat `resources/views/` per modul untuk kolom/form/fitur — semua derivable dari kode).
 
-**Komponen:**
-- **Ringkasan Nasional** — total pemangku JFT aktif (saat ini: 3.633)
-- **Rekap JFT per Jenjang** — Pemula, Terampil, Mahir, Penyelia, Ahli Pertama, Ahli Muda, Ahli Madya, Ahli Utama
-- **Filter Rekap** — filter by: Moda, Nama Formasi, Provinsi, Kabupaten/Kota
-- **Tabel Rekap Terfilter** — daftar nama jabatan beserta jumlah per jenjang + total
-- **Tombol Export** — Export Excel dan Export PDF
-- **Grafik Piramida Pemangku JFT** — visualisasi distribusi per jenjang (horizontal bar chart)
-- **Peta Persebaran** — peta interaktif Leaflet, setiap titik = satu unit kerja, marker berwarna per matra (Darat/Laut/Udara/Kereta)
-
-### 2. Unit Kerja
+### Unit Kerja
 Data seluruh unit kerja yang memiliki JFT. pada kode, unit kerja dinamakan rumahsakit, dikarenakan saya menggunakan project awal ini dengan mengedit dari project rumah sakit, makanya hal2 yang dinamakan rumahsakit di sini maksudnya adalah unitkerja
 
-**Kolom data:** No, Nama Unit Kerja, Provinsi, Kabupaten/Kota, Matra, Instansi, Latitude, Longitude, Actions (Edit/Delete)
-
-**Fitur:**
-- Tabel dengan fitur search dan pagination (DataTables)
-- Tombol **+ Tambah Unit Kerja** — form dengan mini map Leaflet untuk klik/pilih koordinat
-- Tombol **Sampah** — data yang dihapus (soft delete / trash)
-- Edit dan Delete per baris
-
-**Form Tambah Unit Kerja:**
-- Nama Unit Kerja, Alamat, No. Telepon
-- Dropdown: Provinsi, Kabupaten/Kota, Matra, Instansi
-- Latitude & Longitude (otomatis terisi saat klik peta)
-- Mini map Leaflet interaktif di sisi kanan form
-
-### 3. Formasi
-Data formasi JFT per unit kerja, terbagi 3 bagian: Kuota, Terisi (Eksisting), Sisa.
-
-**Filter:** Provinsi, Kabupaten/Kota, Unit Kerja, Tahun
-
-**Kolom per bagian (Kuota/Terisi/Sisa):**
-Pemula, Terampil, Mahir, Penyelia, Ahli Pertama, Ahli Muda, Ahli Madya, Ahli Utama, TOTAL
-
-**Fitur:**
-- Data dikelompokkan per unit kerja / seksi
-- Tombol **+ Tambah Formasi** — form tambah banyak formasi sekaligus (dinamis, bisa tambah baris)
-- Tombol **+ Import Excel** — import formasi massal via file .xlsx/.xls
-- Kolom **Terisi** dan **Sisa** otomatis berubah saat data Pegawai JFT diinput
-
-**Form Tambah Formasi:**
-- Pilih Unit Kerja + Tahun Formasi
-- Tabel dinamis: Nama Formasi, Jenjang, Kuota (bisa tambah baris)
-
-### 4. Pegawai JFT
-Data profil individu pemangku Jabatan Fungsional Transportasi.
-
-**Kolom data:** No, NIP, Nama, JK (Jenis Kelamin), Status, Pangkat/Gol, Jenjang, Unit Kerja, Provinsi, TMT, Masa Jabatan, Aktif, Aksi (Edit/Hapus)
-
-**Fitur:**
-- Tabel dengan fitur search dan pagination (DataTables)
-- Badge **Aktif** berwarna hijau
-- Tombol **+ Tambah Pemangku JFT** — form input manual
-- Tombol **+ Import Excel** — import massal via .xlsx/.xls/.csv
-
-**Form Tambah SDM:**
-- NIP, NIK, Nama Lengkap, Jenis Kelamin
-- Pendidikan Terakhir, Pangkat/Golongan, Status Kepegawaian (PNS/PPPK/CPNS/Non PNS)
-- Formasi (opsional) — dropdown pilih formasi
-- Unit Kerja (jika tanpa formasi)
-- TMT Pengangkatan, Status Aktif
+### Pegawai JFT
 
 **Import Pegawai (SDM):**
 - Format file: .xlsx, .xls, .csv
