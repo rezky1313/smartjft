@@ -249,7 +249,7 @@
 
             {{-- Pengembangan Karir JFT: admin, super_admin, admin_unit --}}
             @hasanyrole('super_admin|admin|admin_unit')
-            @php $karirActive = request()->routeIs('pengangkatan.*') || request()->routeIs('user.pkr.*') || request()->routeIs('karir.analitik.*'); @endphp
+            @php $karirActive = request()->routeIs('pengangkatan.*') || request()->routeIs('user.pkr.*') || request()->routeIs('karir.analitik.*') || request()->routeIs('karir.diklat.*'); @endphp
             <li>
               <button class="nav-sub-link" style="width:100%; justify-content:space-between; display:flex; align-items:center;" onclick="toggleSubmenu('karir')" type="button">
                 <span style="display:flex; align-items:center; gap:12px;">
@@ -265,10 +265,9 @@
                   </a>
                 </li>
                 <li>
-                  <span class="nav-sub-link" style="pointer-events:none; opacity:0.55;">
+                  <a href="{{ route('karir.diklat.index') }}" class="nav-sub-link {{ request()->routeIs('karir.diklat.*') ? 'active' : '' }}" onclick="pindah(event)">
                     <span class="nav-dot"></span> Riwayat Diklat
-                    <span class="do-badge" style="background:#fef3c7; color:#92400e; font-size:9px; padding:2px 8px;">Segera</span>
-                  </span>
+                  </a>
                 </li>
                 <li>
                   <a href="{{ route('pengangkatan.index') }}" class="nav-sub-link {{ request()->routeIs('pengangkatan.*') ? 'active' : '' }}" onclick="pindah(event)">

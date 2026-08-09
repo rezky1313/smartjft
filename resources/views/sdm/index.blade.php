@@ -33,7 +33,7 @@
     </div>
 
     <div class="table-responsive">
-      <table id="sdmTable" class="table table-hover mb-0">
+      <table id="sdmTable" class="table table-hover mb-0 w-100">
         <thead style="background:#f8fafc;">
           <tr>
             <th>No</th>
@@ -52,67 +52,7 @@
             <th class="text-center" width="150">Aksi</th>
           </tr>
         </thead>
-        <tbody>
-          @foreach($sdm as $i => $row)
-            @php
-              $uk   = $row->formasi?->unitKerja ?? $row->unitKerja;
-              $kab  = $uk?->regency;
-              $prov = $kab?->province;
-            @endphp
-            <tr>
-              <td>{{ $i+1 }}</td>
-              <td>{{ $row->nip ?? '-' }}</td>
-              <td>{{ $row->nama_lengkap }}</td>
-              <td>{{ $row->jenis_kelamin }}</td>
-              <td>{{ $row->status_kepegawaian }}</td>
-              <td>{{ $row->pangkat_golongan }}</td>
-              <td>{{ $row->formasi?->jenjang?->nama_jenjang ?? '-' }}</td>
-              <td>{{ $uk->nama_unit_kerja ?? '-' }}</td>
-              <td>{{ $prov->name ?? '-' }}</td>
-              <td>{{ $row->tmt_pengangkatan?->format('d-m-Y') ?? '-' }}</td>
-              <td>{{ $row->masa_jabatan ?? '-' }}</td>
-              <td>
-                @if($row->formasi_jabatan_id)
-                  @if($row->status_formasi === 'di_luar_formasi')
-                    <span class="do-badge" style="background:#fee2e2; color:#991b1b;">Di Luar Formasi</span>
-                  @else
-                    <span class="do-badge" style="background:#d1fae5; color:#065f46;">Terpenuhi</span>
-                  @endif
-                @else
-                  <span class="text-muted">-</span>
-                @endif
-              </td>
-              <td>
-                @if($row->aktif)
-                  <span class="do-badge" style="background:#d1fae5; color:#065f46;">Aktif</span>
-                @else
-                  <span class="do-badge" style="background:#fee2e2; color:#991b1b;">Nonaktif</span>
-                @endif
-              </td>
-              <td class="text-center">
-                <div class="d-flex justify-content-center">
-                  <a href="{{ route('user.pkr.show', $row->id) }}" class="btn btn-sm btn-outline-info mr-1" title="Pengembangan Karir">
-                    <i class="fas fa-id-card"></i>
-                  </a>
-                  @can('edit pegawai')
-                  <a href="{{ route('user.sdm.edit', $row->id) }}" class="btn btn-sm btn-outline-warning mr-1" title="Edit">
-                    <i class="fas fa-edit"></i>
-                  </a>
-                  @endcan
-                  @can('delete pegawai')
-                  <form action="{{ route('user.sdm.destroy', $row->id) }}" method="POST" class="d-inline"
-                        onsubmit="return confirm('Hapus SDM ini?')">
-                    @csrf @method('DELETE')
-                    <button class="btn btn-sm btn-outline-danger" title="Hapus">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </form>
-                  @endcan
-                </div>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </div>
@@ -123,25 +63,77 @@
 @push('scripts')
 <script>
 $(function () {
-  $('#sdmTable').DataTable({
+  const table = $('#sdmTable').DataTable({
+    processing: true,
+    serverSide: true,
+    ajax: {
+      url: '{{ route("user.sdm.data") }}',
+      data: function (d) {
+        d.filter_status = $('#filterStatusFormasi').val();
+      }
+    },
     pageLength: 10,
-    lengthMenu: [10,25,50,100],
-    order: [[2,'asc']], // sort Nama
+    lengthMenu: [10, 25, 50, 100],
+    order: [[2, 'asc']], // sort Nama
+    columns: [
+      {
+        data: null, orderable: false, searchable: false,
+        render: function (data, type, row, meta) {
+          return meta.settings._iDisplayStart + meta.row + 1;
+        }
+      },
+      { data: 'nip' },
+      { data: 'nama_lengkap' },
+      { data: 'jenis_kelamin' },
+      { data: 'status_kepegawaian' },
+      { data: 'pangkat_golongan' },
+      { data: 'jenjang' },
+      { data: 'unit_kerja' },
+      { data: 'provinsi' },
+      { data: 'tmt' },
+      { data: 'masa_jabatan', orderable: false },
+      { data: 'status_formasi', orderable: false },
+      { data: 'aktif' },
+      { data: 'aksi', orderable: false, searchable: false, className: 'text-center' },
+    ],
   });
 
-  // Handle Filter Status Formasi
-  $('#filterStatusFormasi').on('change', function() {
-    const status = $(this).val();
-    const url = new URL(window.location);
-
-    if (status === '') {
-      url.searchParams.delete('filter_status');
-    } else {
-      url.searchParams.set('filter_status', status);
-    }
-
-    window.location.href = url.toString();
+  // Handle Filter Status Formasi -- sekarang reload AJAX, bukan reload halaman penuh
+  $('#filterStatusFormasi').on('change', function () {
+    table.ajax.reload();
   });
 });
+
+const csrfToken = @json(csrf_token());
+const urlSdmBase = @json(url('user/sdm'));
+
+function konfirmasiHapusSdm(id) {
+  Swal.fire({
+    title: 'Hapus Data Pegawai?',
+    text: 'Data pegawai ini akan dihapus permanen.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#dc3545',
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${urlSdmBase}/${id}`;
+
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden'; csrfInput.name = '_token'; csrfInput.value = csrfToken;
+
+    const methodInput = document.createElement('input');
+    methodInput.type = 'hidden'; methodInput.name = '_method'; methodInput.value = 'DELETE';
+
+    form.appendChild(csrfInput);
+    form.appendChild(methodInput);
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
 </script>
 @endpush

@@ -22,6 +22,7 @@ use App\Http\Controllers\PaketUjianController;
 use App\Http\Controllers\RekomendasiFormasiController;
 use App\Http\Controllers\PkrController;
 use App\Http\Controllers\PkrAnalitikController;
+use App\Http\Controllers\PegawaiDiklatController;
 
 
 /*
@@ -136,6 +137,9 @@ Route::get('laporan/pemangku-simple',
         Route::get ('sdm/import', [\App\Http\Controllers\SdmController::class, 'importForm'])->name('sdm.import.form');
         Route::post('sdm/import', [\App\Http\Controllers\SdmController::class, 'importStore'])->name('sdm.import.store');
         Route::get ('sdm/template', [\App\Http\Controllers\SdmController::class, 'downloadTemplate'])->name('sdm.template');
+        // PENTING: harus di atas Route::resource('sdm', ...) -- literal 'sdm/data' vs wildcard
+        // 'sdm/{sdm}' (show) bentrok kalau resource() didaftar duluan (pola sama dgn PKR-01/02).
+        Route::get ('sdm/data', [\App\Http\Controllers\SdmController::class, 'data'])->name('sdm.data');
 
         Route::get ('unitkerja/import', [UnitKerjaController::class, 'importPage'])->name('unitkerja.import');
         Route::post('unitkerja/import', [UnitKerjaController::class, 'import'])->name('unitkerja.import.store');
@@ -369,15 +373,36 @@ Route::middleware(['auth'])->group(function () {
         return view('coming_soon', ['judul' => 'Tabel Pengembangan Karir JFT']);
     })->name('karir.index');
 
-    Route::get('/karir/diklat', function () {
-        return view('coming_soon', ['judul' => 'Riwayat Diklat']);
-    })->name('karir.diklat.index');
-
     // PKR-03: reuse route/nama placeholder ini (bukan bikin route baru) supaya sidebar tidak
     // perlu diubah & tidak ada menu ganda. Middleware sengaja dibiarkan sama (auth saja, tanpa
     // role tambahan) seperti placeholder aslinya -- tidak diam-diam mempersempit akses.
     Route::get('/karir/analitik', [PkrAnalitikController::class, 'index'])->name('karir.analitik.index');
 });
+
+// PKR-02: Riwayat Diklat -- reuse nama placeholder 'karir.diklat.index' (bukan user.diklat.*
+// seperti disebut prompt) supaya konsisten dgn karir.analitik.index & tidak bikin menu ganda.
+// Baca-saja (index/data/riwayat/rekap/belum): admin, super_admin, admin_unit, kabid, viewer.
+// Tulis (create/store/edit/update/destroy): admin, super_admin, admin_unit -- Admin Unit BOLEH
+// input/edit data diklat unitnya sendiri (keputusan desain eksplisit dari prompt), scoping
+// server-side ke unit_kerja dicek lagi di controller (bukan cuma role gate route ini).
+Route::middleware(['auth', 'role:admin|super_admin|admin_unit|kabid_perencanaan_jft|viewer'])
+    ->prefix('karir/diklat')->as('karir.diklat.')->group(function () {
+        Route::get('/', [PegawaiDiklatController::class, 'index'])->name('index');
+        Route::get('/data', [PegawaiDiklatController::class, 'data'])->name('data');
+        Route::get('/rekap', [PegawaiDiklatController::class, 'rekapPerUnit'])->name('rekap');
+        Route::get('/belum', [PegawaiDiklatController::class, 'pegawaiBelumDiklat'])->name('belum');
+        Route::get('/riwayat/{sdm}', [PegawaiDiklatController::class, 'riwayat'])->name('riwayat');
+        Route::get('/pegawai-options', [PegawaiDiklatController::class, 'pegawaiOptions'])->name('pegawai-options');
+    });
+
+Route::middleware(['auth', 'role:admin|super_admin|admin_unit'])
+    ->prefix('karir/diklat')->as('karir.diklat.')->group(function () {
+        Route::get('/create', [PegawaiDiklatController::class, 'create'])->name('create');
+        Route::post('/', [PegawaiDiklatController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [PegawaiDiklatController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [PegawaiDiklatController::class, 'update'])->name('update');
+        Route::delete('/{id}', [PegawaiDiklatController::class, 'destroy'])->name('destroy');
+    });
 
 // Uji Kompetensi (semua role kecuali viewer)
 Route::middleware(['auth'])->prefix('ujikom')->as('ujikom.')->group(function () {

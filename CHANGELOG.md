@@ -5,6 +5,117 @@
 
 ---
 
+## Versi 1.32.0 - Fix: /user/sdm Server-Side DataTables (8,5MB → 20KB)
+**Tanggal:** 6 Agustus 2026 (browser interaktif ditest 9 Agustus 2026)
+**Status:** ✅ Diverifikasi HTTP nyata (payload sebelum/sesudah, filter, search, tombol Aksi) DAN ditest browser interaktif (Chrome, super_admin) — search "JOSE" (1 hasil), filter dropdown "Di Luar Formasi" (2 hasil, cocok persis dgn recordsFiltered HTTP), sorting kolom NIP (server-side, urutan berubah benar), tombol Hapus (dialog SweetAlert2 "Hapus Data Pegawai?" muncul, dibatalkan lewat "Batal", tidak ada baris terhapus), tombol Karir & Diklat (mengarah ke pegawai yang benar, dicek by nama & NIP di halaman tujuan). Nol error console di semua interaksi.
+
+### Ringkasan
+
+Ditemukan saat kerja PKR-02: `/user/sdm` (halaman Pegawai JFT, PALING SERING diakses admin) memuat ~8,5MB HTML client-side untuk ~3.940 baris — lebih besar dari masalah PKR-01 (3,99MB) yang sudah diperbaiki. Pre-existing dari sebelum PKR-01, bukan regresi. Dikonversi ke server-side DataTables mengikuti pola persis `/user/pkr` (PKR-01) dan `/karir/diklat` (PKR-02).
+
+### A. Diagnostik
+
+- **Kolom**: 14 kolom (No, NIP, Nama, JK, Status, Pangkat/Gol, Jenjang via join formasi.jenjang, Unit Kerja via formasi.unitKerja diutamakan lalu fallback unit_kerja_id langsung, Provinsi via unit.regency.province, TMT, Masa Jabatan [accessor PHP, bukan kolom DB], Status Formasi, Aktif, Aksi [Karir/Diklat/Edit/Hapus]). Filter: cuma 1 (Status Formasi). Semua dipertahankan persis.
+- **Fitur bulk**: TIDAK ADA — dicek langsung di blade, nol checkbox/select-all/bulk-action. Import Excel & Download Template adalah navigasi terpisah yang tidak bergantung pada state DOM tabel — tidak terpengaruh konversi. Task 3 (redesain bulk) tidak berlaku.
+- **Index DB**: `nip`, `unit_kerja_id`, `formasi_jabatan_id`, `jenjang_kode` semua sudah terindex. `nama_lengkap`/`status_formasi` tidak, konsisten dengan trade-off yang sudah diterima di PKR-01/02.
+
+### B. File Diubah
+
+- `app/Http/Controllers/SdmController.php` — `index()` jadi shell-only; tambah `data()` (endpoint AJAX server-side DataTables, join formasi/jenjang/unit_kerja/regency/province dengan `whereNull('deleted_at')` eksplisit di setiap join ke tabel ber-SoftDeletes — gotcha yang sama dengan PKR-03).
+- `routes/web.php` — `user.sdm.data` (GET `/user/sdm/data`), didaftarkan SEBELUM `Route::resource('sdm', ...)` supaya literal `sdm/data` tidak ketangkap wildcard `sdm/{sdm}` (show) — pola sama dengan `karir/diklat`.
+- `resources/views/sdm/index.blade.php` — dikonversi ke `serverSide: true`; tombol Hapus diganti dari native `confirm()` ke SweetAlert2 (`konfirmasiHapusSdm()`) — perbaikan yang dilakukan sekalian karena view ini sudah disentuh, sesuai aturan kerja "SweetAlert2 untuk konfirmasi".
+
+### C. Hasil Verifikasi (request HTTP nyata, data produksi penuh)
+
+```
+GET /user/sdm (shell)                              -> 310ms,  20 KB   (dulu ~8,5 MB)
+GET /user/sdm/data (tanpa filter, page 1)           -> 126ms,  30 KB   (recordsTotal=3940)
+GET /user/sdm/data?filter_status=terpenuhi          -> 117ms,  30 KB   (recordsFiltered=3938, match persis query manual)
+GET /user/sdm/data?search[value]=JOSE               -> 36ms,   1,3 KB  (recordsFiltered=1)
+```
+
+Tombol Aksi dikonfirmasi mengarah ke pegawai yang tepat: link "Karir" (`/user/pkr/{id}`) dan "Diklat" (`/karir/diklat/riwayat/{id}`) dicek langsung di HTML respons, ID cocok dengan baris yang bersangkutan. Import Excel & Download Template dicek masih HTTP 200 (tidak terpengaruh, sesuai dugaan diagnostik).
+
+### D. Fitur Bulk
+
+Tidak ditemukan — lihat diagnostik A. Tidak ada yang perlu didesain ulang.
+
+### E. Bug DI LUAR SCOPE ditemukan (dilaporkan, TIDAK diperbaiki)
+
+`/user/sdm/create` dan `/user/sdm/{id}/edit` (form tambah/edit pegawai, `sdm/form.blade.php`) memuat **502KB, ~4,4 detik** — dropdown Formasi men-dump semua opsi dikelompokkan per unit kerja sekaligus, kelas masalah yang SAMA dengan yang diperbaiki di PKR-02 (dropdown pegawai). Ini SUDAH ADA sebelum sesi ini (dikonfirmasi via `git log` — file tidak disentuh sesi manapun sejak v1.26.0), bukan bagian dari scope task ini (yang khusus `/user/sdm` index). Kandidat kuat untuk fix serupa (Select2 AJAX) kalau diminta terpisah.
+
+---
+
+## Versi 1.31.0 - PKR-02: Riwayat Diklat (Modul Baru)
+**Tanggal:** 6 Agustus 2026
+**Status:** ✅ Unit-scoping Admin Unit DIDEMOKAN nyata (bukan diasumsikan) dgn 2 identitas admin_unit berbeda unit, 403 terverifikasi dua arah + endpoint data()/pegawai-options dikonfirmasi tidak bocor lintas unit. CRUD end-to-end (create/edit/update/destroy + upload/hapus file fisik) diverifikasi transaksi-rollback. **Belum ditest browser interaktif.**
+
+### Ringkasan
+
+Modul baru: riwayat diklat pegawai, dengan Admin Unit boleh input/edit/hapus data diklat pegawai DI UNITNYA SENDIRI (bukan cuma Admin Pusbin) — sesuai keputusan desain eksplisit di prompt. Data pendukung keputusan pengembangan karir, bukan prasyarat PKR-01/PKR-03 (keduanya sudah jalan tanpa modul ini).
+
+### A. Diagnostik
+
+- **Pola unit-scoping Admin Unit** direuse persis dari `UjikomPendaftaranController::index()`: `$user->hasRole('admin_unit')` → `where('unit_kerja_id', $user->unit_kerja_id)`. Kuncinya kolom **`users.unit_kerja_id`** (langsung di tabel users, dikonfirmasi via `Schema::getColumnListing`).
+- **Pola upload berkas**: `UjikomPendaftaranController` pakai `$file->store('ujikom/berkas', 'public')` tapi validasinya longgar (cuma `isValid()`). Validasi lebih ketat direuse dari `PengangkatanController`/`UjikomJadwalController` (`mimes:...|max:5120`) — sertifikat diklat pakai `mimes:pdf,jpg,jpeg,png|max:5120`, disimpan `diklat/sertifikat` disk `public`.
+- **Route placeholder ditemukan & direuse**: `karir.diklat.index` (sebelumnya `coming_soon`) — **BUKAN** `user.diklat.*` seperti disebut prompt, supaya konsisten dgn `karir.analitik.index` (PKR-03) dan tidak bikin menu ganda di sidebar.
+- **Soft delete**: dicek 4 tabel detail/transaksional sejenis (`ujikom_pendaftaran_berkas`, `pengangkatan_surat`, `pkr_angka_kredit_riwayat`, `ujikom_hasil`) — semua TIDAK pakai soft delete. `pegawai_diklat` mengikuti pola yang sama (tanpa soft delete).
+- Kolom `unit_kerja_id` di `sumber_daya_manusia` dikonfirmasi ulang (sudah dipakai sejak PKR-01/03).
+- Tidak ada halaman `show` profil pegawai yang berfungsi (route ada, method controller tidak ada — gap pre-existing dari diagnostik PKR-01) — Task 4c dilewati.
+
+### B. Bug ditemukan & diperbaiki sendiri saat implementasi (bukan pre-existing)
+
+- **Payload besar di form `create`**: dropdown pegawai awalnya dump SEMUA pegawai scoped ke `<select>` sekaligus — 630KB utk super_admin (≈3.940 opsi tanpa filter unit). Pelajaran sama dgn PKR-01: diganti Select2 AJAX search-as-you-type (endpoint baru `pegawaiOptions()`, scope unit dipaksa server-side dari role login, BUKAN dari parameter request — beda dari pola asli `UjikomPendaftaranController::getPegawai()` yang percaya `unit_kerja_id` kiriman client). Payload turun ke ~21KB.
+- Pagination `->links()` di halaman "Belum Diklat" diarahkan eksplisit ke `pagination::bootstrap-4` (default Laravel pakai Tailwind, tidak konsisten dengan "Bootstrap 4 murni").
+
+### C. File Baru
+
+- `database/migrations/2026_08_06_000001_create_pegawai_diklat_table.php`, `app/Models/PegawaiDiklat.php`.
+- `app/Http/Controllers/PegawaiDiklatController.php` — `index()`/`data()` (server-side DataTables SEJAK AWAL, agregat per-pegawai, batch-enrich hanya baris hasil paginasi), `riwayat($sdm)`, `create()`/`store()`, `edit()`/`update()`, `destroy()`, `rekapPerUnit()` (SQL agregat murni), `pegawaiBelumDiklat()` (`whereNotExists`, bukan loop PHP), `pegawaiOptions()` (AJAX Select2).
+- `resources/views/diklat/{index,form,riwayat,rekap,belum}.blade.php`. `riwayat.blade.php` baru di luar daftar route eksplisit prompt — perlu utk Task 4a ("tombol Diklat... link ke riwayat diklat pegawai tersebut") sekaligus tempat CRUD individual per-pegawai (index agregat per-pegawai tidak cocok jadi target edit/hapus 1 entri).
+
+### D. Diubah
+
+- `routes/web.php` — group `karir/diklat` (baca: admin/super_admin/admin_unit/kabid/viewer; tulis: admin/super_admin/admin_unit — role gate di level route DITAMBAH scoping unit di level controller, dua lapis).
+- `resources/views/layouts/users/master.blade.php` — sidebar "Riwayat Diklat" diaktifkan (sebelumnya placeholder "Segera").
+- `resources/views/sdm/index.blade.php` — tombol "Diklat" di kolom Aksi, di sebelah "Karir". **Catatan**: `sdm.index` sendiri tidak di-scope per unit utk Admin Unit (pre-existing, di luar scope PKR-02) — tombol akan tetap muncul utk semua pegawai, tapi klik ke pegawai unit lain akan 403 server-side (bukan cuma disembunyikan).
+
+### E. Verifikasi Unit-Scoping (WAJIB, didemokan nyata)
+
+```
+User asli id=8 (admin_unit, unit_kerja_id=1700):
+  - Akses riwayat SDM #8301 (unit 1700, unitnya sendiri)  -> HTTP 200
+  - Akses riwayat SDM #3385 (unit 1080, unit LAIN)         -> HTTP 403  [LULUS]
+  - GET data() tanpa filter -> recordsTotal=3, cocok persis dgn query manual unit 1700
+
+User simulasi B (dibuat via transaksi-rollback, unit_kerja_id=1080):
+  - Akses riwayat SDM #3385 (unitnya sendiri)              -> HTTP 200
+  - Akses riwayat SDM #8301 (unit 1700, unit LAIN)          -> HTTP 403  [LULUS]
+  - edit() entri milik unit 1700                            -> HTTP 403  [LULUS]
+
+pegawaiOptions() (AJAX dropdown) discoped ke admin_unit id=8: 2 hasil,
+  keduanya SDM unit 1700 -- 0 bocor dari unit lain.
+```
+
+### F. Verifikasi CRUD End-to-End (transaksi rollback)
+
+`store()` → file ter-upload ke `storage/app/public/diklat/sertifikat/`, record tersimpan benar. `update()` oleh pemilik unit yang sah → berhasil. `destroy()` → record DAN file fisik terhapus keduanya. Semua di-rollback bersih (`PegawaiDiklat::count()` = 0 setelah setiap uji).
+
+### G. Waktu Respons (data produksi, request HTTP nyata)
+
+```
+GET /karir/diklat            -> 105ms,  76 KB
+GET /karir/diklat/data       -> 34ms,   9.4 KB
+GET /karir/diklat/rekap      -> 12ms,   17 KB
+GET /karir/diklat/belum      -> 75ms,   97 KB
+GET /karir/diklat/create     -> 565ms,  21 KB   (setelah fix Select2 AJAX; sempat 630 KB sebelum fix)
+GET /karir/diklat/riwayat/x  -> 14-29ms, ~16-17 KB
+```
+
+**Observasi di luar scope (tidak diperbaiki)**: `/user/sdm` (listing Pegawai JFT) masih client-side DataTables, payload ~8,5MB — pre-existing dari sebelum PKR-01, bukan dibuat/diperparah oleh perubahan PKR-02 ini (cuma menambah 1 tombol kecil). Kalau mau diperbaiki dengan pola server-side yang sama seperti `/user/pkr` (PKR-01 Bagian 3), perlu task terpisah.
+
+---
+
 ## Catatan Dokumentasi — 5 Agustus 2026
 
 **Trim `CLAUDE.md`**: dipangkas dari 9.705 → 6.757 karakter (~2.900 karakter dihapus). Yang dihapus

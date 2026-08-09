@@ -20,23 +20,149 @@ class SdmController extends Controller
     {
         $filterStatus = request()->get('filter_status', ''); // Filter status formasi
 
-        $sdm = Sdmmodels::with([
-            'formasi.jenjang',
-            'formasi.unitKerja.regency.province',
-            'unitKerja.regency.province', // <— penting untuk SDM tanpa formasi
-        ])
-        ->when($filterStatus, function($q) use ($filterStatus) {
-            if ($filterStatus === 'terpenuhi') {
-                return $q->where('status_formasi', 'terpenuhi');
-            } elseif ($filterStatus === 'di_luar_formasi') {
-                return $q->where('status_formasi', 'di_luar_formasi');
-            }
-            // 'semua' atau kosong = tidak filter
-        })
-        ->orderByDesc('created_at')
-        ->get();
+        // Shell halaman saja -- tabel diisi via AJAX server-side DataTables (lihat data()).
+        // Sebelumnya load SEMUA ~3.940 baris client-side (payload ~8,5MB) -- ditemukan saat
+        // kerja PKR-02, pola fix-nya sama persis dgn /user/pkr (PKR-01 Bagian 3) & /karir/diklat (PKR-02).
+        return view('sdm.index', compact('filterStatus'));
+    }
 
-        return view('sdm.index', compact('sdm', 'filterStatus'));
+    /**
+     * Endpoint AJAX server-side DataTables utk /user/sdm. Fitur yang dipertahankan PERSIS:
+     * kolom yang sama, filter status_formasi yang sama, tombol Aksi (Karir/Diklat/Edit/Hapus)
+     * yang sama -- cuma cara render-nya yang berubah (server-side, bukan client-side).
+     *
+     * GOTCHA (ditemukan di PKR-03): formasi_jabatan & unit_kerja pakai SoftDeletes, raw
+     * join query builder TIDAK otomatis exclude deleted_at -- wajib whereNull eksplisit.
+     */
+    public function data(Request $request)
+    {
+        $draw = (int) $request->input('draw', 1);
+        $start = (int) $request->input('start', 0);
+        $length = max(1, (int) $request->input('length', 25));
+        $searchValue = trim((string) $request->input('search.value', ''));
+        $filterStatus = $request->input('filter_status', '');
+
+        $baseQuery = Sdmmodels::query()
+            ->leftJoin('formasi_jabatan', function ($j) {
+                $j->on('formasi_jabatan.id', '=', 'sumber_daya_manusia.formasi_jabatan_id')
+                  ->whereNull('formasi_jabatan.deleted_at');
+            })
+            ->leftJoin('jenjang_jabatan', 'jenjang_jabatan.id', '=', 'formasi_jabatan.jenjang_id')
+            // Unit Kerja: utamakan unit dari formasi (mengikuti urutan preferensi asli
+            // Blade "$row->formasi?->unitKerja ?? $row->unitKerja"), fallback unit_kerja_id langsung.
+            ->leftJoin('unit_kerja', function ($j) {
+                $j->on('unit_kerja.id', '=', DB::raw('COALESCE(formasi_jabatan.unit_kerja_id, sumber_daya_manusia.unit_kerja_id)'))
+                  ->whereNull('unit_kerja.deleted_at');
+            })
+            ->leftJoin('regencies', 'regencies.id', '=', 'unit_kerja.regency_id')
+            ->leftJoin('provinces', 'provinces.id', '=', 'regencies.province_id');
+
+        if ($filterStatus === 'terpenuhi' || $filterStatus === 'di_luar_formasi') {
+            $baseQuery->where('sumber_daya_manusia.status_formasi', $filterStatus);
+        }
+
+        if ($searchValue !== '') {
+            $baseQuery->where(function ($q) use ($searchValue) {
+                $q->where('sumber_daya_manusia.nama_lengkap', 'like', "%{$searchValue}%")
+                  ->orWhere('sumber_daya_manusia.nip', 'like', "%{$searchValue}%");
+            });
+        }
+
+        $recordsTotal = Sdmmodels::count();
+        $recordsFiltered = (clone $baseQuery)->count('sumber_daya_manusia.id');
+
+        $kolomUrut = [
+            1 => 'sumber_daya_manusia.nip',
+            2 => 'sumber_daya_manusia.nama_lengkap',
+            3 => 'sumber_daya_manusia.jenis_kelamin',
+            4 => 'sumber_daya_manusia.status_kepegawaian',
+            5 => 'sumber_daya_manusia.pangkat_golongan',
+            6 => 'jenjang_jabatan.nama_jenjang',
+            7 => 'unit_kerja.nama_unit_kerja',
+            8 => 'provinces.name',
+            9 => 'sumber_daya_manusia.tmt_pengangkatan',
+            11 => 'sumber_daya_manusia.status_formasi',
+            12 => 'sumber_daya_manusia.aktif',
+        ];
+        $orderColumnIndex = (int) $request->input('order.0.column', 2);
+        $orderDir = $request->input('order.0.dir') === 'desc' ? 'desc' : 'asc';
+        $baseQuery->orderBy($kolomUrut[$orderColumnIndex] ?? 'sumber_daya_manusia.nama_lengkap', $orderDir);
+
+        $page = $baseQuery
+            ->select([
+                'sumber_daya_manusia.id',
+                'sumber_daya_manusia.nip',
+                'sumber_daya_manusia.nama_lengkap',
+                'sumber_daya_manusia.jenis_kelamin',
+                'sumber_daya_manusia.status_kepegawaian',
+                'sumber_daya_manusia.pangkat_golongan',
+                'sumber_daya_manusia.tmt_pengangkatan',
+                'sumber_daya_manusia.status_formasi',
+                'sumber_daya_manusia.formasi_jabatan_id',
+                'sumber_daya_manusia.aktif',
+                'jenjang_jabatan.nama_jenjang',
+                'unit_kerja.nama_unit_kerja',
+                'provinces.name as provinsi_nama',
+            ])
+            ->skip($start)->take($length)->get();
+
+        $user = auth()->user();
+        $bolehEdit = $user->can('edit pegawai');
+        $bolehHapus = $user->can('delete pegawai');
+
+        $rows = $page->map(function ($row) use ($start, $bolehEdit, $bolehHapus) {
+            $masaJabatan = '-';
+            if ($row->tmt_pengangkatan) {
+                $tmt = \Carbon\Carbon::parse($row->tmt_pengangkatan);
+                $diff = $tmt->diff(\Carbon\Carbon::today());
+                $masaJabatan = "{$diff->y} th {$diff->m} bln {$diff->d} hr";
+            }
+
+            $statusFormasiHtml = '<span class="text-muted">-</span>';
+            if ($row->formasi_jabatan_id) {
+                $statusFormasiHtml = $row->status_formasi === 'di_luar_formasi'
+                    ? '<span class="do-badge" style="background:#fee2e2; color:#991b1b;">Di Luar Formasi</span>'
+                    : '<span class="do-badge" style="background:#d1fae5; color:#065f46;">Terpenuhi</span>';
+            }
+
+            $aktifHtml = $row->aktif
+                ? '<span class="do-badge" style="background:#d1fae5; color:#065f46;">Aktif</span>'
+                : '<span class="do-badge" style="background:#fee2e2; color:#991b1b;">Nonaktif</span>';
+
+            $aksi = '<div class="d-flex justify-content-center">';
+            $aksi .= '<a href="' . route('user.pkr.show', $row->id) . '" class="btn btn-sm btn-outline-info mr-1" title="Pengembangan Karir"><i class="fas fa-id-card"></i></a>';
+            $aksi .= '<a href="' . route('karir.diklat.riwayat', $row->id) . '" class="btn btn-sm btn-outline-secondary mr-1" title="Riwayat Diklat"><i class="fas fa-graduation-cap"></i></a>';
+            if ($bolehEdit) {
+                $aksi .= '<a href="' . route('user.sdm.edit', $row->id) . '" class="btn btn-sm btn-outline-warning mr-1" title="Edit"><i class="fas fa-edit"></i></a>';
+            }
+            if ($bolehHapus) {
+                $aksi .= '<button type="button" class="btn btn-sm btn-outline-danger" title="Hapus" onclick="konfirmasiHapusSdm(' . $row->id . ')"><i class="fas fa-trash"></i></button>';
+            }
+            $aksi .= '</div>';
+
+            return [
+                'nip' => e($row->nip ?? '-'),
+                'nama_lengkap' => e($row->nama_lengkap),
+                'jenis_kelamin' => e($row->jenis_kelamin ?? '-'),
+                'status_kepegawaian' => e($row->status_kepegawaian ?? '-'),
+                'pangkat_golongan' => e($row->pangkat_golongan ?? '-'),
+                'jenjang' => e($row->nama_jenjang ?? '-'),
+                'unit_kerja' => e($row->nama_unit_kerja ?? '-'),
+                'provinsi' => e($row->provinsi_nama ?? '-'),
+                'tmt' => $row->tmt_pengangkatan ? \Carbon\Carbon::parse($row->tmt_pengangkatan)->format('d-m-Y') : '-',
+                'masa_jabatan' => $masaJabatan,
+                'status_formasi' => $statusFormasiHtml,
+                'aktif' => $aktifHtml,
+                'aksi' => $aksi,
+            ];
+        });
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $rows->values(),
+        ]);
     }
 
 
