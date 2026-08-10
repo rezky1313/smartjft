@@ -340,8 +340,19 @@ Route::prefix('ujikom-online/admin')->name('ujikom-online.admin.')->middleware([
     Route::post('/tutup-sesi/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'tutupSesi'])->name('tutup-sesi');
     Route::get('/monitoring/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'monitoring'])->name('monitoring');
     Route::post('/force-submit/{sesiId}', [\App\Http\Controllers\UjikomOnlineController::class, 'forceSubmit'])->name('force-submit');
+});
+
+// Nilai Manual (Wawancara/Presentasi) — Admin PLUS role UJ-ROLE (pewawancara/penguji).
+// Sengaja dipisah dari grup admin murni di atas: pewawancara/penguji TIDAK boleh
+// ikut kebuka ke buka-sesi/tutup-sesi/monitoring/force-submit.
+Route::prefix('ujikom-online/admin')->name('ujikom-online.admin.')->middleware(['auth', 'role:admin|super_admin|pewawancara|penguji'])->group(function () {
     Route::get('/nilai-manual/{jadwalId}', [\App\Http\Controllers\UjikomOnlineController::class, 'formNilaiManual'])->name('nilai-manual.form');
     Route::post('/nilai-manual', [\App\Http\Controllers\UjikomOnlineController::class, 'inputNilaiManual'])->name('nilai-manual.store');
+});
+
+// ─── UJ-ROLE: Landing khusus Pewawancara/Penguji ────────────────────────────
+Route::middleware(['auth', 'role:pewawancara|penguji'])->group(function () {
+    Route::get('/penilai', [\App\Http\Controllers\PenilaiController::class, 'index'])->name('penilai.index');
 });
 
 // ─── Ujikom Hasil — HARUS di atas group ujikom/{id} ─────────────────────────

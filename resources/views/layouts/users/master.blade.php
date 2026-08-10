@@ -140,16 +140,30 @@
               </ul>
             </li>
 
-            {{-- Dashboard - Semua Role --}}
+            {{-- Dashboard - Semua Role kecuali Pewawancara/Penguji murni --}}
+            @php
+                $isPenilaiOnly = auth()->user()->roles->isNotEmpty()
+                    && auth()->user()->roles->pluck('name')->diff(['pewawancara', 'penguji'])->isEmpty();
+            @endphp
+            @if ($isPenilaiOnly)
+            <li>
+              <a href="{{ route('penilai.index') }}" class="nav-link {{ request()->routeIs('penilai.*', 'ujikom-online.admin.nilai-manual.*') ? 'active' : '' }}" onclick="pindah(event)">
+                <span class="nav-icon"><i class="bi bi-star-half"></i></span>
+                Input Nilai
+              </a>
+            </li>
+            @else
             <li>
               <a href="{{ route('user.peta') }}" class="nav-link {{ request()->routeIs('user.peta') ? 'active' : '' }}" onclick="pindah(event)">
                 <span class="nav-icon"><i class="bi bi-speedometer2"></i></span>
                 Dashboard
               </a>
             </li>
+            @endif
           </ul>
         </div>
 
+        @unless ($isPenilaiOnly)
         <div>
           <p class="category-header-custom">FITUR</p>
           <ul class="sidebar-nav-list-custom">
@@ -285,6 +299,7 @@
 
           </ul>
         </div>
+        @endunless
 
         {{-- ADMINISTRASI: hanya admin & super_admin --}}
         @hasanyrole('admin|super_admin')

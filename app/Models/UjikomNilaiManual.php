@@ -16,6 +16,7 @@ class UjikomNilaiManual extends Model
         'nilai',
         'catatan',
         'dinilai_oleh',
+        'dinilai_sebagai',
     ];
 
     protected $casts = [
@@ -52,6 +53,15 @@ class UjikomNilaiManual extends Model
             'wawancara'  => 'Wawancara',
             'presentasi' => 'Presentasi',
             default      => $this->aspek,
+        };
+    }
+
+    public function getLabelDinilaiSebagaiAttribute(): ?string
+    {
+        return match ($this->dinilai_sebagai) {
+            'pewawancara' => 'Pewawancara',
+            'penguji'     => 'Penguji',
+            default       => null,
         };
     }
 }

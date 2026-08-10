@@ -49,6 +49,13 @@ class CentralController extends Controller
                 $user->assignRole('viewer');
             }
 
+            // UJ-ROLE: akun yang HANYA berperan pewawancara/penguji mendarat di
+            // halaman input nilai mereka, bukan dashboard admin biasa.
+            $roleNames = $user->roles->pluck('name');
+            if ($roleNames->isNotEmpty() && $roleNames->diff(['pewawancara', 'penguji'])->isEmpty()) {
+                return redirect()->route('penilai.index');
+            }
+
             return redirect()->route('user.peta');
         }
 

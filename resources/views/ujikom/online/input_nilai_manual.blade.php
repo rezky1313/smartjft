@@ -11,7 +11,7 @@
         <h4 class="mb-1"><i class="fas fa-star-half-alt mr-2"></i>Input Nilai Manual (Wawancara &amp; Presentasi)</h4>
         <p class="text-muted mb-0">{{ $jadwal->judul }}</p>
       </div>
-      <a href="{{ route('ujikom-online.index') }}" class="btn btn-sm btn-outline-secondary">
+      <a href="{{ auth()->user()->hasAnyRole(['pewawancara', 'penguji']) && !auth()->user()->hasAnyRole(['admin', 'super_admin']) ? route('penilai.index') : route('ujikom-online.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="fas fa-arrow-left mr-1"></i> Kembali
       </a>
     </div>
@@ -77,13 +77,20 @@
                       <option value="{{ $n }}" {{ $existing && $existing->nilai == $n ? 'selected' : '' }}>{{ $n }}</option>
                       @endfor
                     </select>
+                    @if ($butuhPilihGelar)
+                    <select name="dinilai_sebagai" class="form-control form-control-sm" style="width:110px;" required title="Bertindak sebagai">
+                      <option value="">-- Gelar --</option>
+                      <option value="pewawancara" {{ $existing && $existing->dinilai_sebagai == 'pewawancara' ? 'selected' : '' }}>Pewawancara</option>
+                      <option value="penguji" {{ $existing && $existing->dinilai_sebagai == 'penguji' ? 'selected' : '' }}>Penguji</option>
+                    </select>
+                    @endif
                     <input type="text" name="catatan" class="form-control form-control-sm" placeholder="Catatan (opsional)" value="{{ $existing->catatan ?? '' }}">
                     <button type="submit" class="btn btn-xs btn-primary" title="Simpan">
                       <i class="fas fa-save"></i>
                     </button>
                   </form>
                   @if ($existing)
-                  <small class="text-muted d-block mt-1">Dinilai oleh {{ $existing->penilai?->name ?? '-' }}</small>
+                  <small class="text-muted d-block mt-1">Dinilai oleh {{ $existing->penilai?->name ?? '-' }}{{ $existing->label_dinilai_sebagai ? ' (' . $existing->label_dinilai_sebagai . ')' : '' }}</small>
                   @endif
                 </td>
                 @endforeach

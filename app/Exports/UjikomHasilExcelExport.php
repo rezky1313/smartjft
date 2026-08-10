@@ -47,7 +47,7 @@ class UjikomHasilExcelExport implements FromCollection, WithHeadings, WithStyles
                 'no'                         => $i + 1,
                 'nama'                       => $p->pegawai?->nama_lengkap ?? '-',
                 'nip'                        => $p->pegawai?->nip ?? '-',
-                'unit_kerja'                 => $p->pegawai?->unitKerja?->nama_rs ?? '-',
+                'unit_kerja'                 => $p->pegawai?->unitKerja?->nama_unit_kerja ?? '-',
                 'jabatan_tujuan'             => $p->jabatan_tujuan_nama ?? '-',
                 'jenjang_tujuan'             => $p->jenjang_tujuan ?? '-',
                 'jenis_ujian'                => $hasil ? ($hasil->jenis_ujian === 'online' ? 'Online' : 'Offline') : '-',

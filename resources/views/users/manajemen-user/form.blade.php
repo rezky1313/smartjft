@@ -38,12 +38,21 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="role">Role <span class="text-danger">*</span></label>
+                                @php
+                                    $rolePenilaiNames = ['pewawancara', 'penguji'];
+                                    $userRoleNames    = isset($user) ? $user->roles->pluck('name') : collect();
+                                    $isPenilaiUser    = isset($user) && $userRoleNames->intersect($rolePenilaiNames)->isNotEmpty();
+                                @endphp
                                 <select class="form-control select2 @error('role') is-invalid @enderror"
                                         id="role" name="role" required style="width:100%;">
                                     <option value="">-- Pilih Role --</option>
+                                    <option value="penilai_uj" {{ old('role', $isPenilaiUser ? 'penilai_uj' : '') == 'penilai_uj' ? 'selected' : '' }}>
+                                        Pewawancara / Penguji
+                                    </option>
                                     @foreach($roles as $roleOpt)
+                                        @continue(in_array($roleOpt->name, $rolePenilaiNames))
                                         <option value="{{ $roleOpt->name }}"
-                                            {{ old('role', isset($user) ? $user->roles->first()?->name ?? '' : '') == $roleOpt->name ? 'selected' : '' }}>
+                                            {{ old('role', isset($user) && !$isPenilaiUser ? $user->roles->first()?->name ?? '' : '') == $roleOpt->name ? 'selected' : '' }}>
                                             {{ ucfirst(str_replace('_', ' ', $roleOpt->name)) }}
                                         </option>
                                     @endforeach
@@ -145,6 +154,36 @@
                     </div>
 
                     {{-- ══════════════════════════════════════════════════════════
+                         SECTION PEWAWANCARA/PENGUJI — tampil hanya jika role = penilai_uj
+                         ══════════════════════════════════════════════════════════ --}}
+                    <div id="sectionPenilai" style="display:none;">
+                        <div class="alert alert-warning py-2 mb-3" style="font-size:0.88rem;">
+                            <i class="fas fa-user-tie mr-1"></i>
+                            Akun <strong>Pewawancara/Penguji</strong>: tidak terikat unit kerja, hanya bisa akses input nilai Wawancara/Presentasi Ujikom Online. Boleh pilih kedua gelar sekaligus.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>Gelar <span class="text-danger">*</span></label><br>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input @error('roles') is-invalid @enderror" type="checkbox"
+                                               id="roles_pewawancara" name="roles[]" value="pewawancara"
+                                               {{ in_array('pewawancara', old('roles', $userRoleNames->toArray())) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="roles_pewawancara">Pewawancara</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="roles_penguji" name="roles[]" value="penguji"
+                                               {{ in_array('penguji', old('roles', $userRoleNames->toArray())) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="roles_penguji">Penguji</label>
+                                    </div>
+                                    @error('roles') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ══════════════════════════════════════════════════════════
                          SECTION PEMANGKU — tampil hanya jika role = pemangku
                          ══════════════════════════════════════════════════════════ --}}
                     <div id="sectionPemangku" style="display:none;">
@@ -236,6 +275,7 @@ $(document).ready(function() {
         // Sembunyikan semua section kondisional dulu
         $('#sectionAdminUnit').hide();
         $('#sectionPemangku').hide();
+        $('#sectionPenilai').hide();
 
         // Reset required
         $('#name, #email').prop('required', false);
@@ -244,7 +284,18 @@ $(document).ready(function() {
         $('#password, #password_confirmation').prop('required', false);
         @endif
 
-        if (role === 'pemangku') {
+        if (role === 'penilai_uj') {
+            // Pewawancara/Penguji: tampilkan standard (name/email/password) + section gelar
+            $('#sectionStandard').show();
+            $('#email').prop('disabled', false);
+            $('#email_pemangku').prop('disabled', true);
+            $('#sectionPenilai').show();
+            $('#name, #email').prop('required', true);
+            @if(!isset($user))
+            $('#password, #password_confirmation').prop('required', true);
+            @endif
+
+        } else if (role === 'pemangku') {
             // Pemangku: sembunyikan standard, tampilkan section pemangku
             $('#sectionStandard').hide();
             $('#email').prop('disabled', true);   // nonaktifkan email standard agar tidak terkirim

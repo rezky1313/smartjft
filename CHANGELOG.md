@@ -5,6 +5,114 @@
 
 ---
 
+## Versi 1.34.0 - UJ-ROLE: Formalisasi Role Pewawancara & Penguji
+**Tanggal:** 10 Agustus 2026
+**Status:** ✅ Diverifikasi HTTP nyata dengan 4 identitas berbeda (pewawancara-only, penguji-only, dua-gelar, super_admin) — akses positif & negatif didemokan dua arah, bukan diasumsikan. Data uji dibersihkan total setelah verifikasi (akun uji + baris nilai uji dihapus, flag jadwal produksi dikembalikan ke kondisi semula).
+
+### Ringkasan
+
+Nilai Wawancara/Presentasi di Uji Kompetensi Online (Bab VI) sebelumnya cuma bisa diinput Admin Pusbin lewat akses admin penuh. Ditambah 2 role baru **`pewawancara`** dan **`penguji`** — permission identik (murni beda label/gelar untuk dokumentasi laporan), tanpa sistem penugasan per sesi (siapa saja dengan role ini bisa input nilai sesi manapun yang masih pending), akun terpisah tidak terikat unit kerja (untuk pihak eksternal).
+
+### A. Diagnostik
+
+- Seeder role/permission terkini: `RolePermissionUpdateSeeder.php` (3 Agustus 2026) — konvensi permission `"<verb> <noun>"` lowercase, diikuti untuk 2 permission baru.
+- Logic input nilai SUDAH ADA persis di `UjikomOnlineController::formNilaiManual()`/`inputNilaiManual()` — di-reuse penuh, cuma rutenya dipisah dari grup admin murni (buka-sesi/tutup-sesi/monitoring/force-submit tetap admin-only).
+- Pola pembuatan akun non-Pemangku SUDAH ADA di `UserController` (percabangan per-role) — direuse pola cabang generik (name/email/password, `unit_kerja_id` otomatis null), diperluas dengan cabang baru `penilai_uj` yang menerima multi-role via checkbox (satu-satunya kasus di app ini yang butuh lebih dari 1 role per akun).
+- Kolom audit `dinilai_oleh` (FK user) SUDAH ADA di `ujikom_nilai_manual` — ditambah kolom baru `dinilai_sebagai` (enum pewawancara/penguji, nullable) untuk mencatat GELAR saat input, bukan cuma siapa.
+- **Temuan arsitektur**: sebagian besar rute `auth`-only di app ini (grup `user.` prefix, dll) tidak punya gate role granular di controller — cuma mengandalkan `auth` + sembunyi-menu Blade. Untuk fitur ini secara khusus ditambah middleware global baru supaya akun pewawancara/penguji benar-benar terkunci di level server, bukan cuma UI (lihat bagian C).
+
+### B. Keputusan desain (dikonfirmasi user sebelum implementasi)
+
+- Kalau satu akun punya KEDUA role, form input nilai menampilkan dropdown wajib "Bertindak sebagai" (Pewawancara/Penguji) tiap kali menyimpan — kalau akun cuma punya 1 role, otomatis terisi tanpa perlu pilih.
+- Middleware global baru ditambahkan (bukan cuma gate di rute baru) untuk mengunci akun pewawancara/penguji dari SELURUH modul lain di app, bukan hanya yang dibuat sesi ini.
+
+### C. File Baru
+
+- `database/seeders/PewawancaraPengujiRoleSeeder.php` — role `pewawancara`/`penguji`, permission `view nilai manual ujikom` & `input nilai manual ujikom` (identik utk keduanya).
+- `database/migrations/2026_08_10_000001_add_dinilai_sebagai_to_ujikom_nilai_manual_table.php`.
+- `app/Http/Controllers/PenilaiController.php` — landing khusus: daftar jadwal dengan slot nilai Wawancara/Presentasi kosong (peserta terverifikasi × aspek aktif belum semua diisi), TANPA scoping/assignment.
+- `app/Http/Middleware/RestrictPenilaiAccess.php` — dikunci ke `Kernel.php` grup `web` (global): akun yang rolenya PERSIS {pewawancara} dan/atau {penguji} (tanpa role lain) hanya boleh ke rute whitelist (`penilai.index`, `ujikom-online.admin.nilai-manual.*`, `logout`); rute lain apapun → 403.
+- `resources/views/penilai/index.blade.php`.
+
+### D. File Diubah
+
+- `routes/web.php` — rute `nilai-manual.form`/`.store` dipisah dari grup admin murni ke grup baru `role:admin|super_admin|pewawancara|penguji`; rute baru `penilai.index` (`role:pewawancara|penguji`).
+- `app/Http/Kernel.php` — daftar `RestrictPenilaiAccess` di grup `web`.
+- `app/Http/Controllers/UjikomOnlineController.php` — `inputNilaiManual()` simpan `dinilai_sebagai` (wajib dipilih via request kalau akun punya 2 role, otomatis kalau cuma 1); `formNilaiManual()` kirim flag `$butuhPilihGelar` ke view.
+- `app/Models/UjikomNilaiManual.php` — `dinilai_sebagai` di `$fillable` + accessor label.
+- `app/Http/Controllers/UserController.php` — cabang baru `penilai_uj` di `store()`/`update()`, terima `roles[]` array (bukan `role` tunggal), `unit_kerja_id` null.
+- `resources/views/users/manajemen-user/form.blade.php` — opsi dropdown "Pewawancara / Penguji" + section checkbox ganda.
+- `resources/views/ujikom/online/input_nilai_manual.blade.php` — dropdown "Bertindak sebagai" (kalau akun 2 gelar), label gelar di riwayat nilai, link "Kembali" kondisional ke `penilai.index` untuk akun terbatas.
+- `app/Http/Controllers/CentralController.php` — `LoginAksi()`: akun pewawancara/penguji murni redirect ke `penilai.index`, bukan dashboard admin.
+- `resources/views/layouts/users/master.blade.php` — sidebar akun pewawancara/penguji murni cuma tampil "Input Nilai" (+ Logout), seluruh section FITUR/ADMINISTRASI disembunyikan.
+
+### E. Hasil Verifikasi (HTTP nyata, 4 identitas, data produksi jadwal 1 dipakai sementara lalu dikembalikan)
+
+```
+Login pewawancara-only          -> redirect ke /penilai (BUKAN /user/dashboard/peta)
+GET  /penilai                   -> 200
+GET  /ujikom-online/.../nilai-manual/1 -> 200
+GET  /user/unitkerja            -> 403
+GET  /user/sdm                  -> 403
+GET  /user/manajemen-user       -> 403
+GET  /ujikom-online/admin/monitoring/1 -> 403
+GET  /user/dashboard/peta       -> 403
+
+super_admin (regresi)           -> semua di atas tetap 200, /penilai -> 403 (bukan role pewawancara/penguji)
+
+POST nilai (akun 1 gelar)       -> dinilai_sebagai otomatis terisi benar (pewawancara / penguji)
+POST nilai TANPA pilih gelar (akun 2 gelar) -> validasi GAGAL, baris TIDAK tersimpan
+POST nilai DENGAN gelar dipilih (akun 2 gelar) -> tersimpan, dinilai_sebagai = pilihan eksplisit
+Landing /penilai sebelum: jadwal muncul "2 dari 2" slot kosong -> sesudah kedua slot terisi: jadwal hilang dari daftar, tampil "Tidak ada jadwal yang menunggu"
+Form Manajemen User (HTTP nyata) -> akun dgn 2 role tersimpan benar, unit_kerja_id NULL, halaman edit menampilkan kedua checkbox ter-centang
+```
+
+### F. Keterbatasan data produksi saat verifikasi
+
+Cuma 1 peserta terverifikasi di SELURUH sistem (jadwal 1), dan jadwal itu TIDAK mengaktifkan aspek Wawancara/Presentasi manapun (jadwal 2 & 3 aktif tapi nol peserta terverifikasi). Untuk bisa mendemokan alur input nilai dengan data asli, flag `teknis_wawancara_aktif`/`teknis_presentasi_aktif` jadwal 1 diaktifkan SEMENTARA, diuji, lalu dikembalikan persis ke kondisi semula (`false`/`false`) setelah verifikasi — dikonfirmasi via re-check sebelum & sesudah.
+
+---
+
+## Versi 1.33.0 - Fix: LAP-EXPORT-BUG Kolom nama_rs Usang di Ekspor Hasil Ujikom
+**Tanggal:** 9 Agustus 2026
+**Status:** ✅ Diverifikasi dengan data produksi nyata (file Excel & PDF asli dibuka & dicek isi selnya, bukan cuma cek collection())
+
+### Ringkasan
+
+Ditemukan saat kerja PKR-01 (Agustus 2026), baru diperbaiki sekarang. `app/Exports/UjikomHasilExcelExport.php` masih memakai `->unitKerja?->nama_rs`, kolom yang sudah tidak ada sejak rename menyeluruh "Rumahsakit" → "UnitKerja". Karena diakses lewat null-safe operator (`?->`) dan fallback `?? '-'`, tidak ada error PHP — kolom "Unit Kerja" di file ekspor Excel tab Uji Kompetensi (modul Laporan) selalu tampil `-` secara senyap sejak rename tersebut.
+
+### A. Diagnostik
+
+- **Akar masalah**: kolom asli di tabel `unit_kerja` adalah `nama_unit_kerja` (dikonfirmasi via `Schema::getColumnListing`), bukan `nama_rs`. Akses `$model->nama_rs` di Eloquent tidak melempar exception untuk kolom yang tidak ada — cuma mengembalikan `null`, makanya lolos senyap dari testing manual biasa (tidak ada gejala error, cuma data kosong).
+- **Eloquent, bukan raw query**: `collection()` di export ini pakai Eloquent (`->with(['peserta.pegawai.unitKerja'])` / `->with(['pegawai.unitKerja', ...])`), bukan `DB::table()`. `Sdmmodels` dan `UnitKerja` sama-sama pakai trait `SoftDeletes`, jadi eager-load otomatis mengecualikan baris terhapus lunak tanpa perlu `whereNull('deleted_at')` manual — **beda dari gotcha PKR-03** (yang pakai `DB::table()` mentah dan butuh filter eksplisit).
+- **Temuan tambahan (sama persis, diperbaiki sekalian atas konfirmasi user)**: `resources/views/ujikom/hasil/pdf/rekap.blade.php` baris 125 punya bug identik (`unitKerja?->nama_rs`) — versi PDF rekap cetak dari data Hasil Ujikom yang sama, root cause sama.
+- Referensi "rumahsakit" lain di project (`PetaDashboardController.php`, `GenerateUnitKerjaSeederFromExcel.php`, `GenerateFormasiSeederFromExcel.php`) dicek — bukan bug, cuma nama variabel lokal atau alias header Excel import yang tetap benar dipetakan ke `nama_unit_kerja`.
+
+### B. File Diubah
+
+- `app/Exports/UjikomHasilExcelExport.php` — `nama_rs` → `nama_unit_kerja`.
+- `resources/views/ujikom/hasil/pdf/rekap.blade.php` — `nama_rs` → `nama_unit_kerja`.
+
+### C. Hasil Verifikasi (data produksi nyata — bukan dummy yang dibuat sesi ini)
+
+Data `UjikomHasil` di seluruh sistem masih sangat sepi (1 baris total, 1 jadwal, konsisten dengan catatan sebelumnya bahwa data transaksional modul ini belum banyak terisi). Baris yang ada dipakai langsung:
+
+```
+Pegawai: Wahyudi, NIP 199901132025055555, unit_kerja_id=1700
+Nilai DB nama_unit_kerja (langsung, cross-check manual): "Unit Kerja Testing"
+
+SEBELUM fix -- akses ->nama_rs (kolom tidak ada)  -> NULL -> tampil "-" di file ekspor
+SESUDAH fix -- akses ->nama_unit_kerja             -> "Unit Kerja Testing"
+```
+
+File Excel (.xlsx) dan PDF SUNGGUHAN digenerate lewat kode fix (bukan cuma dibaca dari `collection()`), lalu dibuka ulang dan dibaca isi selnya:
+- Excel: `PhpSpreadsheet\IOFactory::load()` → kolom D baris 1 = `"Unit Kerja Testing"` ✅
+- PDF: `pdftotext` ekstrak teks → baris tabel menampilkan `"Unit Kerja Testing"` ✅
+
+Nama unit kerja `"Unit Kerja Testing"` sendiri terlihat seperti data uji coba yang tersisa di database produksi (bukan yang dibuat sesi ini) — dicatat sebagai keterbatasan data, bukan masalah kode.
+
+---
+
 ## Versi 1.32.0 - Fix: /user/sdm Server-Side DataTables (8,5MB → 20KB)
 **Tanggal:** 6 Agustus 2026 (browser interaktif ditest 9 Agustus 2026)
 **Status:** ✅ Diverifikasi HTTP nyata (payload sebelum/sesudah, filter, search, tombol Aksi) DAN ditest browser interaktif (Chrome, super_admin) — search "JOSE" (1 hasil), filter dropdown "Di Luar Formasi" (2 hasil, cocok persis dgn recordsFiltered HTTP), sorting kolom NIP (server-side, urutan berubah benar), tombol Hapus (dialog SweetAlert2 "Hapus Data Pegawai?" muncul, dibatalkan lewat "Batal", tidak ada baris terhapus), tombol Karir & Diklat (mengarah ke pegawai yang benar, dicek by nama & NIP di halaman tujuan). Nol error console di semua interaksi.

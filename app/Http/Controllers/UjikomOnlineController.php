@@ -639,8 +639,12 @@ class UjikomOnlineController extends Controller
             ->groupBy('peserta_id')
             ->map(fn($rows) => $rows->keyBy(fn($n) => $n->kompetensi . '_' . $n->aspek));
 
+        $user            = Auth::user();
+        $rolesPenilai    = collect(['pewawancara', 'penguji'])->filter(fn ($r) => $user->hasRole($r));
+        $butuhPilihGelar = $rolesPenilai->count() > 1;
+
         return view('ujikom.online.input_nilai_manual', compact(
-            'jadwal', 'pesertaList', 'bobotTeknis', 'bobotMansoskul', 'nilaiManual'
+            'jadwal', 'pesertaList', 'bobotTeknis', 'bobotMansoskul', 'nilaiManual', 'butuhPilihGelar'
         ));
     }
 
@@ -650,6 +654,10 @@ class UjikomOnlineController extends Controller
      */
     public function inputNilaiManual(Request $request)
     {
+        $user             = Auth::user();
+        $rolesPenilai     = collect(['pewawancara', 'penguji'])->filter(fn ($r) => $user->hasRole($r));
+        $butuhPilihGelar  = $rolesPenilai->count() > 1; // akun punya kedua role -> wajib pilih tiap input
+
         $request->validate([
             'ujikom_jadwal_id' => 'required|exists:ujikom_jadwal,id',
             'peserta_id'       => 'required|exists:ujikom_pendaftaran_peserta,id',
@@ -657,7 +665,14 @@ class UjikomOnlineController extends Controller
             'aspek'            => 'required|in:wawancara,presentasi',
             'nilai'            => 'required|integer|min:1|max:5',
             'catatan'          => 'nullable|string',
+            'dinilai_sebagai'  => $butuhPilihGelar ? 'required|in:pewawancara,penguji' : 'nullable|in:pewawancara,penguji',
         ]);
+
+        // Gelar yang tercatat: pilihan eksplisit (kalau akun punya 2 role), atau
+        // satu-satunya role penilai yang dipunyai akun, atau null (mis. input oleh admin).
+        $dinilaiSebagai = $butuhPilihGelar
+            ? $request->dinilai_sebagai
+            : $rolesPenilai->first();
 
         UjikomNilaiManual::updateOrCreate(
             [
@@ -667,9 +682,10 @@ class UjikomOnlineController extends Controller
                 'aspek'            => $request->aspek,
             ],
             [
-                'nilai'        => $request->nilai,
-                'catatan'      => $request->catatan,
-                'dinilai_oleh' => Auth::id(),
+                'nilai'           => $request->nilai,
+                'catatan'         => $request->catatan,
+                'dinilai_oleh'    => Auth::id(),
+                'dinilai_sebagai' => $dinilaiSebagai,
             ]
         );
 

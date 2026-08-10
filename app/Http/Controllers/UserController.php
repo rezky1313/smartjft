@@ -28,7 +28,32 @@ class UserController extends Controller
     {
         $role = $request->role;
 
-        if ($role === 'pemangku') {
+        if ($role === 'penilai_uj') {
+            // UJ-ROLE: pewawancara/penguji — akun eksternal, boleh punya kedua role sekaligus.
+            $request->validate([
+                'name'     => 'required|string|max:255',
+                'email'    => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:6|confirmed',
+                'roles'    => 'required|array|min:1',
+                'roles.*'  => 'in:pewawancara,penguji',
+                'status'   => 'required|in:active,inactive',
+            ], [
+                'roles.required' => 'Pilih minimal satu gelar: Pewawancara atau Penguji.',
+            ]);
+
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'status'   => $request->status,
+            ]);
+
+            $user->syncRoles($request->roles);
+
+            return redirect()->route('user.manajemen-user.index')
+                ->with('success', 'User berhasil ditambahkan.');
+
+        } elseif ($role === 'pemangku') {
             $request->validate([
                 'sdm_id' => 'required|exists:sumber_daya_manusia,id',
                 'email'  => 'nullable|string|email|max:255|unique:users',
@@ -103,7 +128,32 @@ class UserController extends Controller
     {
         $role = $request->role;
 
-        if ($role === 'pemangku') {
+        if ($role === 'penilai_uj') {
+            $request->validate([
+                'name'     => 'required|string|max:255',
+                'email'    => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                'roles'    => 'required|array|min:1',
+                'roles.*'  => 'in:pewawancara,penguji',
+                'status'   => 'required|in:active,inactive',
+            ], [
+                'roles.required' => 'Pilih minimal satu gelar: Pewawancara atau Penguji.',
+            ]);
+
+            $user->update([
+                'name'         => $request->name,
+                'email'        => $request->email,
+                'unit_kerja_id'=> null,
+                'sdm_id'       => null,
+                'username'     => null,
+                'status'       => $request->status,
+            ]);
+
+            $user->syncRoles($request->roles);
+
+            return redirect()->route('user.manajemen-user.index')
+                ->with('success', 'User berhasil diperbarui.');
+
+        } elseif ($role === 'pemangku') {
             $request->validate([
                 'sdm_id' => 'required|exists:sumber_daya_manusia,id',
                 'email'  => 'nullable|string|email|max:255|unique:users,email,' . $user->id,

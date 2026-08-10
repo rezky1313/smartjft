@@ -122,7 +122,7 @@
         <td class="text-center">{{ $i + 1 }}</td>
         <td>{{ $p->pegawai?->nama_lengkap ?? '-' }}</td>
         <td>{{ $p->pegawai?->nip ?? '-' }}</td>
-        <td>{{ $p->pegawai?->unitKerja?->nama_rs ?? '-' }}</td>
+        <td>{{ $p->pegawai?->unitKerja?->nama_unit_kerja ?? '-' }}</td>
         <td>{{ $p->jabatan_tujuan_nama ?? '-' }} / {{ $p->jenjang_tujuan ?? '-' }}</td>
         <td class="text-center">{{ $hasil ? $hasil->label_jenis : '-' }}</td>
         <td style="font-size:8.5px;">
